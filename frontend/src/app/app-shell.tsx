@@ -29,15 +29,17 @@ function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!token && pathname !== "/login") {
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
-    return null;
+  // Public pages (no auth required)
+  if (pathname === "/login" || pathname === "/lp") {
+    return <>{children}</>;
   }
 
-  if (pathname === "/login") {
-    return <>{children}</>;
+  // Unauthenticated: redirect to LP (not login)
+  if (!token) {
+    if (typeof window !== "undefined") {
+      window.location.href = "/lp";
+    }
+    return null;
   }
 
   return (
