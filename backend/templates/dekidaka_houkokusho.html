@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 15pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 6px 0; margin-bottom: 8px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 10px 0 5px; background: #f0f4ff; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 65px; height: 65px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 15px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.center { text-align: center; } .right { text-align: right; }
+.total-row { background: #e8eaf0; font-weight: bold; }
+.note-box { border: 1px solid #999; min-height: 50px; padding: 5px; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">出 来 高 報 告 書</div>
+
+<table>
+  <tr><th style="width:110px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:110px">工 事 場 所</th><td>{{ project.site_address or '　' }}</td>
+  </tr>
+  <tr>
+    <th>発 注 者</th><td>{{ project.client_name or '　' }}</td>
+    <th>請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+  </tr>
+  <tr>
+    <th>請 負 金 額</th><td>{{ contract_amount|default('　') }} 円（税込）</td>
+    <th>報 告 対 象 期 間</th><td>{{ report_period_start|default('　') }} ～ {{ report_period_end|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>報告書番号</th><td>第　{{ report_number|default('　') }}　回</td>
+    <th>報 告 日</th><td>{{ report_date|default('　　年　　月　　日') }}</td>
+  </tr>
+</table>
+
+<h2>出来高内訳</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>工種・費目</th>
+      <th style="width:80px">請負金額<br>(円)</th>
+      <th style="width:70px">前回迄<br>累計(円)</th>
+      <th style="width:70px">今月<br>(円)</th>
+      <th style="width:80px">今月迄<br>累計(円)</th>
+      <th style="width:60px">出来高率<br>(%)</th>
+      <th>備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in progress_items|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ item.name }}</td>
+      <td class="right">{{ '{:,}'.format(item.contract_amount) if item.contract_amount else '' }}</td>
+      <td class="right">{{ '{:,}'.format(item.prev_cumulative) if item.prev_cumulative else '' }}</td>
+      <td class="right">{{ '{:,}'.format(item.this_month) if item.this_month else '' }}</td>
+      <td class="right">{{ '{:,}'.format(item.cumulative) if item.cumulative else '' }}</td>
+      <td class="center">{{ item.progress_rate or '' }}</td>
+      <td>{{ item.note or '' }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(8) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+    <tr class="total-row">
+      <td colspan="2" class="center">合 計</td>
+      <td class="right">{{ '{:,}'.format(total_contract) if total_contract else '　' }}</td>
+      <td class="right">{{ '{:,}'.format(total_prev) if total_prev else '　' }}</td>
+      <td class="right">{{ '{:,}'.format(total_this_month) if total_this_month else '　' }}</td>
+      <td class="right">{{ '{:,}'.format(total_cumulative) if total_cumulative else '　' }}</td>
+      <td class="center">{{ total_rate|default('　') }} %</td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>出来高グラフ（予定・実績比較）</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:80px">月</th>
+      {% for m in months|default([]) %}<th style="width:50px">{{ m }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>予 定(%)</th>
+      {% for v in planned_rates|default([]) %}<td class="center">{{ v }}</td>{% endfor %}
+    </tr>
+    <tr>
+      <th>実 績(%)</th>
+      {% for v in actual_rates|default([]) %}<td class="center">{{ v }}</td>{% endfor %}
+    </tr>
+  </tbody>
+</table>
+
+<h2>特記事項</h2>
+<div class="note-box">{{ notes|default('') }}</div>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>出来高報告書（公共建築工事標準仕様書 令和7年版）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

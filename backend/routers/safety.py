@@ -1,15 +1,19 @@
-"""Safety management (安全管理) router - KY, patrols, incidents, trainings."""
+"""Safety management (安全管理) router - KY, patrols, incidents, trainings, orientations."""
 
-from datetime import date
+from datetime import date, datetime, timedelta
+from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.safety import KYActivity, SafetyPatrol, IncidentReport, SafetyTraining
+from models.safety import KYActivity, SafetyPatrol, IncidentReport, SafetyTraining, WorkerOrientation
 from models.user import User
 from services.auth_service import get_current_user
+from services.storage_service import generate_upload_key, upload_file
+from services.photo_service import extract_exif
 
 router = APIRouter(prefix="/api/projects/{project_id}/safety", tags=["safety"])
 
@@ -88,6 +92,30 @@ class SafetyTrainingUpdate(BaseModel):
     attendees: list | None = None
     duration_minutes: int | None = None
     attachment_keys: list | None = None
+
+
+class WorkerOrientationCreate(BaseModel):
+    worker_id: str
+    orientation_date: date
+    instructor_name: str | None = None
+    topics_covered: list | None = None
+    health_check_passed: bool = False
+    insurance_verified: bool = False
+    safety_pledge_signed: bool = False
+    blood_type_confirmed: bool = False
+    emergency_contact_verified: bool = False
+    notes: str | None = None
+
+
+class WorkerOrientationUpdate(BaseModel):
+    instructor_name: str | None = None
+    topics_covered: list | None = None
+    health_check_passed: bool | None = None
+    insurance_verified: bool | None = None
+    safety_pledge_signed: bool | None = None
+    blood_type_confirmed: bool | None = None
+    emergency_contact_verified: bool | None = None
+    notes: str | None = None
 
 
 # ---------- KY Activities ----------
@@ -282,6 +310,151 @@ def delete_incident(
     return {"status": "ok"}
 
 
+# ---------- Quick Near-miss (ヒヤリハット) Report ----------
+
+@router.post("/quick-incident")
+async def quick_incident_report(
+    project_id: str,
+    description: str = Form(...),
+    severity: str = Form("medium"),  # low, medium, high, critical
+    file: UploadFile | None = File(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Simplified near-miss (ヒヤリハット) report - minimal fields, photo optional."""
+    valid_severities = {"low", "medium", "high", "critical"}
+    if severity not in valid_severities:
+        raise HTTPException(status_code=400, detail=f"severity は {valid_severities} のいずれかを指定してください")
+
+    location: str | None = None
+    photo_key: str | None = None
+
+    if file:
+        file_data = await file.read()
+        # Extract GPS from EXIF if available
+        exif = extract_exif(file_data)
+        if exif.get("gps_lat") and exif.get("gps_lng"):
+            location = f"{exif['gps_lat']:.6f}, {exif['gps_lng']:.6f}"
+
+        # Upload photo
+        file_key = generate_upload_key(user.tenant_id, project_id, "incidents", file.filename or "incident.jpg")
+        upload_file(file_data, file_key, file.content_type or "image/jpeg")
+        photo_key = file_key
+
+    incident = IncidentReport(
+        project_id=project_id,
+        reporter_id=user.id,
+        incident_date=date.today(),
+        incident_type="near_miss",
+        severity=severity,
+        location=location,
+        description=description,
+        photo_ids=[photo_key] if photo_key else None,
+        status="reported",
+    )
+    db.add(incident)
+    db.commit()
+    db.refresh(incident)
+    return incident
+
+
+# ---------- Safety Trends ----------
+
+@router.get("/trends")
+def safety_trends(
+    project_id: str,
+    months: int = 6,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Monthly counts of KY activities, patrols, incidents, trainings."""
+    today = date.today()
+
+    # Build month list
+    month_labels = []
+    for i in range(months - 1, -1, -1):
+        m = today.month - i
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        month_labels.append((y, m))
+
+    result = []
+    for y, m in month_labels:
+        label = f"{y}-{m:02d}"
+        start = date(y, m, 1)
+        end = date(y + 1, 1, 1) if m == 12 else date(y, m + 1, 1)
+
+        ky_count = db.query(func.count(KYActivity.id)).filter(
+            KYActivity.project_id == project_id,
+            KYActivity.activity_date >= start,
+            KYActivity.activity_date < end,
+        ).scalar() or 0
+
+        patrol_count = db.query(func.count(SafetyPatrol.id)).filter(
+            SafetyPatrol.project_id == project_id,
+            SafetyPatrol.patrol_date >= start,
+            SafetyPatrol.patrol_date < end,
+        ).scalar() or 0
+
+        incident_count = db.query(func.count(IncidentReport.id)).filter(
+            IncidentReport.project_id == project_id,
+            IncidentReport.incident_date >= start,
+            IncidentReport.incident_date < end,
+        ).scalar() or 0
+
+        training_count = db.query(func.count(SafetyTraining.id)).filter(
+            SafetyTraining.project_id == project_id,
+            SafetyTraining.training_date >= start,
+            SafetyTraining.training_date < end,
+        ).scalar() or 0
+
+        result.append({
+            "month": label,
+            "ky_count": int(ky_count),
+            "patrol_count": int(patrol_count),
+            "incident_count": int(incident_count),
+            "training_count": int(training_count),
+        })
+
+    return result
+
+
+# ---------- Incident Analysis ----------
+
+@router.get("/incident-analysis")
+def incident_analysis(
+    project_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Breakdown of incidents by severity, type, and location."""
+    incidents = db.query(IncidentReport).filter(
+        IncidentReport.project_id == project_id
+    ).all()
+
+    by_severity: dict[str, int] = defaultdict(int)
+    by_type: dict[str, int] = defaultdict(int)
+    by_location: dict[str, int] = defaultdict(int)
+    by_status: dict[str, int] = defaultdict(int)
+
+    for inc in incidents:
+        by_severity[inc.severity] += 1
+        by_type[inc.incident_type] += 1
+        loc = inc.location or "不明"
+        by_location[loc] += 1
+        by_status[inc.status] += 1
+
+    return {
+        "total": len(incidents),
+        "by_severity": dict(by_severity),
+        "by_type": dict(by_type),
+        "by_location": dict(by_location),
+        "by_status": dict(by_status),
+    }
+
+
 # ---------- Trainings ----------
 
 @router.get("/trainings")
@@ -341,5 +514,84 @@ def delete_training(
     if not t:
         raise HTTPException(status_code=404, detail="安全教育が見つかりません")
     db.delete(t)
+    db.commit()
+    return {"status": "ok"}
+
+
+# ---------- Worker Orientations ----------
+
+@router.get("/worker-orientations")
+def list_orientations(
+    project_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return db.query(WorkerOrientation).filter(
+        WorkerOrientation.project_id == project_id
+    ).order_by(WorkerOrientation.orientation_date.desc()).all()
+
+
+@router.post("/worker-orientations")
+def create_orientation(
+    project_id: str,
+    req: WorkerOrientationCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    orientation = WorkerOrientation(
+        project_id=project_id,
+        tenant_id=user.tenant_id,
+        **req.model_dump(),
+    )
+    db.add(orientation)
+    db.commit()
+    db.refresh(orientation)
+    return orientation
+
+
+@router.get("/worker-orientations/{orientation_id}")
+def get_orientation(
+    project_id: str, orientation_id: str,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    o = db.query(WorkerOrientation).filter(
+        WorkerOrientation.id == orientation_id,
+        WorkerOrientation.project_id == project_id,
+    ).first()
+    if not o:
+        raise HTTPException(status_code=404, detail="入場者教育記録が見つかりません")
+    return o
+
+
+@router.put("/worker-orientations/{orientation_id}")
+def update_orientation(
+    project_id: str, orientation_id: str, req: WorkerOrientationUpdate,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    o = db.query(WorkerOrientation).filter(
+        WorkerOrientation.id == orientation_id,
+        WorkerOrientation.project_id == project_id,
+    ).first()
+    if not o:
+        raise HTTPException(status_code=404, detail="入場者教育記録が見つかりません")
+    for k, v in req.model_dump(exclude_unset=True).items():
+        setattr(o, k, v)
+    db.commit()
+    db.refresh(o)
+    return o
+
+
+@router.delete("/worker-orientations/{orientation_id}")
+def delete_orientation(
+    project_id: str, orientation_id: str,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    o = db.query(WorkerOrientation).filter(
+        WorkerOrientation.id == orientation_id,
+        WorkerOrientation.project_id == project_id,
+    ).first()
+    if not o:
+        raise HTTPException(status_code=404, detail="入場者教育記録が見つかりません")
+    db.delete(o)
     db.commit()
     return {"status": "ok"}

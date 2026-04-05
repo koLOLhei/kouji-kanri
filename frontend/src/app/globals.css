@@ -71,3 +71,165 @@ html { scroll-behavior: smooth; }
   to { transform: translateY(0); opacity: 1; }
 }
 .slide-in { animation: slide-in 0.3s ease; }
+
+/* ====================================
+   Outdoor Mode - larger touch targets,
+   higher contrast, bigger fonts
+   ==================================== */
+.outdoor-mode {
+  font-size: 18px;
+}
+.outdoor-mode button,
+.outdoor-mode a,
+.outdoor-mode input,
+.outdoor-mode select {
+  min-height: 60px;
+  min-width: 60px;
+  font-size: 1.1rem;
+}
+.outdoor-mode textarea {
+  font-size: 1.1rem;
+}
+.outdoor-mode .text-sm {
+  font-size: 1rem;
+}
+.outdoor-mode .text-xs {
+  font-size: 0.9rem;
+}
+.outdoor-mode .text-base {
+  font-size: 1.15rem;
+}
+.outdoor-mode .text-lg {
+  font-size: 1.3rem;
+}
+.outdoor-mode .text-xl {
+  font-size: 1.5rem;
+}
+.outdoor-mode .text-2xl {
+  font-size: 1.75rem;
+}
+/* Higher contrast text */
+.outdoor-mode .text-gray-400 { color: #4b5563; }
+.outdoor-mode .text-gray-500 { color: #374151; }
+.outdoor-mode .text-slate-400 { color: #475569; }
+.outdoor-mode .text-slate-500 { color: #334155; }
+
+/* ===== Print Styles ===== */
+@media print {
+  /* Page setup */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 20mm 15mm;
+  }
+
+  /* Hide UI chrome */
+  aside,
+  nav,
+  .no-print,
+  header,
+  footer,
+  [data-sidebar] {
+    display: none !important;
+  }
+
+  /* Full width for main content */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 10pt;
+    font-family: "Hiragino Mincho Pro", "MS Mincho", serif;
+  }
+
+  main {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .print-area {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Cards and borders */
+  .bg-white {
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  .shadow-sm,
+  .shadow-lg,
+  .shadow-xl {
+    box-shadow: none !important;
+  }
+
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th, td {
+    border: 0.5pt solid #666 !important;
+    padding: 3pt 4pt !important;
+    font-size: 9pt;
+  }
+
+  thead {
+    background: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .no-page-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Buttons - hide most interactive elements */
+  button.no-print,
+  a.no-print {
+    display: none !important;
+  }
+
+  /* Keep links readable */
+  a {
+    text-decoration: none;
+    color: black;
+  }
+
+  /* Status badges - keep color for clarity */
+  [class*="bg-green-"],
+  [class*="bg-blue-"],
+  [class*="bg-red-"],
+  [class*="bg-amber-"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Progress bars */
+  .rounded-full > div {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Flex layout adjustments */
+  .flex.min-h-screen {
+    display: block !important;
+  }
+}

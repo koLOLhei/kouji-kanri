@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 15pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 6px 0; margin-bottom: 8px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 11pt; font-weight: bold; border-left: 5px solid #dc2626; padding: 3px 8px; margin: 14px 0 6px; background: #fff1f1; }
+h3 { font-size: 10pt; font-weight: bold; border-bottom: 1px solid #999; padding-bottom: 2px; margin: 8px 0 4px; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 65px; height: 65px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 15px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 50px; padding: 5px; font-size: 9pt; }
+.risk-high { background: #fee2e2; }
+.risk-mid { background: #fef9c3; }
+.risk-low { background: #dcfce7; }
+.center { text-align: center; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">安 全 管 理 計 画 書</div>
+
+<table>
+  <tr><th style="width:110px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:110px">工 事 場 所</th><td>{{ project.site_address or '　' }}</td>
+  </tr>
+  <tr>
+    <th>発 注 者</th><td>{{ project.client_name or '　' }}</td>
+    <th>請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+  </tr>
+  <tr>
+    <th>工 期</th><td>{{ project.start_date or '　' }} ～ {{ project.end_date or '　' }}</td>
+    <th>提出日</th><td>{{ submission_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>安全管理者</th><td>{{ safety_manager|default('　') }}</td>
+    <th>衛生管理者</th><td>{{ hygiene_manager|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>1. 安全管理体制</h2>
+<table>
+  <thead>
+    <tr><th style="width:130px">役職</th><th>氏名</th><th style="width:100px">資格・選任</th><th>主な職務</th></tr>
+  </thead>
+  <tbody>
+    {% for member in safety_organization|default([]) %}
+    <tr><td>{{ member.role }}</td><td>{{ member.name }}</td><td>{{ member.qualification or '' }}</td><td>{{ member.duty or '' }}</td></tr>
+    {% else %}
+    <tr><td>統括安全衛生責任者</td><td></td><td>選任届</td><td>統括安全衛生管理</td></tr>
+    <tr><td>元方安全衛生管理者</td><td></td><td>選任届</td><td>技術的事項の管理</td></tr>
+    <tr><td>安全管理者</td><td>{{ safety_manager|default('') }}</td><td>安全管理者選任届</td><td>安全に係る技術的事項</td></tr>
+    <tr><td>衛生管理者</td><td>{{ hygiene_manager|default('') }}</td><td>衛生管理者免許</td><td>衛生に係る技術的事項</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>2. 工事危険性の把握・リスクアセスメント</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th style="width:80px">工種</th>
+      <th>想定される危険</th>
+      <th style="width:60px">リスクレベル</th>
+      <th>対策措置</th>
+      <th style="width:60px">残存リスク</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for risk in risk_assessments|default([]) %}
+    <tr class="risk-{{ risk.level|lower|replace('高','high')|replace('中','mid')|replace('低','low') }}">
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ risk.work_type }}</td>
+      <td>{{ risk.hazard }}</td>
+      <td class="center">{{ risk.level }}</td>
+      <td>{{ risk.measures }}</td>
+      <td class="center">{{ risk.residual }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(6) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td>　</td><td></td><td>　</td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>3. 安全活動計画</h2>
+<table>
+  <thead>
+    <tr><th style="width:140px">活動種別</th><th>実施内容</th><th style="width:80px">実施頻度</th><th style="width:80px">担当者</th></tr>
+  </thead>
+  <tbody>
+    {% for act in safety_activities|default([]) %}
+    <tr><td>{{ act.type }}</td><td>{{ act.content }}</td><td class="center">{{ act.frequency }}</td><td>{{ act.responsible }}</td></tr>
+    {% else %}
+    <tr><td>KY活動（危険予知）</td><td>作業開始前に全員でKY活動を実施</td><td class="center">毎日</td><td>作業班長</td></tr>
+    <tr><td>安全朝礼</td><td>作業開始前の安全確認・連絡事項共有</td><td class="center">毎日</td><td>現場代理人</td></tr>
+    <tr><td>安全巡回点検</td><td>現場内の危険箇所・設備の点検</td><td class="center">毎日</td><td>安全管理者</td></tr>
+    <tr><td>安全教育</td><td>新規入場者及び月例安全教育</td><td class="center">随時・月1回</td><td>安全管理者</td></tr>
+    <tr><td>ヒヤリハット報告</td><td>危険事象の報告・共有・対策立案</td><td class="center">随時</td><td>全員</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>4. 緊急時の対応</h2>
+<table>
+  <tr><th style="width:110px">緊急連絡先</th><td>救急: 119 / 警察: 110 / 発注者: {{ client_emergency_contact|default('　') }}</td></tr>
+  <tr><th>最寄り病院</th><td>{{ emergency_hospital|default('　') }}　TEL: {{ emergency_hospital_tel|default('　') }}</td></tr>
+  <tr><th>事故発生時の流れ</th><td>① 負傷者救護 → ② 119/110通報 → ③ 発注者・監督官庁報告 → ④ 原因究明・再発防止</td></tr>
+</table>
+
+<h2>5. その他特記事項</h2>
+<div class="note-box">{{ notes|default('') }}</div>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">安全管理者</div><div class="stamp-label">安全管理者</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>安全管理計画書（労働安全衛生法・公共建築工事標準仕様書 令和7年版）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

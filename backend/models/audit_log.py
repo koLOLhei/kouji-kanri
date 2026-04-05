@@ -20,6 +20,8 @@ class AuditLog(Base):
     entity_type: Mapped[str] = mapped_column(String(100), nullable=False)
     entity_id: Mapped[str | None] = mapped_column(String(36))
     changes: Mapped[dict | None] = mapped_column(JSON)
+    old_values: Mapped[dict | None] = mapped_column(JSON)  # state before change
+    new_values: Mapped[dict | None] = mapped_column(JSON)  # state after change
     ip_address: Mapped[str | None] = mapped_column(String(50))
     user_agent: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

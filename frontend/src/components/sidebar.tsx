@@ -10,8 +10,9 @@ import {
   LayoutDashboard, FolderKanban, Camera, BookOpen, Settings, LogOut,
   Building2, BarChart3, HardHat, Truck, Bell, Search,
   ChevronLeft, ChevronRight, Shield, ClipboardCheck, Activity,
-  CalendarCheck, Wrench, SearchIcon,
+  CalendarCheck, Wrench, SearchIcon, TrendingUp,
 } from "lucide-react";
+import { OutdoorModeToggle } from "@/components/outdoor-mode-toggle";
 
 interface NavItem {
   href: string;
@@ -43,6 +44,7 @@ const settingsItems: NavItem[] = [
 
 const adminItems: NavItem[] = [
   { href: "/admin", label: "SaaS管理", icon: BarChart3 },
+  { href: "/admin/dashboard", label: "横断ダッシュボード", icon: TrendingUp },
 ];
 
 export function Sidebar() {
@@ -247,6 +249,15 @@ export function Sidebar() {
 
         {user?.role === "admin" && renderSection("SaaS管理", adminItems, "bg-purple-600")}
       </nav>
+
+      {/* Outdoor mode toggle */}
+      <div className="px-2 py-2 border-t border-slate-700/50">
+        {collapsed ? (
+          <OutdoorModeToggle showLabel={false} className="w-full justify-center px-2" />
+        ) : (
+          <OutdoorModeToggle showLabel={true} className="w-full" />
+        )}
+      </div>
 
       {/* User section */}
       <div className="border-t border-slate-700/50 p-3">

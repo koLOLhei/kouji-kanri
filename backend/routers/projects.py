@@ -10,6 +10,7 @@ from models.phase import Phase
 from models.user import User
 from schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from services.auth_service import get_current_user
+from services.plan_service import check_project_limit
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -44,6 +45,9 @@ def create_project(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Enforce plan project limit
+    check_project_limit(db, user.tenant_id)
+
     project = Project(
         tenant_id=user.tenant_id,
         **req.model_dump(),

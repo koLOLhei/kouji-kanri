@@ -22,7 +22,20 @@ class PhaseUpdate(BaseModel):
     planned_end: date | None = None
     actual_start: date | None = None
     actual_end: date | None = None
+    duration_days: int | None = None
+    depends_on: list[str] | None = None
+    progress_percent: int | None = None
     notes: str | None = None
+
+
+class PhaseScheduleUpdate(BaseModel):
+    planned_start: date | None = None
+    planned_end: date | None = None
+    actual_start: date | None = None
+    actual_end: date | None = None
+    duration_days: int | None = None
+    depends_on: list[str] | None = None
+    progress_percent: int | None = None
 
 
 class PhaseResponse(BaseModel):
@@ -38,6 +51,9 @@ class PhaseResponse(BaseModel):
     planned_end: date | None
     actual_start: date | None
     actual_end: date | None
+    duration_days: int | None = None
+    depends_on: list[str] | None = None
+    progress_percent: int = 0
     notes: str | None
     created_at: datetime
     updated_at: datetime

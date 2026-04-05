@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 15pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 6px 0; margin-bottom: 8px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+.w100 { width: 100px; } .w120 { width: 120px; } .w80 { width: 80px; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 10px 0 5px; background: #f0f4ff; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 65px; height: 65px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 15px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 60px; padding: 5px; font-size: 9pt; }
+.center { text-align: center; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">工 事 打 合 簿</div>
+
+<table>
+  <tr>
+    <th class="w100">工 事 名</th>
+    <td colspan="3">{{ project.name }}</td>
+  </tr>
+  <tr>
+    <th class="w100">工 事 番 号</th>
+    <td class="w120">{{ project.project_code or '　' }}</td>
+    <th class="w100">工 事 場 所</th>
+    <td>{{ project.site_address or '　' }}</td>
+  </tr>
+  <tr>
+    <th>発 注 者</th>
+    <td>{{ project.client_name or '　' }}</td>
+    <th>請 負 者</th>
+    <td>{{ project.contractor_name or '　' }}</td>
+  </tr>
+  <tr>
+    <th>監 督 員</th>
+    <td>{{ supervisor_name|default('　') }}</td>
+    <th>現場代理人</th>
+    <td>{{ site_agent|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>打合簿番号</th>
+    <td>第　{{ meeting_number|default('　') }}　号</td>
+    <th>発 議 日</th>
+    <td>{{ meeting_date|default('　') }}</td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <th class="w100">発 議 者</th>
+    <td class="w120">
+      <label><input type="radio" {% if issuer_type == '監督員' %}checked{% endif %}> 監督員</label>
+      <label><input type="radio" {% if issuer_type == '請負者' %}checked{% endif %}> 請負者</label>
+    </td>
+    <th class="w100">打合簿種類</th>
+    <td>
+      <label><input type="radio" {% if meeting_type == '指示' %}checked{% endif %}> 指示</label>
+      <label><input type="radio" {% if meeting_type == '協議' %}checked{% endif %}> 協議</label>
+      <label><input type="radio" {% if meeting_type == '承諾' %}checked{% endif %}> 承諾</label>
+      <label><input type="radio" {% if meeting_type == '提出' %}checked{% endif %}> 提出</label>
+      <label><input type="radio" {% if meeting_type == '報告' %}checked{% endif %}> 報告</label>
+    </td>
+  </tr>
+</table>
+
+<h2>件 名</h2>
+<div class="note-box" style="min-height:30px;">{{ subject|default('') }}</div>
+
+<h2>内 容</h2>
+<div class="note-box" style="min-height:120px;">{{ content|default('') }}</div>
+
+<h2>添付書類</h2>
+<table>
+  <thead>
+    <tr><th style="width:40px">No.</th><th>書類名称</th><th style="width:80px">部数</th><th>備考</th></tr>
+  </thead>
+  <tbody>
+    {% for att in attachments|default([]) %}
+    <tr><td class="center">{{ loop.index }}</td><td>{{ att.name }}</td><td class="center">{{ att.copies }}</td><td>{{ att.note or '' }}</td></tr>
+    {% else %}
+    <tr><td class="center">1</td><td>　</td><td></td><td></td></tr>
+    <tr><td class="center">2</td><td>　</td><td></td><td></td></tr>
+    <tr><td class="center">3</td><td>　</td><td></td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>回 答 欄</h2>
+<div class="note-box" style="min-height:80px;">{{ response|default('') }}</div>
+
+<table>
+  <tr>
+    <th class="w100">回 答 日</th>
+    <td>{{ response_date|default('　　年　　月　　日') }}</td>
+  </tr>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">主任技術者</div><div class="stamp-label">主任技術者</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>工事打合簿（公共建築工事標準仕様書 令和7年版）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 文書版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

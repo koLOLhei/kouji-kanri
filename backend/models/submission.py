@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Boolean, DateTime, Text, JSON
+from sqlalchemy import String, Boolean, DateTime, Text, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -23,6 +23,8 @@ class Submission(Base):
     generated_at: Mapped[datetime | None] = mapped_column(DateTime)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    checksum: Mapped[str | None] = mapped_column(String(64))  # SHA-256 hex digest
+    current_version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

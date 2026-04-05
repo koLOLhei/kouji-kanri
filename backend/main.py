@@ -23,6 +23,11 @@ from routers import (
     document_dashboard, approval_queue, daily_workflow,
     meetings, measurements, equipment_routes, waste, search, bulk_download,
 )
+from routers import approval_workflow, document_versions, file_integrity, documents_gen, quality
+from routers import electronic_delivery
+from routers import schedule as schedule_router
+from routers import dashboard, design_changes, subcontractor_evaluations
+from middleware.rate_limit import RateLimitMiddleware
 from services.seed import seed_initial_data
 from services.storage_service import ensure_bucket
 
@@ -74,6 +79,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Rate limiting (applied after CORS so CORS headers are still set on 429 responses)
+app.add_middleware(RateLimitMiddleware)
+
 # Routers
 app.include_router(auth.router)
 app.include_router(projects.router)
@@ -109,6 +117,16 @@ app.include_router(equipment_routes.project_equipment_router)
 app.include_router(waste.router)
 app.include_router(search.router)
 app.include_router(bulk_download.router)
+app.include_router(approval_workflow.router)
+app.include_router(document_versions.router)
+app.include_router(file_integrity.router)
+app.include_router(documents_gen.router)
+app.include_router(quality.router)
+app.include_router(electronic_delivery.router)
+app.include_router(schedule_router.router)
+app.include_router(dashboard.router)
+app.include_router(design_changes.router)
+app.include_router(subcontractor_evaluations.router)
 
 
 @app.get("/api/health")

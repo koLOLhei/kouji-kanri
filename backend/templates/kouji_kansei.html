@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 18mm 18mm 25mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 11pt; color: #1a1a1a; margin: 0; line-height: 1.8; }
+.doc-title { font-size: 17pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 8px 0; margin-bottom: 25px; letter-spacing: 5px; }
+.header-date { text-align: right; margin-bottom: 20px; font-size: 11pt; }
+.recipient { font-size: 12pt; font-weight: bold; margin-bottom: 20px; }
+.subject { text-align: center; font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 20px 0; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+th, td { border: 1px solid #333; padding: 6px 10px; font-size: 10.5pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; width: 130px; }
+.body-text { line-height: 2; margin: 15px 0; font-size: 11pt; }
+.sender-area { margin-top: 30px; text-align: right; }
+.sender-area p { margin: 3px 0; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 15px; margin: 20px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 75px; height: 75px; border: 1px solid #333; font-size: 8pt; padding-top: 5px; }
+.stamp-label { font-size: 8.5pt; margin-top: 3px; }
+.doc-footer { margin-top: 20px; border-top: 1px solid #999; padding-top: 5px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">工 事 完 成 届</div>
+
+<div class="header-date">{{ completion_date|default('　　　年　　月　　日') }}</div>
+
+<div class="recipient">
+{{ project.client_name or '　' }} 御中<br>
+<span style="font-size:10pt; font-weight:normal;">（{{ client_department|default('担当部署') }}）</span>
+</div>
+
+<div class="sender-area">
+  <p>住　所: {{ contractor_address|default('　') }}</p>
+  <p>社　名: {{ project.contractor_name or '　' }}</p>
+  <p>代表者: {{ contractor_ceo|default('　') }} 印</p>
+  <p>TEL: {{ contractor_tel|default('　') }}</p>
+</div>
+
+<div class="subject">工事完成のご通知</div>
+
+<div class="body-text">
+  <p>　拝啓　時下ますますご清栄のこととお慶び申し上げます。</p>
+  <p>　このたび、下記工事が完成しましたのでご通知申し上げます。<br>
+  　つきましては、完成検査のお申し込みをお願い申し上げます。</p>
+  <p style="text-align:right;">敬具</p>
+</div>
+
+<p style="text-align:center; font-weight:bold; font-size:12pt; margin: 10px 0;">記</p>
+
+<table>
+  <tr><th>工 事 名</th><td>{{ project.name }}</td></tr>
+  <tr><th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td></tr>
+  <tr><th>工 事 場 所</th><td>{{ project.site_address or '　' }}</td></tr>
+  <tr>
+    <th>請負金額</th>
+    <td>金　{{ project.contract_amount|default('　') }}　円　（うち消費税　{{ tax_amount|default('　') }}　円）</td>
+  </tr>
+  <tr>
+    <th>当初工期</th>
+    <td>{{ project.start_date or '　' }} ～ {{ project.end_date or '　' }}</td>
+  </tr>
+  <tr>
+    <th>完成年月日</th>
+    <td>{{ actual_completion_date|default('　　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>主な工事内容</th>
+    <td>{{ main_work_content|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>特記事項</th>
+    <td>{{ special_notes|default('　') }}</td>
+  </tr>
+</table>
+
+<p style="text-align:center; margin-top:10px;">以上</p>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員（受領）</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員（受領）</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>工事完成届（公共建築工事標準仕様書 令和7年版 第1編第1章第9条）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

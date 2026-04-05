@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 12mm 12mm 18mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9.5pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 13pt; font-weight: bold; text-align: center; border: 2px solid #16a34a; padding: 5px 0; margin-bottom: 6px; letter-spacing: 2px; }
+.doc-subtitle { text-align: center; font-size: 9pt; color: #555; margin-bottom: 7px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 7px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 9pt; vertical-align: top; }
+th { background: #dcfce7; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #16a34a; padding: 2px 7px; margin: 8px 0 4px; background: #f0fdf4; }
+.center { text-align: center; } .right { text-align: right; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 60px; height: 60px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 10px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.total-row { background: #dcfce7; font-weight: bold; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">産業廃棄物管理票（マニフェスト）</div>
+<div class="doc-subtitle">廃棄物の処理及び清掃に関する法律第12条の3</div>
+
+<table>
+  <tr>
+    <th style="width:90px">工 事 名</th><td colspan="3">{{ project.name }}</td>
+  </tr>
+  <tr>
+    <th>排出事業者</th><td>{{ project.contractor_name or '　' }}</td>
+    <th style="width:90px">交付日</th><td style="width:110px">{{ issue_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>排出事業場</th><td colspan="3">{{ project.site_address or '　' }}</td>
+  </tr>
+  <tr>
+    <th>マニフェスト番号</th><td>{{ manifest_number|default('　') }}</td>
+    <th>交付担当者</th><td>{{ issuer_name|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>廃棄物の種類・数量</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>廃棄物の種類</th>
+      <th style="width:60px">数量</th>
+      <th style="width:40px">単位</th>
+      <th style="width:80px">荷姿</th>
+      <th style="width:80px">有害物質含有</th>
+      <th>備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for w in wastes|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ w.type }}</td>
+      <td class="right">{{ w.quantity }}</td>
+      <td class="center">{{ w.unit }}</td>
+      <td>{{ w.form or '' }}</td>
+      <td class="center">{{ w.hazardous or 'なし' }}</td>
+      <td>{{ w.note or '' }}</td>
+    </tr>
+    {% else %}
+    <tr><td class="center">1</td><td>コンクリート廃材</td><td></td><td class="center">t</td><td>バラ</td><td class="center">なし</td><td></td></tr>
+    <tr><td class="center">2</td><td>木くず</td><td></td><td class="center">m³</td><td>バラ</td><td class="center">なし</td><td></td></tr>
+    <tr><td class="center">3</td><td>廃プラスチック</td><td></td><td class="center">kg</td><td>袋詰め</td><td class="center">なし</td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>収集運搬業者（A票〜B2票）</h2>
+<table>
+  <tr>
+    <th style="width:120px">収集運搬業者名</th><td>{{ transporter_name|default('　') }}</td>
+    <th style="width:80px">許可番号</th><td>{{ transporter_license|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>運搬先</th><td>{{ transport_destination|default('　') }}</td>
+    <th>運搬方法</th><td>{{ transport_method|default('車両') }}</td>
+  </tr>
+  <tr>
+    <th>運搬担当者</th><td>{{ transport_person|default('　') }}</td>
+    <th>運搬日</th><td>{{ transport_date|default('　　年　　月　　日') }}</td>
+  </tr>
+</table>
+
+<h2>処分業者（C1票〜D票）</h2>
+<table>
+  <tr>
+    <th style="width:120px">処分業者名</th><td>{{ disposer_name|default('　') }}</td>
+    <th style="width:80px">許可番号</th><td>{{ disposer_license|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>処分場所</th><td>{{ disposal_location|default('　') }}</td>
+    <th>処分方法</th><td>{{ disposal_method|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>処分担当者</th><td>{{ disposal_person|default('　') }}</td>
+    <th>処分日</th><td>{{ disposal_date|default('　　年　　月　　日') }}</td>
+  </tr>
+</table>
+
+<h2>最終処分（E票）</h2>
+<table>
+  <tr>
+    <th style="width:120px">最終処分業者名</th><td>{{ final_disposer_name|default('　') }}</td>
+    <th style="width:80px">許可番号</th><td>{{ final_disposer_license|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>最終処分場所</th><td>{{ final_disposal_location|default('　') }}</td>
+    <th>最終処分方法</th><td>{{ final_disposal_method|default('埋立処分') }}</td>
+  </tr>
+  <tr>
+    <th>最終処分日</th><td colspan="3">{{ final_disposal_date|default('　　年　　月　　日') }}</td>
+  </tr>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">排出担当者</div><div class="stamp-label">排出担当者</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>産業廃棄物管理票（廃棄物の処理及び清掃に関する法律第12条の3・建設廃棄物処理指針）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

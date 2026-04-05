@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 landscape; margin: 12mm 10mm 18mm 12mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 8.5pt; color: #1a1a1a; margin: 0; line-height: 1.2; }
+.doc-title { font-size: 13pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 4px 0; margin-bottom: 6px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+th, td { border: 1px solid #555; padding: 2px 3px; font-size: 8pt; vertical-align: middle; }
+th { background: #e8eaf0; font-weight: bold; text-align: center; white-space: nowrap; }
+/* ガントチャート */
+.gantt-table { table-layout: fixed; }
+.gantt-table th.task-col { width: 120px; }
+.gantt-table th.month-col { width: 25px; font-size: 7.5pt; }
+.gantt-bar {
+  height: 14px;
+  background: #2563eb;
+  border-radius: 2px;
+  margin: 1px 0;
+  opacity: 0.8;
+}
+.gantt-bar.actual { background: #16a34a; opacity: 0.7; }
+.gantt-bar.milestone { background: #dc2626; width: 10px !important; height: 10px; transform: rotate(45deg); margin: 2px auto; }
+.center { text-align: center; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 8px; margin: 8px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 55px; height: 55px; border: 1px solid #333; font-size: 7.5pt; padding-top: 3px; }
+.stamp-label { font-size: 7.5pt; margin-top: 2px; }
+.doc-footer { margin-top: 8px; border-top: 1px solid #999; padding-top: 3px; font-size: 7.5pt; color: #666; display: flex; justify-content: space-between; }
+.legend { display: flex; gap: 15px; align-items: center; font-size: 8pt; margin-bottom: 5px; }
+.legend-bar { width: 30px; height: 12px; display: inline-block; border-radius: 2px; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">工 程 表</div>
+
+<table>
+  <tr>
+    <th style="width:70px">工 事 名</th><td>{{ project.name }}</td>
+    <th style="width:70px">工事番号</th><td style="width:100px">{{ project.project_code or '　' }}</td>
+    <th style="width:70px">工 期</th><td style="width:140px">{{ project.start_date or '　' }} ～ {{ project.end_date or '　' }}</td>
+    <th style="width:70px">請負金額</th><td>{{ project.contract_amount|default('　') }}円</td>
+  </tr>
+  <tr>
+    <th>発 注 者</th><td>{{ project.client_name or '　' }}</td>
+    <th>請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+    <th>監督員</th><td>{{ supervisor_name|default('　') }}</td>
+    <th>作成日</th><td>{{ creation_date|default('　') }}</td>
+  </tr>
+</table>
+
+<div class="legend">
+  <span><span class="legend-bar" style="background:#2563eb;"></span> 予定工程</span>
+  <span><span class="legend-bar" style="background:#16a34a;"></span> 実績工程</span>
+  <span><span class="legend-bar" style="background:#dc2626; width:10px; height:10px; transform:rotate(45deg); display:inline-block;"></span> マイルストーン</span>
+</div>
+
+<!-- ガントチャート -->
+<table class="gantt-table">
+  <thead>
+    <tr>
+      <th class="task-col">工種・作業</th>
+      <th style="width:40px">担当</th>
+      {% set months = schedule_months|default(['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']) %}
+      {% for month in months %}
+      <th class="month-col" colspan="4">{{ month }}</th>
+      {% endfor %}
+      <th style="width:45px">進捗率</th>
+    </tr>
+    <tr>
+      <th></th><th></th>
+      {% for month in months %}
+      <th style="width:25px; font-size:7pt;">1w</th>
+      <th style="width:25px; font-size:7pt;">2w</th>
+      <th style="width:25px; font-size:7pt;">3w</th>
+      <th style="width:25px; font-size:7pt;">4w</th>
+      {% endfor %}
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for task in schedule_tasks|default([]) %}
+    <tr>
+      <td {% if task.is_category %}style="background:#f3f4f6; font-weight:bold;"{% endif %}>
+        {% if not task.is_category %}　{% endif %}{{ task.name }}
+      </td>
+      <td class="center">{{ task.responsible or '' }}</td>
+      {% set total_weeks = months|length * 4 %}
+      {% for w in range(total_weeks) %}
+      <td style="padding:1px;">
+        {% if task.start_week is defined and task.end_week is defined %}
+          {% if w >= task.start_week and w <= task.end_week %}
+          <div class="gantt-bar" style="background:{% if task.actual %}#16a34a{% else %}#2563eb{% endif %};"></div>
+          {% endif %}
+        {% endif %}
+      </td>
+      {% endfor %}
+      <td class="center">{{ task.progress_rate or '' }}%</td>
+    </tr>
+    {% else %}
+    <tr>
+      <td style="background:#f3f4f6; font-weight:bold;">【準備工事】</td>
+      <td></td>
+      {% for w in range(48) %}<td></td>{% endfor %}
+      <td></td>
+    </tr>
+    <tr>
+      <td>　仮設工事</td><td></td>
+      {% for w in range(48) %}<td style="padding:1px;">{% if w < 4 %}<div class="gantt-bar"></div>{% endif %}</td>{% endfor %}
+      <td class="center">0%</td>
+    </tr>
+    <tr>
+      <td style="background:#f3f4f6; font-weight:bold;">【躯体工事】</td>
+      <td></td>
+      {% for w in range(48) %}<td></td>{% endfor %}
+      <td></td>
+    </tr>
+    <tr>
+      <td>　基礎工事</td><td></td>
+      {% for w in range(48) %}<td style="padding:1px;">{% if 2 <= w < 10 %}<div class="gantt-bar"></div>{% endif %}</td>{% endfor %}
+      <td class="center">0%</td>
+    </tr>
+    <tr>
+      <td>　構造体工事</td><td></td>
+      {% for w in range(48) %}<td style="padding:1px;">{% if 8 <= w < 24 %}<div class="gantt-bar"></div>{% endif %}</td>{% endfor %}
+      <td class="center">0%</td>
+    </tr>
+    <tr>
+      <td style="background:#f3f4f6; font-weight:bold;">【仕上工事】</td>
+      <td></td>
+      {% for w in range(48) %}<td></td>{% endfor %}
+      <td></td>
+    </tr>
+    <tr>
+      <td>　外装工事</td><td></td>
+      {% for w in range(48) %}<td style="padding:1px;">{% if 20 <= w < 36 %}<div class="gantt-bar"></div>{% endif %}</td>{% endfor %}
+      <td class="center">0%</td>
+    </tr>
+    <tr>
+      <td>　内装工事</td><td></td>
+      {% for w in range(48) %}<td style="padding:1px;">{% if 28 <= w < 44 %}<div class="gantt-bar"></div>{% endif %}</td>{% endfor %}
+      <td class="center">0%</td>
+    </tr>
+    <tr>
+      <td style="background:#f3f4f6; font-weight:bold;">【完成・検査】</td>
+      <td></td>
+      {% for w in range(48) %}<td></td>{% endfor %}
+      <td></td>
+    </tr>
+    <tr>
+      <td>　完成検査</td><td></td>
+      {% for w in range(48) %}<td style="padding:1px;">{% if 44 <= w < 48 %}<div class="gantt-bar"></div>{% endif %}</td>{% endfor %}
+      <td class="center">0%</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>工程表（公共建築工事標準仕様書 令和7年版 第1編第1章第5条）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

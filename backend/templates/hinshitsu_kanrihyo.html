@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 landscape; margin: 15mm 15mm 20mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9pt; color: #1a1a1a; margin: 0; line-height: 1.3; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 5px 0; margin-bottom: 7px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 7px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 8.5pt; vertical-align: middle; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+.header-info { display: flex; gap: 10px; margin-bottom: 7px; }
+.header-info table { margin-bottom: 0; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 8px 0 4px; background: #f0f4ff; }
+.pass { color: #0d6e2e; font-weight: bold; } .fail { color: #c0392b; font-weight: bold; }
+.center { text-align: center; } .right { text-align: right; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 60px; height: 60px; border: 1px solid #333; font-size: 7.5pt; padding-top: 3px; }
+.stamp-label { font-size: 7.5pt; margin-top: 2px; }
+.doc-footer { margin-top: 10px; border-top: 1px solid #999; padding-top: 4px; font-size: 7.5pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">品 質 管 理 表</div>
+
+<table>
+  <tr>
+    <th style="width:80px">工 事 名</th><td>{{ project.name }}</td>
+    <th style="width:80px">工事番号</th><td style="width:100px">{{ project.project_code or '　' }}</td>
+    <th style="width:80px">請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+    <th style="width:80px">監督員</th><td style="width:100px">{{ supervisor_name|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>工 事 場 所</th><td colspan="3">{{ project.site_address or '　' }}</td>
+    <th>工 期</th><td colspan="3">{{ project.start_date or '　' }} ～ {{ project.end_date or '　' }}</td>
+  </tr>
+</table>
+
+<h2>品質管理項目一覧</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px" rowspan="2">No.</th>
+      <th style="width:80px" rowspan="2">工種</th>
+      <th rowspan="2">管理項目</th>
+      <th style="width:80px" rowspan="2">規格基準</th>
+      <th style="width:60px" rowspan="2">試験方法</th>
+      <th style="width:50px" rowspan="2">試験頻度</th>
+      <th colspan="5" style="border-bottom: 2px solid #333;">試験結果</th>
+      <th style="width:50px" rowspan="2">判定</th>
+      <th rowspan="2">備考</th>
+    </tr>
+    <tr>
+      <th style="width:50px">1回目</th>
+      <th style="width:50px">2回目</th>
+      <th style="width:50px">3回目</th>
+      <th style="width:50px">4回目</th>
+      <th style="width:50px">5回目</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in quality_items|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ item.work_type }}</td>
+      <td>{{ item.control_item }}</td>
+      <td class="center">{{ item.standard }}</td>
+      <td class="center">{{ item.test_method }}</td>
+      <td class="center">{{ item.frequency }}</td>
+      {% for r in item.results[:5] %}
+      <td class="center">{{ r }}</td>
+      {% endfor %}
+      {% for _ in range(5 - (item.results|length if item.results else 0)) %}
+      <td></td>
+      {% endfor %}
+      <td class="center">
+        {% if item.judgment == '合格' %}<span class="pass">合格</span>
+        {% elif item.judgment == '不合格' %}<span class="fail">不合格</span>
+        {% else %}　{% endif %}
+      </td>
+      <td>{{ item.note or '' }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(12) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>　</td><td>　</td><td></td><td></td><td></td>
+      <td></td><td></td><td></td><td></td><td></td>
+      <td></td><td></td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>特記事項</h2>
+<div style="border: 1px solid #999; min-height: 40px; padding: 5px; font-size: 9pt;">{{ notes|default('') }}</div>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">品質管理者</div><div class="stamp-label">品質管理者</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>品質管理表（公共建築工事標準仕様書 令和7年版 第1編第1章第5条）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

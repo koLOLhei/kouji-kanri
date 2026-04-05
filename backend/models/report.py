@@ -23,6 +23,7 @@ class Report(Base):
     status: Mapped[str] = mapped_column(String(50), default="draft")  # draft, submitted, approved, rejected
     submitted_by: Mapped[str | None] = mapped_column(String(36))
     reviewed_by: Mapped[str | None] = mapped_column(String(36))
+    checksum: Mapped[str | None] = mapped_column(String(64))  # SHA-256 hex digest
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

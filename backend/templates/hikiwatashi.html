@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 18mm 18mm 25mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 11pt; color: #1a1a1a; margin: 0; line-height: 1.8; }
+.doc-title { font-size: 17pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 8px 0; margin-bottom: 20px; letter-spacing: 5px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+th, td { border: 1px solid #333; padding: 6px 10px; font-size: 10.5pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; width: 130px; }
+h2 { font-size: 11pt; font-weight: bold; border-left: 5px solid #2563eb; padding: 3px 8px; margin: 14px 0 7px; background: #f0f4ff; }
+.body-text { line-height: 2; margin: 15px 0; font-size: 11pt; }
+.sign-area { display: flex; gap: 20px; justify-content: center; margin: 30px 0; }
+.sign-block { text-align: center; }
+.sign-box { width: 160px; border: 1px solid #333; padding: 10px; }
+.sign-title { font-weight: bold; font-size: 10.5pt; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+.sign-content { font-size: 10pt; line-height: 1.8; }
+.sign-line { border-bottom: 1px solid #333; height: 28px; margin: 5px 0; }
+.stamp-pair { display: flex; gap: 8px; justify-content: center; margin: 10px 0; }
+.stamp-box { width: 65px; height: 65px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; text-align: center; }
+.doc-footer { margin-top: 20px; border-top: 1px solid #999; padding-top: 5px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">引 渡 書</div>
+
+<p style="text-align:center; font-size:12pt; margin-bottom:20px;">
+  <span style="font-size:14pt; font-weight:bold;">工事目的物引渡書</span>
+</p>
+
+<table>
+  <tr><th>工 事 名</th><td>{{ project.name }}</td></tr>
+  <tr><th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td></tr>
+  <tr><th>工 事 場 所</th><td>{{ project.site_address or '　' }}</td></tr>
+  <tr>
+    <th>請負金額</th>
+    <td>金　{{ project.contract_amount|default('　') }}　円　（うち消費税　{{ tax_amount|default('　') }}　円）</td>
+  </tr>
+  <tr>
+    <th>当 初 工 期</th>
+    <td>{{ project.start_date or '　' }} ～ {{ project.end_date or '　' }}</td>
+  </tr>
+  <tr><th>完成年月日</th><td>{{ actual_completion_date|default('　　　年　　月　　日') }}</td></tr>
+  <tr><th>引 渡 日</th><td>{{ handover_date|default('　　　年　　月　　日') }}</td></tr>
+</table>
+
+<div class="body-text">
+  <p>　上記の工事は、工事請負契約書及び設計図書に基づき完成したので、ここに引き渡します。</p>
+</div>
+
+<h2>添付書類</h2>
+<table>
+  <thead>
+    <tr><th style="width:30px">No.</th><th>書類名称</th><th style="width:50px">部数</th><th style="width:50px">確認</th></tr>
+  </thead>
+  <tbody>
+    {% for doc in handover_documents|default([]) %}
+    <tr>
+      <td style="text-align:center;">{{ loop.index }}</td>
+      <td>{{ doc.name }}</td>
+      <td style="text-align:center;">{{ doc.copies }}</td>
+      <td style="text-align:center;">{% if doc.confirmed %}✓{% else %}□{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td style="text-align:center;">1</td><td>工事完成図（竣工図）</td><td style="text-align:center;">1</td><td style="text-align:center;">□</td></tr>
+    <tr><td style="text-align:center;">2</td><td>品質管理記録</td><td style="text-align:center;">1</td><td style="text-align:center;">□</td></tr>
+    <tr><td style="text-align:center;">3</td><td>工事写真帳</td><td style="text-align:center;">1</td><td style="text-align:center;">□</td></tr>
+    <tr><td style="text-align:center;">4</td><td>試験成績書一式</td><td style="text-align:center;">1</td><td style="text-align:center;">□</td></tr>
+    <tr><td style="text-align:center;">5</td><td>各種検査記録一式</td><td style="text-align:center;">1</td><td style="text-align:center;">□</td></tr>
+    <tr><td style="text-align:center;">6</td><td>保証書（設備機器等）</td><td style="text-align:center;">1</td><td style="text-align:center;">□</td></tr>
+    <tr><td style="text-align:center;">7</td><td>取扱説明書</td><td style="text-align:center;">1</td><td style="text-align:center;">□</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- 署名欄 -->
+<div class="sign-area">
+  <div class="sign-block">
+    <div class="sign-box">
+      <div class="sign-title">引 渡 者（請負者）</div>
+      <div class="sign-content">
+        <div>住　所</div>
+        <div class="sign-line">{{ contractor_address|default('') }}</div>
+        <div>社　名</div>
+        <div class="sign-line">{{ project.contractor_name or '' }}</div>
+        <div>代表者</div>
+        <div class="sign-line"></div>
+      </div>
+      <div class="stamp-pair">
+        <div class="stamp-box">代表者印</div>
+        <div class="stamp-box">現場代理人</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sign-block">
+    <div class="sign-box">
+      <div class="sign-title">受 領 者（発注者）</div>
+      <div class="sign-content">
+        <div>機 関 名</div>
+        <div class="sign-line">{{ project.client_name or '' }}</div>
+        <div>担当部署</div>
+        <div class="sign-line">{{ client_department|default('') }}</div>
+        <div>担当者名</div>
+        <div class="sign-line">{{ supervisor_name|default('') }}</div>
+      </div>
+      <div class="stamp-pair">
+        <div class="stamp-box">主任監督員</div>
+        <div class="stamp-box">監督員</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>特記事項</h2>
+<div style="border: 1px solid #999; min-height: 60px; padding: 5px;">{{ notes|default('') }}</div>
+
+<div class="doc-footer">
+  <span>引渡書（工事目的物引渡書）（公共建築工事標準仕様書 令和7年版）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #dc2626; padding: 6px 0; margin-bottom: 8px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #fee2e2; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #dc2626; padding: 2px 7px; margin: 10px 0 5px; background: #fff1f1; }
+.pass { color: #0d6e2e; font-weight: bold; } .fail { color: #c0392b; font-weight: bold; }
+.center { text-align: center; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 65px; height: 65px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 15px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 50px; padding: 5px; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">安 全 巡 回 記 録</div>
+
+<table>
+  <tr><th style="width:100px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工事番号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:100px">巡回日時</th><td>{{ patrol_datetime|default('　　年　　月　　日　　時　　分') }}</td>
+  </tr>
+  <tr>
+    <th>巡回実施者</th><td>{{ patrol_by|default('　') }}</td>
+    <th>同行者</th><td>{{ patrol_companions|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>天 候</th><td>{{ weather|default('　') }}</td>
+    <th>気 温</th><td>{{ temperature|default('　') }} ℃</td>
+  </tr>
+</table>
+
+<h2>安全巡回チェックリスト</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>点検項目</th>
+      <th style="width:60px">結果</th>
+      <th style="width:60px">優先度</th>
+      <th>指摘内容・対応措置</th>
+      <th style="width:80px">是正期限</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in check_items|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ item.name }}</td>
+      <td class="center">
+        {% if item.result == '良' %}<span class="pass">良</span>
+        {% elif item.result == '否' %}<span class="fail">否</span>
+        {% else %}－{% endif %}
+      </td>
+      <td class="center">{{ item.priority or '' }}</td>
+      <td>{{ item.remarks or '' }}</td>
+      <td class="center">{{ item.deadline or '' }}</td>
+    </tr>
+    {% else %}
+    <tr><td class="center">1</td><td>足場・作業床の設置状況</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">2</td><td>安全帯の着用状況</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">3</td><td>ヘルメット着用状況</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">4</td><td>墜落防止設備（手すり等）</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">5</td><td>飛来落下防止措置</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">6</td><td>電気設備の安全</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">7</td><td>重機の作業範囲・誘導</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">8</td><td>消火設備・避難経路</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">9</td><td>整理整頓・清掃状況</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">10</td><td>保護具の適切な使用</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">11</td><td>作業手順の遵守</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td class="center">12</td><td>その他（　　　　）</td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>是正措置状況</h2>
+<table>
+  <tr>
+    <th style="width:100px">指摘件数</th>
+    <td>{{ defect_count|default('　') }} 件</td>
+    <th style="width:100px">是正完了件数</th>
+    <td>{{ corrected_count|default('　') }} 件</td>
+    <th style="width:100px">未是正件数</th>
+    <td>{{ uncorrected_count|default('　') }} 件</td>
+  </tr>
+</table>
+
+<h2>所見・特記事項</h2>
+<div class="note-box">{{ notes|default('') }}</div>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">安全管理者</div><div class="stamp-label">安全管理者</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>安全巡回記録（労働安全衛生法・公共建築工事標準仕様書 令和7年版）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

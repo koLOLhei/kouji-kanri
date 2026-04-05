@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 15pt; font-weight: bold; text-align: center; border: 2px solid #7c3aed; padding: 6px 0; margin-bottom: 8px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #ede9fe; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #7c3aed; padding: 2px 7px; margin: 10px 0 5px; background: #f5f3ff; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 65px; height: 65px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 15px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 60px; padding: 5px; }
+.center { text-align: center; } .right { text-align: right; }
+.change-before { background: #fee2e2; }
+.change-after { background: #dcfce7; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">設 計 変 更 協 議 書</div>
+
+<table>
+  <tr><th style="width:110px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:110px">協議書番号</th><td>変更-{{ change_number|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>発 注 者</th><td>{{ project.client_name or '　' }}</td>
+    <th>請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+  </tr>
+  <tr>
+    <th>監 督 員</th><td>{{ supervisor_name|default('　') }}</td>
+    <th>現場代理人</th><td>{{ site_agent|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>発 議 者</th>
+    <td>
+      {% if issuer_type == '発注者' %}■{% else %}□{% endif %} 発注者 &nbsp;
+      {% if issuer_type == '請負者' %}■{% else %}□{% endif %} 請負者
+    </td>
+    <th>発 議 日</th>
+    <td>{{ issue_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>変更種別</th>
+    <td colspan="3">
+      {% for t in ['設計変更', '数量変更', '工期変更', '仕様変更', '条件変更', 'その他'] %}
+      {% if change_type == t %}■{% else %}□{% endif %} {{ t }} &nbsp;
+      {% endfor %}
+    </td>
+  </tr>
+</table>
+
+<h2>変更の理由・背景</h2>
+<div class="note-box" style="min-height:60px;">{{ change_reason|default('') }}</div>
+
+<h2>変更内容（変更前後の比較）</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>項 目</th>
+      <th style="width:100px">変 更 前</th>
+      <th style="width:100px">変 更 後</th>
+      <th style="width:80px">増減数量</th>
+      <th>備 考</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in change_items|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ item.name }}</td>
+      <td class="change-before center">{{ item.before }}</td>
+      <td class="change-after center">{{ item.after }}</td>
+      <td class="center">{{ item.diff or '' }}</td>
+      <td>{{ item.note or '' }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(6) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td class="change-before"></td><td class="change-after"></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>費用への影響</h2>
+<table>
+  <tr>
+    <th style="width:110px">当初請負金額</th><td>{{ original_amount|default('　') }} 円</td>
+    <th style="width:110px">変更後請負金額</th><td>{{ revised_amount|default('　') }} 円</td>
+  </tr>
+  <tr>
+    <th>増減金額</th><td>{{ amount_diff|default('　') }} 円</td>
+    <th>増減率</th><td>{{ diff_rate|default('　') }} %</td>
+  </tr>
+</table>
+
+<h2>工期への影響</h2>
+<table>
+  <tr>
+    <th style="width:110px">当初工期</th><td>{{ original_period|default('　') }}</td>
+    <th style="width:110px">変更後工期</th><td>{{ revised_period|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>工期増減</th><td>{{ period_diff|default('　') }} 日</td>
+    <th>工期変更理由</th><td>{{ period_change_reason|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>添付図書</h2>
+<div class="note-box" style="min-height:40px;">{{ attachments|default('') }}</div>
+
+<h2>協議結果</h2>
+<table>
+  <tr>
+    <th style="width:110px">協議結果</th>
+    <td>
+      {% if agreement_result == '合意' %}■ 合意{% else %}□ 合意{% endif %} &nbsp;&nbsp;
+      {% if agreement_result == '協議中' %}■ 協議中{% else %}□ 協議中{% endif %} &nbsp;&nbsp;
+      {% if agreement_result == '否認' %}■ 否認{% else %}□ 否認{% endif %}
+    </td>
+    <th style="width:110px">合意日</th>
+    <td>{{ agreement_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr><th>回答・コメント</th><td colspan="3">{{ agreement_comments|default('　') }}</td></tr>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">主任技術者</div><div class="stamp-label">主任技術者</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>設計変更協議書（公共建築工事標準仕様書 令和7年版 第1編第1章第16条）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

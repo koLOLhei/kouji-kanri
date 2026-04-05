@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 15pt; font-weight: bold; text-align: center; border: 2px solid #c0392b; padding: 6px 0; margin-bottom: 8px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #fee2e2; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #dc2626; padding: 2px 7px; margin: 10px 0 5px; background: #fff1f1; }
+.pass { color: #0d6e2e; font-weight: bold; } .fail { color: #c0392b; font-weight: bold; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 65px; height: 65px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 15px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 60px; padding: 5px; }
+.center { text-align: center; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">是 正 措 置 報 告 書 （ N C R ）</div>
+
+<table>
+  <tr><th style="width:110px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:110px">NCR番号</th><td>NCR-{{ ncr_number|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>発 行 者</th><td>{{ issued_by|default('　') }}</td>
+    <th>発 行 日</th><td>{{ issued_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>受 領 者</th><td>{{ received_by|default('　') }}</td>
+    <th>是正期限</th><td>{{ deadline|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>不適合分類</th>
+    <td colspan="3">
+      {% for cat in ['品質不適合', '安全違反', '施工不良', '書類不備', 'その他'] %}
+      {% if nonconformity_type == cat %}■{% else %}□{% endif %} {{ cat }} &nbsp;
+      {% endfor %}
+    </td>
+  </tr>
+</table>
+
+<h2>1. 不適合内容（何が問題か）</h2>
+<div class="note-box" style="min-height:80px;">{{ nonconformity_description|default('') }}</div>
+
+<table style="margin-top:6px;">
+  <tr>
+    <th style="width:110px">発生場所・工種</th><td>{{ occurrence_location|default('　') }}</td>
+    <th style="width:110px">仕様書条項</th><td>{{ spec_reference|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>影響範囲</th><td>{{ impact_scope|default('　') }}</td>
+    <th>緊急度</th>
+    <td>
+      {% if urgency == '高' %}<span class="fail">■ 高</span>{% else %}□ 高{% endif %} &nbsp;
+      {% if urgency == '中' %}■ 中{% else %}□ 中{% endif %} &nbsp;
+      {% if urgency == '低' %}■ 低{% else %}□ 低{% endif %}
+    </td>
+  </tr>
+</table>
+
+<h2>2. 根本原因分析</h2>
+<div class="note-box" style="min-height:70px;">{{ root_cause|default('') }}</div>
+
+<h2>3. 是正措置計画</h2>
+<table>
+  <thead>
+    <tr><th style="width:30px">No.</th><th>是正措置内容</th><th style="width:90px">担当者</th><th style="width:100px">実施予定日</th></tr>
+  </thead>
+  <tbody>
+    {% for action in corrective_actions|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ action.content }}</td>
+      <td>{{ action.responsible }}</td>
+      <td class="center">{{ action.planned_date }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(5) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>4. 是正措置実施結果</h2>
+<div class="note-box" style="min-height:70px;">{{ implementation_result|default('') }}</div>
+
+<table style="margin-top:6px;">
+  <tr>
+    <th style="width:110px">実施完了日</th><td>{{ completion_date|default('　　年　　月　　日') }}</td>
+    <th style="width:110px">再発防止措置</th><td>{{ recurrence_prevention|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>5. 是正確認（監督員記入）</h2>
+<table>
+  <tr>
+    <th style="width:110px">確認結果</th>
+    <td>
+      {% if verification_result == '有効' %}<span class="pass">■ 是正有効（クローズ）</span>{% else %}□ 是正有効（クローズ）{% endif %} &nbsp;&nbsp;
+      {% if verification_result == '無効' %}<span class="fail">■ 是正不十分（再是正要）</span>{% else %}□ 是正不十分（再是正要）{% endif %}
+    </td>
+  </tr>
+  <tr>
+    <th>確認日</th><td>{{ verification_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>確認者コメント</th><td>{{ verification_comments|default('　') }}</td>
+  </tr>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">品質管理者</div><div class="stamp-label">品質管理者</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>是正措置報告書（NCR）（公共建築工事標準仕様書 令和7年版）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

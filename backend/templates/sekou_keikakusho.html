@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 15pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 6px 0; margin-bottom: 8px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 11pt; font-weight: bold; border-left: 5px solid #2563eb; padding: 3px 8px; margin: 14px 0 6px; background: #f0f4ff; }
+h3 { font-size: 10pt; font-weight: bold; border-bottom: 1px solid #999; padding-bottom: 2px; margin: 10px 0 5px; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 65px; height: 65px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 15px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 50px; padding: 5px; font-size: 9pt; }
+.toc-item { padding: 2px 5px; border-bottom: 1px dotted #ccc; display: flex; justify-content: space-between; }
+.page-break { page-break-before: always; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">施 工 計 画 書</div>
+
+<table>
+  <tr><th style="width:110px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:110px">工 事 場 所</th><td>{{ project.site_address or '　' }}</td>
+  </tr>
+  <tr>
+    <th>発 注 者</th><td>{{ project.client_name or '　' }}</td>
+    <th>請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+  </tr>
+  <tr>
+    <th>工 期</th>
+    <td>{{ project.start_date or '　' }} ～ {{ project.end_date or '　' }}</td>
+    <th>工 事 金 額</th>
+    <td>{{ project.contract_amount|default('　') }}円（税込）</td>
+  </tr>
+  <tr>
+    <th>監 督 員</th><td>{{ supervisor_name|default('　') }}</td>
+    <th>現場代理人</th><td>{{ site_agent|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>主任技術者</th><td>{{ chief_engineer|default('　') }}</td>
+    <th>提出日</th><td>{{ submission_date|default('　　年　　月　　日') }}</td>
+  </tr>
+</table>
+
+<!-- 目次 -->
+<h2>目 次</h2>
+<div class="toc-item"><span>1. 工事概要</span><span>・・・ 1</span></div>
+<div class="toc-item"><span>2. 現場組織表</span><span>・・・ 2</span></div>
+<div class="toc-item"><span>3. 施工方法・工程計画</span><span>・・・ 3</span></div>
+<div class="toc-item"><span>4. 品質管理計画</span><span>・・・ 4</span></div>
+<div class="toc-item"><span>5. 安全管理計画</span><span>・・・ 5</span></div>
+<div class="toc-item"><span>6. 環境保全計画</span><span>・・・ 6</span></div>
+<div class="toc-item"><span>7. 緊急時の体制及び対応</span><span>・・・ 7</span></div>
+
+<!-- 工事概要 -->
+<h2>1. 工事概要</h2>
+<table>
+  <tr><th style="width:140px">工 事 概 要</th><td>{{ project_overview|default('') }}</td></tr>
+  <tr><th>主要工種</th><td>{{ main_work_types|default('') }}</td></tr>
+  <tr><th>構造・規模</th><td>{{ structure_scale|default('') }}</td></tr>
+  <tr><th>施工数量</th><td>{{ quantities|default('') }}</td></tr>
+</table>
+
+<!-- 現場組織表 -->
+<h2>2. 現場組織表</h2>
+<table>
+  <thead>
+    <tr><th style="width:130px">役職</th><th>氏名</th><th style="width:100px">資格</th><th style="width:100px">担当業務</th></tr>
+  </thead>
+  <tbody>
+    {% for member in organization|default([]) %}
+    <tr><td>{{ member.role }}</td><td>{{ member.name }}</td><td>{{ member.qualification or '' }}</td><td>{{ member.duty or '' }}</td></tr>
+    {% else %}
+    <tr><td>現場代理人</td><td>{{ site_agent|default('　') }}</td><td></td><td>現場統括</td></tr>
+    <tr><td>主任技術者</td><td>{{ chief_engineer|default('　') }}</td><td></td><td>技術管理</td></tr>
+    <tr><td>安全管理者</td><td></td><td></td><td>安全管理</td></tr>
+    <tr><td>品質管理者</td><td></td><td></td><td>品質管理</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- 施工方法 -->
+<h2>3. 施工方法・工程計画</h2>
+<div class="note-box" style="min-height:100px;">{{ construction_method|default('') }}</div>
+
+<!-- 品質管理計画 -->
+<h2>4. 品質管理計画</h2>
+<table>
+  <thead>
+    <tr><th style="width:100px">工種</th><th>管理項目</th><th style="width:80px">管理基準</th><th style="width:80px">管理方法</th><th style="width:60px">頻度</th></tr>
+  </thead>
+  <tbody>
+    {% for qc in quality_plans|default([]) %}
+    <tr><td>{{ qc.work_type }}</td><td>{{ qc.item }}</td><td>{{ qc.standard }}</td><td>{{ qc.method }}</td><td class="center">{{ qc.frequency }}</td></tr>
+    {% else %}
+    {% for i in range(5) %}
+    <tr><td>　</td><td>　</td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- 安全管理計画 -->
+<h2>5. 安全管理計画</h2>
+<div class="note-box" style="min-height:80px;">{{ safety_plan|default('') }}</div>
+
+<!-- 環境保全計画 -->
+<h2>6. 環境保全計画</h2>
+<div class="note-box" style="min-height:60px;">{{ environment_plan|default('') }}</div>
+
+<!-- 緊急時対応 -->
+<h2>7. 緊急時の体制及び対応</h2>
+<table>
+  <tr><th style="width:110px">連絡先（救急）</th><td>119</td><th style="width:110px">連絡先（警察）</th><td>110</td></tr>
+  <tr><th>病院名</th><td>{{ emergency_hospital|default('　') }}</td><th>電話番号</th><td>{{ emergency_hospital_tel|default('　') }}</td></tr>
+  <tr><th>発注者緊急連絡先</th><td colspan="3">{{ client_emergency_contact|default('　') }}</td></tr>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">主任技術者</div><div class="stamp-label">主任技術者</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>施工計画書（公共建築工事標準仕様書 令和7年版 第1編第1章第5条）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

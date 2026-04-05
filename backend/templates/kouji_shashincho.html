@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 12mm 20mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9.5pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 5px 0; margin-bottom: 7px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 9pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 10px 0 5px; background: #f0f4ff; }
+/* 写真レイアウト: 2列 */
+.photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0; }
+.photo-card { border: 1px solid #555; padding: 4px; }
+.photo-placeholder {
+  width: 100%;
+  height: 130px;
+  background: #f3f4f6;
+  border: 1px dashed #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8pt;
+  color: #777;
+}
+.photo-img { width: 100%; height: 130px; object-fit: cover; }
+.photo-meta { font-size: 8pt; margin-top: 3px; }
+.photo-meta td { border: none; padding: 1px 3px; font-size: 8pt; }
+.photo-meta th { border: none; padding: 1px 3px; font-size: 8pt; background: #f9fafb; width: 55px; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 60px; height: 60px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 10px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.page-break { page-break-before: always; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">工 事 写 真 帳</div>
+
+<table>
+  <tr><th style="width:80px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工事番号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:80px">工 事 場 所</th><td>{{ project.site_address or '　' }}</td>
+  </tr>
+  <tr>
+    <th>請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+    <th>監 督 員</th><td>{{ supervisor_name|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>工 期</th><td>{{ project.start_date or '　' }} ～ {{ project.end_date or '　' }}</td>
+    <th>写真枚数</th><td>{{ photos|length }} 枚</td>
+  </tr>
+</table>
+
+<!-- 写真一覧（2列グリッド） -->
+{% set ns = namespace(page_count=0) %}
+{% for i in range(0, photos|length, 4) %}
+  {% if i > 0 %}<div class="page-break"></div>{% endif %}
+  <h2>写真 {{ i+1 }} ～ {{ [i+4, photos|length]|min }} / {{ photos|length }}</h2>
+  <div class="photo-grid">
+  {% for photo in photos[i:i+4] %}
+    <div class="photo-card">
+      {% if photo.file_url %}
+        <img class="photo-img" src="{{ photo.file_url }}" alt="{{ photo.caption or '' }}">
+      {% else %}
+        <div class="photo-placeholder">[ 写真 No.{{ i + loop.index }} ]<br>{{ photo.original_filename or '' }}</div>
+      {% endif %}
+      <table class="photo-meta">
+        <tr><th>No.</th><td>{{ i + loop.index }}</td></tr>
+        <tr><th>工 種</th><td>{{ photo.work_type or (phase.name if phase is defined else '　') }}</td></tr>
+        <tr><th>撮影段階</th><td>{{ photo.stage or '　' }}</td></tr>
+        <tr><th>説 明</th><td>{{ photo.caption or '　' }}</td></tr>
+        <tr><th>撮影日</th><td>{{ photo.taken_at.strftime('%Y/%m/%d') if photo.taken_at else '　' }}</td></tr>
+        {% if photo.latitude and photo.longitude %}
+        <tr><th>GPS</th><td>{{ '%.5f'|format(photo.latitude) }}, {{ '%.5f'|format(photo.longitude) }}</td></tr>
+        {% endif %}
+      </table>
+    </div>
+  {% endfor %}
+  </div>
+{% else %}
+  <div class="photo-grid">
+    <div class="photo-card">
+      <div class="photo-placeholder">[ 写真 No.1 ]</div>
+      <table class="photo-meta">
+        <tr><th>No.</th><td>1</td></tr>
+        <tr><th>工 種</th><td>　</td></tr>
+        <tr><th>撮影段階</th><td>　</td></tr>
+        <tr><th>説 明</th><td>　</td></tr>
+        <tr><th>撮影日</th><td>　</td></tr>
+      </table>
+    </div>
+    <div class="photo-card">
+      <div class="photo-placeholder">[ 写真 No.2 ]</div>
+      <table class="photo-meta">
+        <tr><th>No.</th><td>2</td></tr>
+        <tr><th>工 種</th><td>　</td></tr>
+        <tr><th>撮影段階</th><td>　</td></tr>
+        <tr><th>説 明</th><td>　</td></tr>
+        <tr><th>撮影日</th><td>　</td></tr>
+      </table>
+    </div>
+  </div>
+{% endfor %}
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>工事写真帳（公共建築工事標準仕様書 令和7年版・建設工事写真の撮り方）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

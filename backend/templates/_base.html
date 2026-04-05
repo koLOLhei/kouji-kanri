@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* ── 共通スタイル (全テンプレートから @import) ── */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 20mm 20mm;
+    @bottom-right { content: counter(page) " / " counter(pages); font-size: 9pt; }
+    @top-right    { content: "文書番号: {{ doc_number|default('-') }}  版: {{ doc_version|default('1.0') }}"; font-size: 8pt; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic Pro", "Yu Gothic", "MS Gothic", sans-serif;
+    font-size: 10.5pt;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 0;
+    line-height: 1.4;
+  }
+  /* ── ヘッダー ── */
+  .doc-title {
+    font-size: 16pt;
+    font-weight: bold;
+    text-align: center;
+    border: 2px solid #1a1a1a;
+    padding: 6px 0;
+    margin-bottom: 8px;
+    letter-spacing: 3px;
+  }
+  .doc-subtitle {
+    text-align: center;
+    font-size: 9pt;
+    margin-bottom: 12px;
+    color: #555;
+  }
+  /* ── 基本情報テーブル ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+  }
+  th, td {
+    border: 1px solid #333;
+    padding: 4px 7px;
+    font-size: 9.5pt;
+    vertical-align: top;
+  }
+  th {
+    background: #e8eaf0;
+    font-weight: bold;
+    white-space: nowrap;
+    width: 100px;
+    text-align: center;
+  }
+  .th-wide { width: 140px; }
+  .td-full  { width: auto; }
+  /* ── セクション見出し ── */
+  h2 {
+    font-size: 11pt;
+    font-weight: bold;
+    border-left: 5px solid #2563eb;
+    padding: 3px 8px;
+    margin: 14px 0 6px;
+    background: #f0f4ff;
+  }
+  h3 {
+    font-size: 10pt;
+    font-weight: bold;
+    border-bottom: 1px solid #555;
+    padding-bottom: 2px;
+    margin: 10px 0 5px;
+  }
+  /* ── 印鑑欄 ── */
+  .stamp-area {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin: 16px 0 10px;
+  }
+  .stamp-box {
+    width: 70px;
+    height: 70px;
+    border: 1px solid #333;
+    text-align: center;
+    font-size: 8pt;
+    padding-top: 4px;
+  }
+  .stamp-label {
+    text-align: center;
+    font-size: 8pt;
+    margin-top: 2px;
+  }
+  /* ── フッター ── */
+  .doc-footer {
+    margin-top: 20px;
+    border-top: 1px solid #999;
+    padding-top: 5px;
+    font-size: 8pt;
+    color: #666;
+    display: flex;
+    justify-content: space-between;
+  }
+  /* ── チェックボックス ── */
+  .check-row td { height: 22px; }
+  .checkbox { display: inline-block; width: 14px; height: 14px; border: 1px solid #333; margin-right: 4px; vertical-align: middle; }
+  /* ── 印刷最適化 ── */
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none !important; }
+    .page-break { page-break-before: always; }
+  }
+  /* ── 記入欄 ── */
+  .write-line {
+    border-bottom: 1px solid #333;
+    min-height: 20px;
+    margin: 3px 0;
+    padding: 2px 4px;
+  }
+  .note-box {
+    border: 1px solid #999;
+    min-height: 50px;
+    padding: 5px;
+    font-size: 9pt;
+  }
+  /* ── 合否表示 ── */
+  .pass   { color: #0d6e2e; font-weight: bold; }
+  .fail   { color: #c0392b; font-weight: bold; }
+  .center { text-align: center; }
+  .right  { text-align: right; }
+  /* ── 数値列 ── */
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+</html>

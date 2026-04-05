@@ -109,19 +109,103 @@ def expiring_qualifications(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    cutoff = date.today() + timedelta(days=days)
-    quals = (
-        db.query(WorkerQualification)
+    """List qualifications expiring within N days, enriched with worker name."""
+    today = date.today()
+    cutoff = today + timedelta(days=days)
+    rows = (
+        db.query(WorkerQualification, Worker.name)
         .join(Worker, Worker.id == WorkerQualification.worker_id)
         .filter(
             Worker.tenant_id == user.tenant_id,
             WorkerQualification.expiry_date <= cutoff,
-            WorkerQualification.expiry_date >= date.today(),
+            WorkerQualification.expiry_date >= today,
         )
         .order_by(WorkerQualification.expiry_date)
         .all()
     )
-    return quals
+    result = []
+    for qual, worker_name in rows:
+        days_left = (qual.expiry_date - today).days if qual.expiry_date else None
+        alert = "critical" if (days_left is not None and days_left <= 7) else \
+                "high" if (days_left is not None and days_left <= 30) else "medium"
+        result.append({
+            "id": qual.id,
+            "worker_id": qual.worker_id,
+            "worker_name": worker_name,
+            "qualification_name": qual.qualification_name,
+            "qualification_type": qual.qualification_type,
+            "certificate_number": qual.certificate_number,
+            "expiry_date": qual.expiry_date.isoformat() if qual.expiry_date else None,
+            "days_left": days_left,
+            "alert_level": alert,
+        })
+    return result
+
+
+@router.get("/workers/{worker_id}/qualification-status")
+def worker_qualification_status(
+    worker_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Qualification summary with alert badges for a specific worker."""
+    worker = db.query(Worker).filter(Worker.id == worker_id, Worker.tenant_id == user.tenant_id).first()
+    if not worker:
+        raise HTTPException(status_code=404, detail="作業員が見つかりません")
+
+    quals = db.query(WorkerQualification).filter(
+        WorkerQualification.worker_id == worker_id
+    ).order_by(WorkerQualification.expiry_date).all()
+
+    today = date.today()
+    summary = []
+    expired_count = 0
+    expiring_soon_count = 0
+    valid_count = 0
+
+    for q in quals:
+        if q.expiry_date:
+            days_left = (q.expiry_date - today).days
+            if days_left < 0:
+                status = "expired"
+                alert = "critical"
+                expired_count += 1
+            elif days_left <= 30:
+                status = "expiring_soon"
+                alert = "high" if days_left <= 7 else "medium"
+                expiring_soon_count += 1
+            else:
+                status = "valid"
+                alert = "none"
+                valid_count += 1
+        else:
+            days_left = None
+            status = "no_expiry"
+            alert = "none"
+            valid_count += 1
+
+        summary.append({
+            "id": q.id,
+            "qualification_name": q.qualification_name,
+            "qualification_type": q.qualification_type,
+            "certificate_number": q.certificate_number,
+            "expiry_date": q.expiry_date.isoformat() if q.expiry_date else None,
+            "days_left": days_left,
+            "status": status,
+            "alert": alert,
+        })
+
+    return {
+        "worker_id": worker_id,
+        "worker_name": worker.name,
+        "total_qualifications": len(quals),
+        "expired_count": expired_count,
+        "expiring_soon_count": expiring_soon_count,
+        "valid_count": valid_count,
+        "overall_alert": "critical" if expired_count > 0 else
+                         "high" if expiring_soon_count > 0 else "none",
+        "qualifications": summary,
+    }
 
 
 @router.get("/workers/{worker_id}")

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 12mm 12mm 18mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9.5pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 5px 0; margin-bottom: 7px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 9pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 8px 0 4px; background: #f0f4ff; }
+.weather-icon { font-size: 16pt; text-align: center; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 60px; height: 60px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 10px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.center { text-align: center; } .right { text-align: right; }
+.note-box { border: 1px solid #999; min-height: 45px; padding: 4px; font-size: 9pt; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">工 事 日 誌</div>
+
+<table>
+  <tr>
+    <th style="width:70px">工 事 名</th><td colspan="5">{{ project.name }}</td>
+  </tr>
+  <tr>
+    <th>工事番号</th><td style="width:100px">{{ project.project_code or '　' }}</td>
+    <th style="width:60px">記 入 日</th><td style="width:110px">{{ diary_date|default('　　年　　月　　日') }}</td>
+    <th style="width:60px">曜 日</th><td style="width:60px">{{ weekday|default('　') }}曜日</td>
+  </tr>
+  <tr>
+    <th>請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+    <th>現場代理人</th><td colspan="3">{{ site_agent|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>天候</h2>
+<table>
+  <thead>
+    <tr><th style="width:80px">時 間 帯</th><th style="width:100px">天候</th><th style="width:60px">気温(℃)</th><th style="width:70px">湿度(%)</th><th style="width:70px">風速(m/s)</th><th>作業への影響</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="center">午前</td>
+      <td class="center">{{ weather_am|default('　') }}</td>
+      <td class="center">{{ temp_am|default('') }}</td>
+      <td class="center">{{ humidity_am|default('') }}</td>
+      <td class="center">{{ wind_am|default('') }}</td>
+      <td>{{ weather_am_note|default('') }}</td>
+    </tr>
+    <tr>
+      <td class="center">午後</td>
+      <td class="center">{{ weather_pm|default('　') }}</td>
+      <td class="center">{{ temp_pm|default('') }}</td>
+      <td class="center">{{ humidity_pm|default('') }}</td>
+      <td class="center">{{ wind_pm|default('') }}</td>
+      <td>{{ weather_pm_note|default('') }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>作業内容</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:100px">工 種</th>
+      <th>作業内容</th>
+      <th style="width:60px">作業場所</th>
+      <th style="width:40px">作業員数</th>
+      <th style="width:60px">進捗率(%)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for work in works|default([]) %}
+    <tr>
+      <td>{{ work.type }}</td>
+      <td>{{ work.content }}</td>
+      <td class="center">{{ work.location or '' }}</td>
+      <td class="center">{{ work.workers }}</td>
+      <td class="center">{{ work.progress }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(6) %}
+    <tr><td>　</td><td>　</td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>作業員・機械等</h2>
+<table>
+  <tr>
+    <th style="width:100px">作業員合計</th><td>{{ total_workers|default('　') }} 名</td>
+    <th style="width:100px">使用機械</th><td>{{ machinery|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>資材搬入</th><td>{{ materials_in|default('　') }}</td>
+    <th>搬出</th><td>{{ materials_out|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>安全管理</h2>
+<table>
+  <tr>
+    <th style="width:100px">KY活動</th>
+    <td style="width:60px">
+      {% if ky_done %}✓ 実施{% else %}□ 未実施{% endif %}
+    </td>
+    <th style="width:100px">安全朝礼</th>
+    <td style="width:60px">
+      {% if morning_meeting_done %}✓ 実施{% else %}□ 未実施{% endif %}
+    </td>
+    <th style="width:100px">安全巡回</th>
+    <td>
+      {% if safety_patrol_done %}✓ 実施{% else %}□ 未実施{% endif %}
+    </td>
+  </tr>
+  <tr>
+    <th>事故・ヒヤリ</th>
+    <td colspan="5">{{ safety_incidents|default('なし') }}</td>
+  </tr>
+</table>
+
+<h2>指示・連絡事項</h2>
+<div class="note-box" style="min-height:40px;">{{ instructions|default('') }}</div>
+
+<h2>特記事項</h2>
+<div class="note-box" style="min-height:40px;">{{ notes|default('') }}</div>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">記録者</div><div class="stamp-label">記録者</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>工事日誌（公共建築工事標準仕様書 令和7年版）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

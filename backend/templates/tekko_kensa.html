@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 12mm 12mm 18mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9.5pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 5px 0; margin-bottom: 7px; letter-spacing: 2px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 7px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 9pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 8px 0 4px; background: #f0f4ff; }
+.pass { color: #0d6e2e; font-weight: bold; } .fail { color: #c0392b; font-weight: bold; }
+.center { text-align: center; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 60px; height: 60px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 10px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 40px; padding: 4px; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">鉄骨工事 検 査 記 録</div>
+
+<table>
+  <tr><th style="width:100px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:100px">検査日</th><td>{{ inspection_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+    <th>監 督 員</th><td>{{ supervisor_name|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>検査箇所</th><td>{{ inspection_location|default('　') }}</td>
+    <th>検査種別</th>
+    <td>
+      □ 工場検査 &nbsp; □ 受入検査 &nbsp; □ 組立検査 &nbsp; □ 溶接検査 &nbsp; □ 完成検査
+    </td>
+  </tr>
+</table>
+
+<h2>鋼材検査</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>部材名称</th>
+      <th style="width:70px">鋼材種別</th>
+      <th style="width:60px">設計板厚<br>(mm)</th>
+      <th style="width:60px">実測板厚<br>(mm)</th>
+      <th style="width:80px">ミルシート番号</th>
+      <th style="width:50px">判定</th>
+      <th>備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in steel_materials|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ item.member_name }}</td>
+      <td class="center">{{ item.steel_type }}</td>
+      <td class="center">{{ item.design_thickness }}</td>
+      <td class="center">{{ item.actual_thickness }}</td>
+      <td class="center">{{ item.mill_sheet_number or '' }}</td>
+      <td class="center">{% if item.result == '合' %}<span class="pass">合</span>{% elif item.result == '否' %}<span class="fail">否</span>{% else %}　{% endif %}</td>
+      <td>{{ item.note or '' }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(6) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>溶接検査</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>溶接箇所</th>
+      <th style="width:70px">溶接種別</th>
+      <th style="width:80px">溶接サイズ<br>（脚長mm）</th>
+      <th style="width:70px">検査方法</th>
+      <th style="width:70px">検査結果</th>
+      <th style="width:50px">判定</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in weld_items|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ item.location }}</td>
+      <td class="center">{{ item.weld_type }}</td>
+      <td class="center">{{ item.weld_size }}</td>
+      <td>{{ item.test_method }}</td>
+      <td>{{ item.test_result }}</td>
+      <td class="center">{% if item.result == '合' %}<span class="pass">合</span>{% elif item.result == '否' %}<span class="fail">否</span>{% else %}　{% endif %}</td>
+    </tr>
+    {% else %}
+    {% for i in range(6) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>高力ボルト検査</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>接合箇所</th>
+      <th style="width:70px">ボルト種別・径</th>
+      <th style="width:60px">設計本数</th>
+      <th style="width:60px">施工本数</th>
+      <th style="width:80px">締付けトルク<br>(N·m)</th>
+      <th style="width:50px">判定</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in bolt_items|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ item.location }}</td>
+      <td class="center">{{ item.bolt_type }}</td>
+      <td class="center">{{ item.design_count }}</td>
+      <td class="center">{{ item.actual_count }}</td>
+      <td class="center">{{ item.torque }}</td>
+      <td class="center">{% if item.result == '合' %}<span class="pass">合</span>{% elif item.result == '否' %}<span class="fail">否</span>{% else %}　{% endif %}</td>
+    </tr>
+    {% else %}
+    {% for i in range(4) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>総合判定・特記事項</h2>
+<table>
+  <tr>
+    <th style="width:100px">総合判定</th>
+    <td>
+      {% if overall_result == '合格' %}<span class="pass">■ 合格</span>{% else %}□ 合格{% endif %} &nbsp;
+      {% if overall_result == '不合格' %}<span class="fail">■ 不合格</span>{% else %}□ 不合格{% endif %}
+    </td>
+  </tr>
+</table>
+<div class="note-box">{{ notes|default('') }}</div>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">品質管理者</div><div class="stamp-label">品質管理者</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>鉄骨工事検査記録（公共建築工事標準仕様書 令和7年版 第7章）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

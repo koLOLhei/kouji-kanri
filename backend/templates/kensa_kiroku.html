@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 15pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 6px 0; margin-bottom: 8px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 10px 0 5px; background: #f0f4ff; }
+.pass { color: #0d6e2e; font-weight: bold; } .fail { color: #c0392b; font-weight: bold; }
+.center { text-align: center; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 65px; height: 65px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 15px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 50px; padding: 5px; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">検 査 記 録</div>
+
+<table>
+  <tr><th style="width:110px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:110px">工 事 場 所</th><td>{{ project.site_address or '　' }}</td>
+  </tr>
+  <tr>
+    <th>発 注 者</th><td>{{ project.client_name or '　' }}</td>
+    <th>請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+  </tr>
+  <tr>
+    <th>監 督 員</th><td>{{ supervisor_name|default('　') }}</td>
+    <th>検査員</th><td>{{ inspector_name|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>検 査 種 別</th>
+    <td>
+      {% for t in ['中間検査', '完成検査', '部分払検査', '部分引渡検査'] %}
+      {% if inspection_type == t %}■{% else %}□{% endif %} {{ t }} &nbsp;
+      {% endfor %}
+    </td>
+    <th>検 査 日</th>
+    <td>{{ inspection_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>検査申請日</th><td>{{ request_date|default('　　年　　月　　日') }}</td>
+    <th>検査記録番号</th><td>第　{{ record_number|default('　') }}　号</td>
+  </tr>
+</table>
+
+<h2>検査対象</h2>
+<table>
+  <tr>
+    <th style="width:110px">検査対象工種</th><td>{{ target_work_type|default('　') }}</td>
+    <th style="width:110px">検査対象部位</th><td>{{ target_location|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>工程コード</th><td>{{ phase_code|default('　') }}</td>
+    <th>仕様書条項</th><td>{{ spec_reference|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>検査項目</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>検査項目</th>
+      <th style="width:80px">検査方法</th>
+      <th style="width:70px">判定基準</th>
+      <th style="width:70px">検査結果</th>
+      <th style="width:55px">判定</th>
+      <th>備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in inspection_items|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ item.name }}</td>
+      <td>{{ item.method }}</td>
+      <td class="center">{{ item.standard }}</td>
+      <td class="center">{{ item.result }}</td>
+      <td class="center">
+        {% if item.judgment == '合' %}<span class="pass">合</span>
+        {% elif item.judgment == '否' %}<span class="fail">否</span>
+        {% else %}　{% endif %}
+      </td>
+      <td>{{ item.note or '' }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(10) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>総合判定</h2>
+<table>
+  <tr>
+    <th style="width:110px">総合判定</th>
+    <td style="width:200px">
+      {% if overall_result == '合格' %}<span class="pass">■ 合格</span>{% else %}□ 合格{% endif %} &nbsp;&nbsp;
+      {% if overall_result == '不合格' %}<span class="fail">■ 不合格</span>{% else %}□ 不合格{% endif %} &nbsp;&nbsp;
+      {% if overall_result == '条件付き合格' %}■ 条件付き合格{% else %}□ 条件付き合格{% endif %}
+    </td>
+    <th style="width:80px">是正期限</th>
+    <td>{{ correction_deadline|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>是正事項</h2>
+<div class="note-box">{{ correction_items|default('') }}</div>
+
+<h2>特記事項</h2>
+<div class="note-box">{{ notes|default('') }}</div>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">検査員</div><div class="stamp-label">検査員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>検査記録（公共建築工事標準仕様書 令和7年版 第1編第1章第9条）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

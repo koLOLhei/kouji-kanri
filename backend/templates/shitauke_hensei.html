@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 landscape; margin: 15mm 12mm 18mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9pt; color: #1a1a1a; margin: 0; line-height: 1.3; }
+.doc-title { font-size: 13pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 5px 0; margin-bottom: 6px; letter-spacing: 2px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 7px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 8.5pt; vertical-align: middle; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 8px 0 4px; background: #f0f4ff; }
+.center { text-align: center; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 8px; margin: 8px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 58px; height: 58px; border: 1px solid #333; font-size: 7.5pt; padding-top: 3px; }
+.stamp-label { font-size: 7.5pt; margin-top: 2px; }
+.doc-footer { margin-top: 10px; border-top: 1px solid #999; padding-top: 4px; font-size: 7.5pt; color: #666; display: flex; justify-content: space-between; }
+.head-sub { background: #dbeafe; }
+.head-subsub { background: #dcfce7; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">下 請 負 業 者 編 成 表</div>
+
+<table>
+  <tr>
+    <th style="width:70px">工 事 名</th><td>{{ project.name }}</td>
+    <th style="width:70px">工事番号</th><td style="width:100px">{{ project.project_code or '　' }}</td>
+    <th style="width:50px">工 期</th><td style="width:130px">{{ project.start_date or '　' }} ～ {{ project.end_date or '　' }}</td>
+  </tr>
+  <tr>
+    <th>元請業者</th><td>{{ project.contractor_name or '　' }}</td>
+    <th>現場代理人</th><td>{{ site_agent|default('　') }}</td>
+    <th>作成日</th><td>{{ creation_date|default('　　年　　月　　日') }}</td>
+  </tr>
+</table>
+
+<h2>編成表</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:25px">階層</th>
+      <th style="width:30px">No.</th>
+      <th>商号又は名称</th>
+      <th style="width:90px">建設業許可番号</th>
+      <th style="width:70px">許可業種</th>
+      <th style="width:80px">工 種</th>
+      <th style="width:80px">工事内容</th>
+      <th style="width:80px">工事期間</th>
+      <th style="width:60px">主任技術者</th>
+      <th style="width:55px">専任・<br>非専任</th>
+      <th style="width:70px">社会保険<br>加入状況</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- 元請 -->
+    <tr style="background:#e8eaf0; font-weight:bold;">
+      <td class="center">元請</td>
+      <td class="center">-</td>
+      <td>{{ project.contractor_name or '　' }}</td>
+      <td>{{ contractor_license|default('　') }}</td>
+      <td>{{ contractor_license_type|default('　') }}</td>
+      <td>総合管理</td>
+      <td>全工種</td>
+      <td>{{ project.start_date or '' }}〜{{ project.end_date or '' }}</td>
+      <td>{{ chief_engineer|default('　') }}</td>
+      <td class="center">専任</td>
+      <td class="center">加入</td>
+    </tr>
+    <!-- 一次下請 -->
+    {% for sub in subcontractors|default([]) %}
+    <tr class="head-sub">
+      <td class="center">1次</td>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ sub.name }}</td>
+      <td>{{ sub.license_number or '' }}</td>
+      <td>{{ sub.license_type or '' }}</td>
+      <td>{{ sub.work_type or '' }}</td>
+      <td>{{ sub.work_content or '' }}</td>
+      <td>{{ sub.period or '' }}</td>
+      <td>{{ sub.chief_engineer or '' }}</td>
+      <td class="center">{{ sub.exclusive or '' }}</td>
+      <td class="center">{{ sub.insurance or '加入' }}</td>
+    </tr>
+    <!-- 二次下請 -->
+    {% for child in sub.children|default([]) %}
+    <tr class="head-subsub">
+      <td class="center">2次</td>
+      <td class="center">{{ loop.index }}</td>
+      <td>　{{ child.name }}</td>
+      <td>{{ child.license_number or '' }}</td>
+      <td>{{ child.license_type or '' }}</td>
+      <td>{{ child.work_type or '' }}</td>
+      <td>{{ child.work_content or '' }}</td>
+      <td>{{ child.period or '' }}</td>
+      <td>{{ child.chief_engineer or '' }}</td>
+      <td class="center">{{ child.exclusive or '' }}</td>
+      <td class="center">{{ child.insurance or '加入' }}</td>
+    </tr>
+    {% endfor %}
+    {% else %}
+    <tr class="head-sub">
+      <td class="center">1次</td><td class="center">1</td>
+      <td>　</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+    </tr>
+    <tr class="head-sub">
+      <td class="center">1次</td><td class="center">2</td>
+      <td>　</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+    </tr>
+    <tr class="head-subsub">
+      <td class="center">2次</td><td class="center">1</td>
+      <td>　</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>下請負業者編成表（建設業法第24条の8・公共工事の入札及び契約の適正化の促進に関する法律）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

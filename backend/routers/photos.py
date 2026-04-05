@@ -9,7 +9,7 @@ from models.photo import Photo
 from models.user import User
 from schemas.photo import PhotoResponse, PhotoUpdate
 from services.auth_service import get_current_user
-from services.storage_service import generate_upload_key, upload_file, generate_presigned_url
+from services.storage_service import generate_upload_key, upload_file, generate_presigned_url, compute_checksum
 from services.photo_service import extract_exif, create_thumbnail
 from services.submission_engine import auto_generate_if_ready
 
@@ -88,6 +88,7 @@ async def upload_photo(
         gps_lng=exif.get("gps_lng"),
         caption=caption,
         uploaded_by=user.id,
+        checksum=compute_checksum(file_data),
     )
     db.add(photo)
     db.commit()

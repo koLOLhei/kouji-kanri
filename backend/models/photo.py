@@ -29,4 +29,12 @@ class Photo(Base):
     caption: Mapped[str | None] = mapped_column(Text)
     tags: Mapped[dict] = mapped_column(JSON, default=list)
     uploaded_by: Mapped[str | None] = mapped_column(String(36))
+    checksum: Mapped[str | None] = mapped_column(String(64))  # SHA-256 hex digest
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # 電子納品 / 写真分類フィールド
+    work_type: Mapped[str | None] = mapped_column(String(100))        # 工種
+    work_subtype: Mapped[str | None] = mapped_column(String(100))     # 種別
+    work_detail: Mapped[str | None] = mapped_column(String(100))      # 細別
+    photo_category: Mapped[str | None] = mapped_column(String(50))   # 写真区分（着手前/施工状況/完成/…）
+    photo_number: Mapped[int | None] = mapped_column(Integer)         # 写真番号（区分内連番）

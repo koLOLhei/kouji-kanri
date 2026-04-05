@@ -6,10 +6,11 @@ from datetime import datetime
 
 from database import get_db
 from models.submission import Submission
+from models.document_version import DocumentVersion
 from models.user import User
 from schemas.submission import SubmissionResponse, GenerateRequest
 from services.auth_service import get_current_user
-from services.storage_service import generate_presigned_url
+from services.storage_service import generate_presigned_url, compute_checksum, read_file
 from services.submission_engine import generate_submission_package, check_phase_completeness
 
 router = APIRouter(prefix="/api/projects/{project_id}/submissions", tags=["submissions"])
@@ -54,6 +55,47 @@ def generate_submission(
         )
 
     submission = generate_submission_package(db, req.phase_id, user.tenant_id, req.submission_type)
+
+    # Document versioning: save current file as a version record
+    if submission.file_key:
+        # Compute checksum from stored file
+        file_data = read_file(submission.file_key)
+        checksum = compute_checksum(file_data) if file_data else None
+        file_size = len(file_data) if file_data else None
+
+        # Determine next version number
+        last_version = (
+            db.query(DocumentVersion)
+            .filter(DocumentVersion.submission_id == submission.id)
+            .order_by(DocumentVersion.version_number.desc())
+            .first()
+        )
+        next_version_num = (last_version.version_number + 1) if last_version else 1
+
+        # Mark previous versions as not current
+        db.query(DocumentVersion).filter(
+            DocumentVersion.submission_id == submission.id,
+            DocumentVersion.is_current == 1,
+        ).update({"is_current": 0})
+
+        version = DocumentVersion(
+            submission_id=submission.id,
+            version_number=next_version_num,
+            file_key=submission.file_key,
+            created_by=user.id,
+            created_by_name=user.name,
+            change_description=req.change_description if hasattr(req, "change_description") else None,
+            checksum=checksum,
+            file_size=file_size,
+            is_current=1,
+        )
+        db.add(version)
+
+        # Store checksum and version number in submission
+        submission.checksum = checksum
+        submission.current_version = next_version_num
+        db.commit()
+
     resp = SubmissionResponse.model_validate(submission)
     if submission.file_key:
         resp.download_url = generate_presigned_url(submission.file_key)

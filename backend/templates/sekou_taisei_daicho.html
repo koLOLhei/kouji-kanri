@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9.5pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 6px 0; margin-bottom: 8px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 9pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 10px 0 5px; background: #f0f4ff; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 60px; height: 60px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 15px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.center { text-align: center; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">施 工 体 制 台 帳</div>
+
+<table>
+  <tr><th style="width:110px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:110px">工 事 場 所</th><td>{{ project.site_address or '　' }}</td>
+  </tr>
+  <tr>
+    <th>発 注 者</th><td>{{ project.client_name or '　' }}</td>
+    <th>請 負 金 額</th><td>{{ project.contract_amount|default('　') }} 円（税込）</td>
+  </tr>
+  <tr>
+    <th>工 期</th>
+    <td colspan="3">{{ project.start_date or '　' }} ～ {{ project.end_date or '　' }}</td>
+  </tr>
+</table>
+
+<h2>元請業者情報</h2>
+<table>
+  <tr>
+    <th style="width:130px">商号又は名称</th><td colspan="3">{{ project.contractor_name or '　' }}</td>
+  </tr>
+  <tr>
+    <th>建設業許可番号</th><td>{{ contractor_license or '　' }}</td>
+    <th style="width:100px">許可業種</th><td>{{ contractor_license_type or '　' }}</td>
+  </tr>
+  <tr>
+    <th>代表者名</th><td>{{ contractor_ceo or '　' }}</td>
+    <th>所 在 地</th><td>{{ contractor_address or '　' }}</td>
+  </tr>
+  <tr>
+    <th>現場代理人</th><td>{{ site_agent|default('　') }}</td>
+    <th>主任技術者</th><td>{{ chief_engineer|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>専任・非専任</th>
+    <td>
+      {% if chief_engineer_exclusive %}■{% else %}□{% endif %} 専任 &nbsp;
+      {% if not chief_engineer_exclusive %}■{% else %}□{% endif %} 非専任
+    </td>
+    <th>監理技術者</th>
+    <td>{{ supervisor_engineer|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>下請負業者一覧</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>商号又は名称</th>
+      <th style="width:90px">建設業許可番号</th>
+      <th style="width:80px">工 種</th>
+      <th style="width:80px">下請負金額</th>
+      <th style="width:80px">工 期</th>
+      <th style="width:70px">主任技術者</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for sub in subcontractors|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ sub.name }}</td>
+      <td>{{ sub.license_number or '' }}</td>
+      <td>{{ sub.work_type or '' }}</td>
+      <td>{{ sub.amount or '' }}</td>
+      <td>{{ sub.period or '' }}</td>
+      <td>{{ sub.chief_engineer or '' }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(8) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>再下請負業者一覧</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>商号又は名称</th>
+      <th style="width:90px">建設業許可番号</th>
+      <th style="width:80px">工 種</th>
+      <th style="width:80px">発注元</th>
+      <th style="width:80px">工 期</th>
+      <th style="width:70px">主任技術者</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for sub in sub_subcontractors|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ sub.name }}</td>
+      <td>{{ sub.license_number or '' }}</td>
+      <td>{{ sub.work_type or '' }}</td>
+      <td>{{ sub.parent or '' }}</td>
+      <td>{{ sub.period or '' }}</td>
+      <td>{{ sub.chief_engineer or '' }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(5) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>施工体制台帳（建設業法第24条の8・公共工事標準仕様書）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

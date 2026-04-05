@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm 15mm 20mm 20mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #f97316; padding: 6px 0; margin-bottom: 8px; letter-spacing: 2px; }
+.doc-subtitle { text-align: center; font-size: 9pt; color: #555; margin-bottom: 8px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #ffedd5; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #f97316; padding: 2px 7px; margin: 10px 0 5px; background: #fff7ed; }
+.center { text-align: center; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 10px; margin: 12px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 65px; height: 65px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 15px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 60px; padding: 5px; }
+.sketch-box { border: 1px dashed #999; min-height: 100px; padding: 5px; font-size: 9pt; color: #777; text-align: center; line-height: 100px; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">ヒヤリハット報告書</div>
+<div class="doc-subtitle">― ヒヤリとした！ハッとした！その体験を報告してください ―</div>
+
+<table>
+  <tr>
+    <th style="width:100px">工 事 名</th><td colspan="3">{{ project.name }}</td>
+  </tr>
+  <tr>
+    <th>工事番号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:100px">報告番号</th><td>HH-{{ report_number|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>発生日時</th><td>{{ incident_datetime|default('　　年　　月　　日　　時　　分頃') }}</td>
+    <th>報 告 日</th><td>{{ report_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>報告者氏名</th><td>{{ reporter_name|default('　') }}</td>
+    <th>所属会社</th><td>{{ reporter_company|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>経験年数</th><td>{{ experience_years|default('　') }} 年</td>
+    <th>職 種</th><td>{{ job_type|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>発生状況</h2>
+<table>
+  <tr>
+    <th style="width:100px">発生場所</th><td>{{ incident_location|default('　') }}</td>
+    <th style="width:100px">作業内容</th><td>{{ work_content|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>天 候</th><td>{{ weather|default('　') }}</td>
+    <th>作業環境</th><td>{{ work_environment|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>危険の種類</th>
+    <td colspan="3">
+      {% for t in ['墜落・転落', '転倒', '飛来・落下', '崩壊・倒壊', '激突', '挟まれ・巻き込まれ', '切れ・こすれ', '感電', '熱中症', 'その他'] %}
+      {% if incident_type == t %}■{% else %}□{% endif %} {{ t }} &nbsp;
+      {% endfor %}
+    </td>
+  </tr>
+</table>
+
+<h2>ヒヤリハット内容（何がどのようになりそうだったか）</h2>
+<div class="note-box" style="min-height:80px;">{{ incident_description|default('') }}</div>
+
+<h2>発生原因（なぜ起きたか）</h2>
+<table>
+  <tr>
+    <th style="width:100px">直接原因</th><td>{{ direct_cause|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>背景原因</th><td>{{ background_cause|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>状況スケッチ（発生状況の図）</h2>
+<div class="sketch-box">{{ sketch_description|default('（状況の概略図を記入してください）') }}</div>
+
+<h2>再発防止対策</h2>
+<table>
+  <thead>
+    <tr><th style="width:30px">No.</th><th>対策内容</th><th style="width:80px">担当者</th><th style="width:80px">実施期限</th><th style="width:60px">実施確認</th></tr>
+  </thead>
+  <tbody>
+    {% for m in measures|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ m.content }}</td>
+      <td>{{ m.responsible or '' }}</td>
+      <td class="center">{{ m.deadline or '' }}</td>
+      <td class="center">{% if m.done %}✓{% else %}□{% endif %}</td>
+    </tr>
+    {% else %}
+    {% for i in range(4) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td><td class="center">□</td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>水平展開（他の作業員・現場への共有）</h2>
+<table>
+  <tr>
+    <th style="width:100px">共有方法</th>
+    <td>
+      □ 朝礼での報告 &nbsp; □ 安全会議での報告 &nbsp; □ 掲示板への掲示 &nbsp; □ その他: {{ sharing_other|default('　') }}
+    </td>
+  </tr>
+  <tr><th>共有実施日</th><td>{{ sharing_date|default('　　年　　月　　日') }}</td></tr>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">安全管理者</div><div class="stamp-label">安全管理者</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">報告者</div><div class="stamp-label">報告者</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>ヒヤリハット報告書（労働安全衛生法・公共建築工事標準仕様書 令和7年版）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

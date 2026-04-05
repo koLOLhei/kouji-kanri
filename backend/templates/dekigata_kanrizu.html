@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 landscape; margin: 15mm 15mm 20mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9pt; color: #1a1a1a; margin: 0; line-height: 1.3; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 5px 0; margin-bottom: 7px; letter-spacing: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 7px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 8.5pt; vertical-align: middle; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 8px 0 4px; background: #f0f4ff; }
+.pass { color: #0d6e2e; font-weight: bold; } .fail { color: #c0392b; font-weight: bold; }
+.center { text-align: center; } .right { text-align: right; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 8px; margin: 8px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 58px; height: 58px; border: 1px solid #333; font-size: 7.5pt; padding-top: 3px; }
+.stamp-label { font-size: 7.5pt; margin-top: 2px; }
+.doc-footer { margin-top: 10px; border-top: 1px solid #999; padding-top: 4px; font-size: 7.5pt; color: #666; display: flex; justify-content: space-between; }
+/* 簡易グラフ */
+.bar-chart { display: flex; align-items: flex-end; gap: 3px; height: 80px; border-bottom: 2px solid #333; border-left: 2px solid #333; padding: 0 5px; margin: 5px 0; }
+.bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.bar-inner { background: #3b82f6; width: 22px; transition: height 0.3s; }
+.bar-label { font-size: 7pt; margin-top: 2px; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">出 来 形 管 理 図</div>
+
+<table>
+  <tr>
+    <th style="width:70px">工 事 名</th><td>{{ project.name }}</td>
+    <th style="width:70px">工事番号</th><td style="width:100px">{{ project.project_code or '　' }}</td>
+    <th style="width:70px">工 期</th><td style="width:140px">{{ project.start_date or '　' }} ～ {{ project.end_date or '　' }}</td>
+  </tr>
+  <tr>
+    <th>工 種</th><td>{{ work_type|default('　') }}</td>
+    <th>部 位</th><td>{{ location|default('　') }}</td>
+    <th>測定日</th><td>{{ measurement_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>設 計 値</th><td>{{ design_value|default('　') }}</td>
+    <th>許 容 差</th><td>{{ tolerance|default('　') }}</td>
+    <th>管理基準</th><td>{{ control_standard|default('公共建築工事標準仕様書') }}</td>
+  </tr>
+</table>
+
+<h2>出来形測定結果</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th style="width:100px">測定箇所</th>
+      <th style="width:60px">設計値</th>
+      <th style="width:60px">測定値1</th>
+      <th style="width:60px">測定値2</th>
+      <th style="width:60px">測定値3</th>
+      <th style="width:60px">平均値</th>
+      <th style="width:55px">最大誤差</th>
+      <th style="width:50px">判定</th>
+      <th>備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in measurements|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ m.location }}</td>
+      <td class="center">{{ m.design_value }}</td>
+      <td class="center">{{ m.value1 or '' }}</td>
+      <td class="center">{{ m.value2 or '' }}</td>
+      <td class="center">{{ m.value3 or '' }}</td>
+      <td class="center">{{ m.average or '' }}</td>
+      <td class="center">{{ m.max_error or '' }}</td>
+      <td class="center">
+        {% if m.result == '合' %}<span class="pass">合</span>
+        {% elif m.result == '否' %}<span class="fail">否</span>
+        {% else %}　{% endif %}
+      </td>
+      <td>{{ m.note or '' }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(10) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+  {% if measurements %}
+  <tfoot>
+    <tr>
+      <th colspan="6" style="text-align:right;">統計値</th>
+      <th class="center">{{ stats.average|default('　') }}</th>
+      <th class="center">{{ stats.max_error|default('　') }}</th>
+      <th class="center">{{ stats.pass_rate|default('　') }}%</th>
+      <td></td>
+    </tr>
+  </tfoot>
+  {% endif %}
+</table>
+
+<h2>総合判定</h2>
+<table>
+  <tr>
+    <th style="width:100px">判定結果</th>
+    <td style="width:120px">
+      {% if overall_result == '合格' %}<span class="pass">■ 合格</span>{% else %}□ 合格{% endif %} &nbsp;
+      {% if overall_result == '不合格' %}<span class="fail">■ 不合格</span>{% else %}□ 不合格{% endif %}
+    </td>
+    <th style="width:100px">特記事項</th>
+    <td>{{ notes|default('') }}</td>
+  </tr>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">主任監督員</div><div class="stamp-label">主任監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">品質管理者</div><div class="stamp-label">品質管理者</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>出来形管理図（公共建築工事標準仕様書 令和7年版）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

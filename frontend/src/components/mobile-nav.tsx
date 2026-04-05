@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch, cn } from "@/lib/utils";
+import { OutdoorModeToggle } from "@/components/outdoor-mode-toggle";
 import {
   LayoutDashboard, FolderKanban, Camera, Bell, Menu,
   X, HardHat, Truck, BookOpen, Settings, CalendarCheck,
@@ -91,6 +92,13 @@ export function MobileNav() {
                   <span className="text-sm font-medium">{item.label}</span>
                 </Link>
               ))}
+            </div>
+            {/* Outdoor mode toggle in menu */}
+            <div className="px-4 pb-4">
+              <OutdoorModeToggle
+                showLabel={true}
+                className="w-full justify-center"
+              />
             </div>
           </div>
         </>

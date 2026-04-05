@@ -8,7 +8,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, FileText, Plus, ChevronLeft, ChevronRight,
+  Copy, ClipboardList,
 } from "lucide-react";
+import { VoiceTextarea } from "@/components/voice-input";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -124,6 +126,53 @@ function initialForm() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Daily Report Templates                                             */
+/* ------------------------------------------------------------------ */
+
+const REPORT_TEMPLATES = [
+  {
+    label: "コンクリート打設",
+    work_description:
+      "コンクリート打設作業を実施。打設前に型枠・鉄筋の確認を実施し、品質管理基準に従って施工。打設後は養生シートにて覆い、散水養生を開始した。",
+    safety_notes:
+      "打設時の落下物防止のため保護帽着用を徹底。コンクリートポンプ車の配置確認と作業半径内への立入禁止措置を実施。",
+    equipment_used: "コンクリートポンプ車、バイブレーター、養生シート",
+  },
+  {
+    label: "鉄筋組立",
+    work_description:
+      "鉄筋組立作業を実施。設計図面に基づき、鉄筋の配筋・結束を行い、かぶり厚さを確認。施工管理者による中間検査を受検した。",
+    safety_notes:
+      "鉄筋の突起部への保護キャップ取付を確認。高所作業時の安全帯使用を徹底。重量物取扱い時の腰痛防止に留意。",
+    equipment_used: "鉄筋カッター、ハッカー、結束線",
+  },
+  {
+    label: "型枠工事",
+    work_description:
+      "型枠の組立・解体作業を実施。型枠支保工の安全確認後、墨出しに従って型枠を設置。精度確認後、締固め実施。",
+    safety_notes:
+      "型枠解体時の落下防止措置を徹底。作業区画を明確にし、第三者立入禁止を確保。",
+    equipment_used: "型枠材、セパレーター、コーン、電動ドリル",
+  },
+  {
+    label: "掘削工事",
+    work_description:
+      "根切り掘削作業を実施。バックホウにて所定の深さまで掘削し、地盤確認後に砕石敷均しを行った。",
+    safety_notes:
+      "掘削時の崩壊防止のため山留め支保工を確認。重機周辺の立入禁止措置と誘導員を配置。",
+    equipment_used: "バックホウ(0.45m³)、ダンプトラック",
+  },
+  {
+    label: "仕上げ工事",
+    work_description:
+      "内装仕上げ工事を実施。下地処理後、所定の仕上げ材を施工。品質基準に従い養生を実施した。",
+    safety_notes:
+      "揮発性材料使用時の換気を確保。脚立・足場の使用時は転倒防止措置を実施。",
+    equipment_used: "電動工具、養生テープ、仕上げ工具一式",
+  },
+];
+
+/* ------------------------------------------------------------------ */
 /*  Main Page Component                                                */
 /* ------------------------------------------------------------------ */
 
@@ -134,6 +183,7 @@ export default function DailyReportsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(initialForm);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // Month navigation state
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
@@ -210,6 +260,48 @@ export default function DailyReportsPage() {
     setViewYear(y);
   };
 
+  /* ----- Copy yesterday's report ----- */
+
+  const copyYesterday = () => {
+    if (reports.length === 0) return;
+    // Find the most recent report before today
+    const today = new Date(todayStr());
+    const past = reports
+      .filter((r) => new Date(r.report_date + "T00:00:00") < today)
+      .sort(
+        (a, b) =>
+          new Date(b.report_date).getTime() - new Date(a.report_date).getTime()
+      );
+    if (past.length === 0) return;
+    const prev = past[0];
+    setForm({
+      report_date: todayStr(),
+      weather_morning: prev.weather_morning,
+      weather_afternoon: prev.weather_afternoon,
+      temperature_max: prev.temperature_max != null ? String(prev.temperature_max) : "",
+      temperature_min: prev.temperature_min != null ? String(prev.temperature_min) : "",
+      work_description: prev.work_description,
+      worker_count: prev.worker_count != null ? String(prev.worker_count) : "1",
+      equipment_used: prev.equipment_used ?? "",
+      special_notes: prev.special_notes ?? "",
+      safety_notes: prev.safety_notes ?? "",
+    });
+    setShowForm(true);
+  };
+
+  /* ----- Apply template ----- */
+
+  const applyTemplate = (tpl: typeof REPORT_TEMPLATES[number]) => {
+    setForm((prev) => ({
+      ...prev,
+      work_description: tpl.work_description,
+      safety_notes: tpl.safety_notes,
+      equipment_used: tpl.equipment_used,
+    }));
+    setShowTemplates(false);
+    setShowForm(true);
+  };
+
   /* ----- Filtered & sorted reports ----- */
 
   const filteredReports = useMemo(() => {
@@ -254,7 +346,7 @@ export default function DailyReportsPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* ===== Header ===== */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 flex-wrap">
         <Link
           href={`/projects/${id}`}
           className="text-gray-400 hover:text-gray-700 transition-colors"
@@ -265,14 +357,54 @@ export default function DailyReportsPage() {
           <FileText className="w-6 h-6 text-blue-600" />
           日報管理
         </h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="ml-auto flex items-center gap-1.5 bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          新規日報
-        </button>
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <button
+            onClick={copyYesterday}
+            title="前日の日報データをコピー"
+            className="flex items-center gap-1.5 border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+          >
+            <Copy className="w-4 h-4" />
+            前日コピー
+          </button>
+          <button
+            onClick={() => setShowTemplates(!showTemplates)}
+            title="テンプレートから作成"
+            className="flex items-center gap-1.5 border border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+          >
+            <ClipboardList className="w-4 h-4" />
+            テンプレート
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="flex items-center gap-1.5 bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            新規日報
+          </button>
+        </div>
       </div>
+
+      {/* ===== Template List ===== */}
+      {showTemplates && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+          <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-blue-600" />
+            テンプレートを選択
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            {REPORT_TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.label}
+                onClick={() => applyTemplate(tpl)}
+                className="flex items-center gap-2 text-left px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm font-medium text-gray-800"
+              >
+                <span className="text-lg">📋</span>
+                {tpl.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ===== Create Form ===== */}
       {showForm && (
@@ -359,13 +491,13 @@ export default function DailyReportsPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               作業内容
             </label>
-            <textarea
+            <VoiceTextarea
               value={form.work_description}
               onChange={(e) =>
                 setForm({ ...form, work_description: e.target.value })
               }
               rows={4}
-              placeholder="本日の作業内容を入力..."
+              placeholder="本日の作業内容を入力... (マイクボタンで音声入力)"
               className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-y"
               required
             />
@@ -426,13 +558,13 @@ export default function DailyReportsPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 特記事項
               </label>
-              <textarea
+              <VoiceTextarea
                 value={form.special_notes}
                 onChange={(e) =>
                   setForm({ ...form, special_notes: e.target.value })
                 }
                 rows={3}
-                placeholder="特記事項があれば入力..."
+                placeholder="特記事項があれば入力... (マイクで音声入力)"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-y"
               />
             </div>
@@ -440,13 +572,13 @@ export default function DailyReportsPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 安全事項
               </label>
-              <textarea
+              <VoiceTextarea
                 value={form.safety_notes}
                 onChange={(e) =>
                   setForm({ ...form, safety_notes: e.target.value })
                 }
                 rows={3}
-                placeholder="安全に関する事項を入力..."
+                placeholder="安全に関する事項を入力... (マイクで音声入力)"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-y"
               />
             </div>

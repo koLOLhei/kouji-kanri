@@ -15,7 +15,7 @@ from models.comment import Comment
 from models.notification import Notification
 from models.worker import Worker, WorkerQualification, Attendance
 from models.subcontractor import Subcontractor, SubcontractorContract
-from models.safety import KYActivity, SafetyPatrol, IncidentReport, SafetyTraining
+from models.safety import KYActivity, SafetyPatrol, IncidentReport, SafetyTraining, WorkerOrientation
 from models.material import MaterialOrder, MaterialOrderItem, MaterialTestRecord
 from models.inspection import Inspection, InspectionChecklist
 from models.cost import CostBudget, CostActual, CostForecast
@@ -26,6 +26,11 @@ from models.meeting import Meeting
 from models.measurement import Measurement
 from models.equipment import Equipment, EquipmentDailyCheck, EquipmentUsage
 from models.waste import WasteManifest
+from models.approval import ApprovalFlow, ApprovalStep
+from models.document_version import DocumentVersion
+from models.quality import QualityControlItem, QualityMeasurement, StageConfirmation, ProgressPayment
+from models.design_change import DesignChange
+from models.subcontractor_evaluation import SubcontractorEvaluation
 
 __all__ = [
     "Tenant", "User", "Project", "Phase", "PhaseRequirement",
@@ -34,7 +39,7 @@ __all__ = [
     "AuditLog", "WeatherRecord", "DailyReport", "Comment", "Notification",
     "Worker", "WorkerQualification", "Attendance",
     "Subcontractor", "SubcontractorContract",
-    "KYActivity", "SafetyPatrol", "IncidentReport", "SafetyTraining",
+    "KYActivity", "SafetyPatrol", "IncidentReport", "SafetyTraining", "WorkerOrientation",
     "MaterialOrder", "MaterialOrderItem", "MaterialTestRecord",
     "Inspection", "InspectionChecklist",
     "CostBudget", "CostActual", "CostForecast",
@@ -42,4 +47,9 @@ __all__ = [
     "Meeting", "Measurement",
     "Equipment", "EquipmentDailyCheck", "EquipmentUsage",
     "WasteManifest",
+    "ApprovalFlow", "ApprovalStep",
+    "DocumentVersion",
+    "QualityControlItem", "QualityMeasurement", "StageConfirmation", "ProgressPayment",
+    "DesignChange",
+    "SubcontractorEvaluation",
 ]

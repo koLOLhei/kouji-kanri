@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 12mm 12mm 18mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #dc2626; padding: 5px 0; margin-bottom: 6px; letter-spacing: 3px; }
+.subtitle { text-align: center; font-size: 9pt; color: #555; margin-bottom: 8px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 7px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 9.5pt; vertical-align: top; }
+th { background: #fee2e2; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #dc2626; padding: 2px 7px; margin: 8px 0 4px; background: #fff1f1; }
+.ky-step { background: #fef3c7; font-weight: bold; padding: 3px 7px; margin-bottom: 3px; border-left: 3px solid #d97706; font-size: 9.5pt; }
+.center { text-align: center; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 60px; height: 60px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 10px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 40px; padding: 4px; font-size: 9pt; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">KY活動記録（危険予知活動）</div>
+<div class="subtitle">― 作業開始前に必ず実施すること ―</div>
+
+<table>
+  <tr>
+    <th style="width:70px">工 事 名</th><td>{{ project.name }}</td>
+    <th style="width:60px">実施日</th><td style="width:110px">{{ activity_date|default('　　年　　月　　日') }}</td>
+    <th style="width:50px">天候</th><td style="width:60px">{{ weather|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>作業班・工種</th><td>{{ work_group|default('　') }}</td>
+    <th>班 長</th><td>{{ leader|default('　') }}</td>
+    <th>作業員数</th><td>{{ worker_count|default('　') }} 名</td>
+  </tr>
+</table>
+
+<div class="ky-step">【第1ラウンド】どんな危険が潜んでいるか</div>
+<div class="note-box" style="min-height:60px;">{{ round1_hazards|default('') }}</div>
+
+<div class="ky-step" style="margin-top:6px;">【第2ラウンド】これが危険のポイントだ</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>危険のポイント（重要危険）</th>
+      <th style="width:80px">危険の種類</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for h in key_hazards|default([]) %}
+    <tr><td class="center">{{ loop.index }}</td><td>{{ h.description }}</td><td class="center">{{ h.type or '' }}</td></tr>
+    {% else %}
+    <tr><td class="center">★1</td><td>　</td><td></td></tr>
+    <tr><td class="center">★2</td><td>　</td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="ky-step">【第3ラウンド】あなたならどうする（対策）</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>対策（具体的な行動目標）</th>
+      <th style="width:80px">担当</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for action in countermeasures|default([]) %}
+    <tr><td class="center">{{ loop.index }}</td><td>{{ action.description }}</td><td class="center">{{ action.responsible or '' }}</td></tr>
+    {% else %}
+    <tr><td class="center">1</td><td>　</td><td></td></tr>
+    <tr><td class="center">2</td><td>　</td><td></td></tr>
+    <tr><td class="center">3</td><td>　</td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="ky-step">【第4ラウンド】私たちはこうする（チーム行動目標）</div>
+<div class="note-box" style="min-height:35px;">{{ team_target|default('') }}</div>
+
+<h2>確認・指差し呼称</h2>
+<div style="text-align:center; font-size:14pt; font-weight:bold; border:2px solid #dc2626; padding:8px; margin:5px 0; background:#fff1f1;">
+  「{{ yell_target|default('【行動目標】ヨシ！') }}」
+</div>
+
+<h2>参加者</h2>
+<table>
+  <thead>
+    <tr>
+      {% set cols = 4 %}
+      {% for _ in range(cols) %}<th>氏 名</th><th style="width:50px">署名</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in participants|default([]) | batch(4) %}
+    <tr>
+      {% for person in row %}
+      <td>{{ person.name if person else '　' }}</td><td></td>
+      {% endfor %}
+      {% for _ in range(4 - row|length) %}<td></td><td></td>{% endfor %}
+    </tr>
+    {% else %}
+    {% for i in range(4) %}
+    <tr><td>　</td><td></td><td>　</td><td></td><td>　</td><td></td><td>　</td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">安全管理者</div><div class="stamp-label">安全管理者</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">班長</div><div class="stamp-label">班長</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>KY活動記録（危険予知活動）（労働安全衛生法・公共建築工事標準仕様書 令和7年版）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

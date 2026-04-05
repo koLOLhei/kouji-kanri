@@ -25,6 +25,12 @@ class PhotoResponse(BaseModel):
     created_at: datetime
     url: str | None = None
     thumbnail_url: str | None = None
+    # 電子納品 分類フィールド
+    work_type: str | None = None
+    work_subtype: str | None = None
+    work_detail: str | None = None
+    photo_category: str | None = None
+    photo_number: int | None = None
 
     class Config:
         from_attributes = True
@@ -35,3 +41,8 @@ class PhotoUpdate(BaseModel):
     requirement_id: str | None = None
     caption: str | None = None
     tags: list | None = None
+    work_type: str | None = None
+    work_subtype: str | None = None
+    work_detail: str | None = None
+    photo_category: str | None = None
+    photo_number: int | None = None

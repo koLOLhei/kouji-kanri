@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 12mm 12mm 18mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9.5pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1a1a1a; padding: 5px 0; margin-bottom: 7px; letter-spacing: 2px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 7px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 9pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #2563eb; padding: 2px 7px; margin: 8px 0 4px; background: #f0f4ff; }
+.pass { color: #0d6e2e; font-weight: bold; } .fail { color: #c0392b; font-weight: bold; }
+.center { text-align: center; }
+.stamp-area { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 0; }
+.stamp-wrap { text-align: center; }
+.stamp-box { width: 60px; height: 60px; border: 1px solid #333; font-size: 8pt; padding-top: 3px; }
+.stamp-label { font-size: 8pt; margin-top: 2px; }
+.doc-footer { margin-top: 10px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.note-box { border: 1px solid #999; min-height: 40px; padding: 4px; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">防水工事 検 査 記 録</div>
+
+<table>
+  <tr><th style="width:100px">工 事 名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>工 事 番 号</th><td>{{ project.project_code or '　' }}</td>
+    <th style="width:100px">検査日</th><td>{{ inspection_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>請 負 者</th><td>{{ project.contractor_name or '　' }}</td>
+    <th>検 査 員</th><td>{{ inspector_name|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>施工箇所</th><td>{{ work_location|default('　') }}</td>
+    <th>防水工法</th>
+    <td>
+      {% for method in ['アスファルト防水', '改質アスファルト防水', 'シート防水', '塗膜防水', 'ケイ酸質塗布防水', 'その他'] %}
+      {% if waterproof_method == method %}■{% else %}□{% endif %} {{ method }} &nbsp;
+      {% endfor %}
+    </td>
+  </tr>
+  <tr>
+    <th>防水面積</th><td>{{ waterproof_area|default('　') }} m²</td>
+    <th>施工業者</th><td>{{ waterproof_contractor|default('　') }}</td>
+  </tr>
+</table>
+
+<h2>材料確認</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>材料名称</th>
+      <th style="width:80px">規格・品番</th>
+      <th style="width:80px">メーカー</th>
+      <th style="width:60px">使用量</th>
+      <th style="width:50px">単位</th>
+      <th style="width:50px">確認</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for mat in materials|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ mat.name }}</td>
+      <td>{{ mat.spec or '' }}</td>
+      <td>{{ mat.maker or '' }}</td>
+      <td class="center">{{ mat.quantity }}</td>
+      <td class="center">{{ mat.unit }}</td>
+      <td class="center">{% if mat.confirmed %}✓{% else %}□{% endif %}</td>
+    </tr>
+    {% else %}
+    {% for i in range(4) %}
+    <tr><td class="center">{{ loop.index }}</td><td>　</td><td></td><td></td><td></td><td></td><td class="center">□</td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>施工状態検査</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>検査項目</th>
+      <th style="width:80px">検査方法</th>
+      <th style="width:80px">判定基準</th>
+      <th style="width:80px">検査結果</th>
+      <th style="width:50px">判定</th>
+      <th>備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in inspection_items|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ item.name }}</td>
+      <td>{{ item.method }}</td>
+      <td class="center">{{ item.standard }}</td>
+      <td class="center">{{ item.result }}</td>
+      <td class="center">{% if item.judgment == '合' %}<span class="pass">合</span>{% elif item.judgment == '否' %}<span class="fail">否</span>{% else %}　{% endif %}</td>
+      <td>{{ item.note or '' }}</td>
+    </tr>
+    {% else %}
+    <tr><td class="center">1</td><td>下地処理の確認</td><td>目視・打診</td><td>異常なし</td><td></td><td></td><td></td></tr>
+    <tr><td class="center">2</td><td>防水層の施工状態</td><td>目視確認</td><td>浮き・膨れなし</td><td></td><td></td><td></td></tr>
+    <tr><td class="center">3</td><td>防水層の厚み確認</td><td>針刺し</td><td>設計値以上</td><td></td><td></td><td></td></tr>
+    <tr><td class="center">4</td><td>端末部の納まり</td><td>目視確認</td><td>適正に処理</td><td></td><td></td><td></td></tr>
+    <tr><td class="center">5</td><td>排水・ドレン周り</td><td>目視確認</td><td>適正に処理</td><td></td><td></td><td></td></tr>
+    <tr><td class="center">6</td><td>貫通部の処理</td><td>目視確認</td><td>適正にシール</td><td></td><td></td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>水張り試験（該当する場合）</h2>
+<table>
+  <tr>
+    <th style="width:100px">試験実施</th>
+    <td style="width:80px">{% if water_test_done %}■ 実施{% else %}□ 未実施{% endif %}</td>
+    <th style="width:100px">試験水位</th>
+    <td>{{ water_test_level|default('　') }} mm</td>
+    <th style="width:100px">保持時間</th>
+    <td>{{ water_test_duration|default('　') }} 時間</td>
+  </tr>
+  <tr>
+    <th>漏水確認</th>
+    <td colspan="5">{% if water_test_passed %}<span class="pass">漏水なし（合格）</span>{% else %}<span class="fail">漏水あり（不合格）</span>{% endif %}</td>
+  </tr>
+</table>
+
+<h2>総合判定・特記事項</h2>
+<table>
+  <tr>
+    <th style="width:100px">総合判定</th>
+    <td>
+      {% if overall_result == '合格' %}<span class="pass">■ 合格</span>{% else %}□ 合格{% endif %} &nbsp;
+      {% if overall_result == '不合格' %}<span class="fail">■ 不合格</span>{% else %}□ 不合格{% endif %}
+    </td>
+  </tr>
+</table>
+<div class="note-box">{{ notes|default('') }}</div>
+
+<div class="stamp-area">
+  <div class="stamp-wrap"><div class="stamp-box">監督員</div><div class="stamp-label">監督員</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">品質管理者</div><div class="stamp-label">品質管理者</div></div>
+  <div class="stamp-wrap"><div class="stamp-box">現場代理人</div><div class="stamp-label">現場代理人</div></div>
+</div>
+
+<div class="doc-footer">
+  <span>防水工事検査記録（公共建築工事標準仕様書 令和7年版 第9章）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

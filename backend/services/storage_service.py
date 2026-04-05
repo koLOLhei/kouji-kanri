@@ -1,5 +1,6 @@
 """Storage service with local filesystem fallback (S3/MinIO when available)."""
 
+import hashlib
 import os
 import uuid
 from pathlib import Path
@@ -115,3 +116,59 @@ def generate_upload_key(tenant_id: str, project_id: str, category: str, filename
     ext = filename.rsplit(".", 1)[-1] if "." in filename else "bin"
     unique = uuid.uuid4().hex[:8]
     return f"{tenant_id}/{project_id}/{category}/{unique}.{ext}"
+
+
+def compute_checksum(file_data: bytes) -> str:
+    """Compute SHA-256 hex digest of file data."""
+    return hashlib.sha256(file_data).hexdigest()
+
+
+def verify_file_checksum(key: str, expected_checksum: str) -> bool:
+    """Verify that the stored file matches the expected SHA-256 checksum."""
+    if _use_s3:
+        import boto3
+        from botocore.config import Config as BotoConfig
+        from io import BytesIO
+        client = boto3.client(
+            "s3", endpoint_url=settings.s3_endpoint,
+            aws_access_key_id=settings.s3_access_key,
+            aws_secret_access_key=settings.s3_secret_key,
+            region_name=settings.s3_region,
+            config=BotoConfig(signature_version="s3v4"),
+        )
+        buf = BytesIO()
+        client.download_fileobj(settings.s3_bucket, key, buf)
+        data = buf.getvalue()
+    else:
+        filepath = STORAGE_DIR / key
+        if not filepath.exists():
+            return False
+        data = filepath.read_bytes()
+    actual = compute_checksum(data)
+    return actual == expected_checksum
+
+
+def read_file(key: str) -> bytes | None:
+    """Read raw file bytes (local or S3)."""
+    if _use_s3:
+        import boto3
+        from botocore.config import Config as BotoConfig
+        from io import BytesIO
+        client = boto3.client(
+            "s3", endpoint_url=settings.s3_endpoint,
+            aws_access_key_id=settings.s3_access_key,
+            aws_secret_access_key=settings.s3_secret_key,
+            region_name=settings.s3_region,
+            config=BotoConfig(signature_version="s3v4"),
+        )
+        buf = BytesIO()
+        try:
+            client.download_fileobj(settings.s3_bucket, key, buf)
+            return buf.getvalue()
+        except Exception:
+            return None
+    else:
+        filepath = STORAGE_DIR / key
+        if not filepath.exists():
+            return None
+        return filepath.read_bytes()

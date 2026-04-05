@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, date
 
-from sqlalchemy import String, Integer, Boolean, Date, DateTime, Text, ForeignKey
+from sqlalchemy import String, Integer, Boolean, Date, DateTime, Text, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -24,6 +24,9 @@ class Phase(Base):
     planned_end: Mapped[date | None] = mapped_column(Date)
     actual_start: Mapped[date | None] = mapped_column(Date)
     actual_end: Mapped[date | None] = mapped_column(Date)
+    duration_days: Mapped[int | None] = mapped_column(Integer)
+    depends_on: Mapped[list | None] = mapped_column(JSON)
+    progress_percent: Mapped[int] = mapped_column(Integer, default=0)
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

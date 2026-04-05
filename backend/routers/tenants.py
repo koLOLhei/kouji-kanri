@@ -12,6 +12,7 @@ from models.tenant import Tenant
 from models.user import User
 from models.project import Project
 from services.auth_service import get_current_user, require_role, hash_password
+from services.plan_service import check_user_limit, sync_tenant_limits_from_plan, get_plan_usage
 from services.seed import seed_spec_chapters_for_schema
 
 router = APIRouter(prefix="/api/tenants", tags=["tenants"])
@@ -202,14 +203,14 @@ def update_tenant(
     for key, value in req.model_dump(exclude_unset=True).items():
         setattr(tenant, key, value)
 
-    # プラン変更時はlimitsも更新
+    # プラン変更時はlimitsも更新（plan_service経由で正規値に同期）
     if req.plan:
-        plan = next((p for p in PLANS if p.code == req.plan), None)
-        if plan:
-            if req.max_projects is None:
-                tenant.max_projects = plan.max_projects
-            if req.max_users is None:
-                tenant.max_users = plan.max_users
+        sync_tenant_limits_from_plan(db, tenant)
+        # Re-apply any explicit override from the request
+        if req.max_projects is not None:
+            tenant.max_projects = req.max_projects
+        if req.max_users is not None:
+            tenant.max_users = req.max_users
 
     db.commit()
     db.refresh(tenant)
@@ -253,10 +254,8 @@ def add_tenant_user(
     if not tenant:
         raise HTTPException(status_code=404, detail="テナントが見つかりません")
 
-    # ユーザー数上限チェック
-    current_count = db.query(func.count(User.id)).filter(User.tenant_id == tenant_id).scalar()
-    if current_count >= tenant.max_users:
-        raise HTTPException(status_code=400, detail=f"ユーザー数上限 ({tenant.max_users}人) に達しています。プランをアップグレードしてください。")
+    # ユーザー数上限チェック（plan_service経由）
+    check_user_limit(db, tenant_id)
 
     # メール重複チェック
     existing = db.query(User).filter(User.tenant_id == tenant_id, User.email == req.email).first()
@@ -310,6 +309,18 @@ def deactivate_tenant_user(
     target.is_active = False
     db.commit()
     return {"status": "ok"}
+
+
+# --- Plan Usage ---
+
+@router.get("/{tenant_id}/plan-usage")
+def get_plan_usage_endpoint(
+    tenant_id: str,
+    user: User = Depends(require_role("admin", "super_admin")),
+    db: Session = Depends(get_db),
+):
+    """テナントのプラン使用状況（案件数・ユーザー数と上限）"""
+    return get_plan_usage(db, tenant_id)
 
 
 # --- Stats ---
