@@ -27,14 +27,16 @@ from services.storage_service import ensure_bucket
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-    # Seed initial data
-    db = SessionLocal()
+    # Create tables & seed
     try:
-        seed_initial_data(db)
-    finally:
-        db.close()
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            seed_initial_data(db)
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[Warning] DB setup failed: {e}")
     # Ensure S3 bucket
     try:
         ensure_bucket()
