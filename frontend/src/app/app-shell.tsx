@@ -6,6 +6,8 @@ import { Providers } from "@/components/providers";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { OfflineBanner } from "@/components/offline-banner";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { OnboardingGuide } from "@/components/onboarding-guide";
 import { useAuth } from "@/lib/auth";
 import { registerServiceWorker } from "@/lib/offline";
 import { ReactNode } from "react";
@@ -41,10 +43,14 @@ function AuthGate({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <OfflineBanner />
+      <OnboardingGuide />
       <div className="hidden md:block">
         <Sidebar />
       </div>
-      <main className="flex-1 bg-gray-50 pb-16 md:pb-0 pt-0">{children}</main>
+      <div className="flex-1 flex flex-col min-w-0 bg-gray-50 pb-16 md:pb-0">
+        <Breadcrumbs />
+        <main className="flex-1">{children}</main>
+      </div>
       <MobileNav />
     </div>
   );

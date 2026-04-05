@@ -90,23 +90,43 @@ function ProgressRing({ percent, size = 96, stroke = 8 }: { percent: number; siz
 /*  Feature Link Config                                                */
 /* ------------------------------------------------------------------ */
 
-const FEATURES = [
-  { key: "documents",           label: "書類管理",  icon: FileImage,      bg: "bg-rose-50",    ring: "ring-rose-200",    iconColor: "text-rose-600",    badgeBg: "bg-rose-100",    badgeText: "text-rose-700" },
-  { key: "daily-reports",      label: "日報",     icon: ClipboardList,  bg: "bg-blue-50",    ring: "ring-blue-200",    iconColor: "text-blue-600",    badgeBg: "bg-blue-100",    badgeText: "text-blue-700" },
-  { key: "safety",             label: "安全管理",  icon: Shield,         bg: "bg-emerald-50", ring: "ring-emerald-200", iconColor: "text-emerald-600", badgeBg: "bg-emerald-100", badgeText: "text-emerald-700" },
-  { key: "inspections",        label: "検査",     icon: Search,         bg: "bg-purple-50",  ring: "ring-purple-200",  iconColor: "text-purple-600",  badgeBg: "bg-purple-100",  badgeText: "text-purple-700" },
-  { key: "materials",          label: "資材",     icon: Package,        bg: "bg-orange-50",  ring: "ring-orange-200",  iconColor: "text-orange-600",  badgeBg: "bg-orange-100",  badgeText: "text-orange-700" },
-  { key: "costs",              label: "原価",     icon: DollarSign,     bg: "bg-red-50",     ring: "ring-red-200",     iconColor: "text-red-600",     badgeBg: "bg-red-100",     badgeText: "text-red-700" },
-  { key: "drawings",           label: "図面",     icon: FileImage,      bg: "bg-indigo-50",  ring: "ring-indigo-200",  iconColor: "text-indigo-600",  badgeBg: "bg-indigo-100",  badgeText: "text-indigo-700" },
-  { key: "contracts",          label: "下請",     icon: Handshake,      bg: "bg-teal-50",    ring: "ring-teal-200",    iconColor: "text-teal-600",    badgeBg: "bg-teal-100",    badgeText: "text-teal-700" },
-  { key: "corrective-actions", label: "是正措置",  icon: AlertTriangle,  bg: "bg-amber-50",   ring: "ring-amber-200",   iconColor: "text-amber-600",   badgeBg: "bg-amber-100",   badgeText: "text-amber-700" },
-  { key: "meetings",           label: "打合せ",    icon: ClipboardList,  bg: "bg-sky-50",     ring: "ring-sky-200",     iconColor: "text-sky-600",     badgeBg: "bg-sky-100",     badgeText: "text-sky-700" },
-  { key: "measurements",       label: "出来形",    icon: Search,         bg: "bg-lime-50",    ring: "ring-lime-200",    iconColor: "text-lime-600",    badgeBg: "bg-lime-100",    badgeText: "text-lime-700" },
-  { key: "waste",              label: "廃棄物",    icon: AlertTriangle,  bg: "bg-stone-50",   ring: "ring-stone-200",   iconColor: "text-stone-600",   badgeBg: "bg-stone-100",   badgeText: "text-stone-700" },
-  { key: "calendar",           label: "カレンダー", icon: Calendar,      bg: "bg-pink-50",    ring: "ring-pink-200",    iconColor: "text-pink-600",    badgeBg: "bg-pink-100",    badgeText: "text-pink-700" },
-  { key: "schedule",           label: "ガント",     icon: BarChart2,     bg: "bg-violet-50",  ring: "ring-violet-200",  iconColor: "text-violet-600",  badgeBg: "bg-violet-100",  badgeText: "text-violet-700" },
-  { key: "design-changes",     label: "設計変更",   icon: FileEdit,      bg: "bg-yellow-50",  ring: "ring-yellow-200",  iconColor: "text-yellow-600",  badgeBg: "bg-yellow-100",  badgeText: "text-yellow-700" },
-  { key: "capture",            label: "写真撮影",  icon: Camera,         bg: "bg-cyan-50",    ring: "ring-cyan-200",    iconColor: "text-cyan-600",    badgeBg: "bg-cyan-100",    badgeText: "text-cyan-700",   isCapture: true },
+const FEATURE_GROUPS = [
+  {
+    groupLabel: "📋 毎日の業務",
+    items: [
+      { key: "daily-reports",  label: "日報",    subtitle: "毎日の作業内容・人員を記録",    icon: ClipboardList, bg: "bg-blue-50",    ring: "ring-blue-200",    iconColor: "text-blue-600" },
+      { key: "safety",         label: "安全管理", subtitle: "KY・ヒヤリハット・安全巡回",    icon: Shield,        bg: "bg-emerald-50", ring: "ring-emerald-200", iconColor: "text-emerald-600" },
+      { key: "capture",        label: "写真撮影", subtitle: "工事写真をその場で撮影・記録",   icon: Camera,        bg: "bg-cyan-50",    ring: "ring-cyan-200",    iconColor: "text-cyan-600",   isCapture: true },
+    ],
+  },
+  {
+    groupLabel: "📊 管理・記録",
+    items: [
+      { key: "documents",       label: "書類管理", subtitle: "提出書類の一括生成・管理",     icon: FileImage,     bg: "bg-rose-50",    ring: "ring-rose-200",    iconColor: "text-rose-600" },
+      { key: "inspections",     label: "検査",    subtitle: "段階確認・完成検査の記録",      icon: Search,        bg: "bg-purple-50",  ring: "ring-purple-200",  iconColor: "text-purple-600" },
+      { key: "materials",       label: "資材",    subtitle: "発注・受入・試験成績書の管理",   icon: Package,       bg: "bg-orange-50",  ring: "ring-orange-200",  iconColor: "text-orange-600" },
+      { key: "costs",           label: "原価",    subtitle: "工事費用・予算の管理・分析",     icon: DollarSign,    bg: "bg-red-50",     ring: "ring-red-200",     iconColor: "text-red-600" },
+      { key: "measurements",    label: "出来形",   subtitle: "完成部分の寸法・品質を測定",    icon: Search,        bg: "bg-lime-50",    ring: "ring-lime-200",    iconColor: "text-lime-600" },
+    ],
+  },
+  {
+    groupLabel: "📅 計画・調整",
+    items: [
+      { key: "schedule",        label: "工程表",   subtitle: "ガントチャートで工程を可視化",  icon: BarChart2,     bg: "bg-violet-50",  ring: "ring-violet-200",  iconColor: "text-violet-600" },
+      { key: "calendar",        label: "カレンダー", subtitle: "マイルストーン・天候記録",     icon: Calendar,      bg: "bg-pink-50",    ring: "ring-pink-200",    iconColor: "text-pink-600" },
+      { key: "meetings",        label: "打合せ",   subtitle: "発注者との協議・指示を記録",    icon: ClipboardList, bg: "bg-sky-50",     ring: "ring-sky-200",     iconColor: "text-sky-600" },
+      { key: "design-changes",  label: "設計変更", subtitle: "設計変更・追加工事の管理",      icon: FileEdit,      bg: "bg-yellow-50",  ring: "ring-yellow-200",  iconColor: "text-yellow-600" },
+    ],
+  },
+  {
+    groupLabel: "🏗️ その他",
+    items: [
+      { key: "drawings",           label: "図面",    subtitle: "図面の版管理・閲覧",          icon: FileImage,    bg: "bg-indigo-50",  ring: "ring-indigo-200",  iconColor: "text-indigo-600" },
+      { key: "contracts",          label: "下請管理", subtitle: "下請契約・施工体制台帳",      icon: Handshake,    bg: "bg-teal-50",    ring: "ring-teal-200",    iconColor: "text-teal-600" },
+      { key: "corrective-actions", label: "是正措置", subtitle: "品質不適合・NCRの記録",       icon: AlertTriangle, bg: "bg-amber-50",  ring: "ring-amber-200",   iconColor: "text-amber-600" },
+      { key: "waste",              label: "廃棄物",   subtitle: "廃棄物マニフェストの管理",    icon: AlertTriangle, bg: "bg-stone-50",  ring: "ring-stone-200",   iconColor: "text-stone-600" },
+    ],
+  },
 ] as const;
 
 /* ------------------------------------------------------------------ */
@@ -278,35 +298,43 @@ export default function ProjectDetailPage() {
         </div>
 
         {/* ============================================================ */}
-        {/*  2. QUICK ACTION GRID                                         */}
+        {/*  2. CATEGORIZED FEATURE GRID                                  */}
         {/* ============================================================ */}
-        <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 px-1">
-            クイックアクセス
-          </h2>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-            {FEATURES.map((f) => {
-              const href = "isCapture" in f && f.isCapture
-                ? `/capture?project=${id}`
-                : `/projects/${id}/${f.key}`;
-              const Icon = f.icon;
-              return (
-                <Link
-                  key={f.key}
-                  href={href}
-                  className={`group relative flex flex-col items-center gap-2 p-4 rounded-2xl border border-transparent ring-1 ${f.ring} ${f.bg} hover:shadow-lg hover:scale-[1.03] active:scale-[0.98] transition-all duration-150`}
-                >
-                  <div className={`p-2.5 rounded-xl bg-white/70 shadow-sm ${f.iconColor} group-hover:shadow-md transition-shadow`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-semibold text-gray-700 text-center leading-tight">
-                    {f.label}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+        <div className="space-y-6">
+          {FEATURE_GROUPS.map((group) => (
+            <section key={group.groupLabel}>
+              <h2 className="text-sm font-bold text-gray-600 mb-3 px-1 flex items-center gap-2">
+                {group.groupLabel}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {group.items.map((f) => {
+                  const href = "isCapture" in f && f.isCapture
+                    ? `/capture?project=${id}`
+                    : `/projects/${id}/${f.key}`;
+                  const Icon = f.icon;
+                  return (
+                    <Link
+                      key={f.key}
+                      href={href}
+                      className={`group flex items-center gap-3 p-4 rounded-2xl ring-1 ${f.ring} ${f.bg} hover:shadow-md hover:scale-[1.01] active:scale-[0.98] transition-all duration-150`}
+                    >
+                      <div className={`p-2.5 rounded-xl bg-white/70 shadow-sm ${f.iconColor} group-hover:shadow-md transition-shadow flex-shrink-0`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 group-hover:text-gray-900 transition-colors">
+                          {f.label}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">{f.subtitle}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0 ml-auto" />
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
 
         {/* ============================================================ */}
         {/*  3. PHASE / PROCESS TREE                                      */}
