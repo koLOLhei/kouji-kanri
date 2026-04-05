@@ -50,7 +50,7 @@ class QualityControlItemUpdate(BaseModel):
 
 class QualityMeasurementCreate(BaseModel):
     measured_value: float
-    measured_at: datetime
+    measured_at: Optional[datetime] = None
     measured_by: Optional[str] = None
     location: Optional[str] = None
     lot_number: Optional[str] = None
@@ -278,11 +278,14 @@ def create_measurement(
 ):
     ctrl_item = _get_item_or_404(db, project_id, item_id)
     is_passed = _auto_is_passed(ctrl_item, req.measured_value)
+    data = req.model_dump()
+    if data.get("measured_at") is None:
+        data["measured_at"] = datetime.utcnow()
     m = QualityMeasurement(
         item_id=item_id,
         tenant_id=user.tenant_id,
         is_passed=is_passed,
-        **req.model_dump(),
+        **data,
     )
     db.add(m)
     db.commit()
