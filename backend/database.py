@@ -5,7 +5,14 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from config import settings
 
-engine = create_engine(settings.database_url, echo=False, pool_pre_ping=True)
+engine = create_engine(
+    settings.database_url,
+    echo=False,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=0,
+    connect_args={"connect_timeout": 10},
+)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
