@@ -32,11 +32,42 @@ from services.seed import seed_initial_data
 from services.storage_service import ensure_bucket
 
 
+def _run_migrations(engine):
+    """Add missing columns to existing tables (safe to run repeatedly)."""
+    from sqlalchemy import text, inspect
+    insp = inspect(engine)
+    migrations = [
+        ("phases", "duration_days", "INTEGER"),
+        ("phases", "depends_on", "JSONB"),
+        ("phases", "progress_percent", "INTEGER DEFAULT 0"),
+        ("photos", "work_type", "VARCHAR(100)"),
+        ("photos", "work_subtype", "VARCHAR(100)"),
+        ("photos", "work_detail", "VARCHAR(100)"),
+        ("photos", "photo_category", "VARCHAR(50)"),
+        ("photos", "photo_number", "INTEGER"),
+        ("photos", "checksum", "VARCHAR(64)"),
+        ("reports", "checksum", "VARCHAR(64)"),
+        ("submissions", "checksum", "VARCHAR(64)"),
+        ("submissions", "current_version", "INTEGER"),
+        ("audit_logs", "old_values", "JSONB"),
+        ("audit_logs", "new_values", "JSONB"),
+    ]
+    with engine.connect() as conn:
+        for table, col, col_type in migrations:
+            if table in insp.get_table_names():
+                existing = [c["name"] for c in insp.get_columns(table)]
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+                    print(f"[migrate] Added {table}.{col}", flush=True)
+        conn.commit()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # DB初期化（同期 - テーブル作成を確実に完了させる）
     try:
         Base.metadata.create_all(bind=engine)
+        _run_migrations(engine)
         db = SessionLocal()
         try:
             seed_initial_data(db)
