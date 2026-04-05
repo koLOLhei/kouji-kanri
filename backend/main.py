@@ -32,30 +32,23 @@ from services.seed import seed_initial_data
 from services.storage_service import ensure_bucket
 
 
-def _init_db():
-    """Initialize database in background thread."""
-    import threading
-    def run():
-        try:
-            Base.metadata.create_all(bind=engine)
-            db = SessionLocal()
-            try:
-                seed_initial_data(db)
-            finally:
-                db.close()
-            print("[init] DB setup complete", flush=True)
-        except Exception as e:
-            print(f"[Warning] DB setup failed: {e}", flush=True)
-        try:
-            ensure_bucket()
-        except Exception as e:
-            print(f"[Warning] S3 bucket setup failed: {e}", flush=True)
-    threading.Thread(target=run, daemon=True).start()
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    _init_db()
+    # DB初期化（同期 - テーブル作成を確実に完了させる）
+    try:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            seed_initial_data(db)
+        finally:
+            db.close()
+        print("[init] DB setup complete", flush=True)
+    except Exception as e:
+        print(f"[Warning] DB setup failed: {e}", flush=True)
+    try:
+        ensure_bucket()
+    except Exception as e:
+        print(f"[Warning] S3 bucket setup failed: {e}", flush=True)
     yield
 
 
