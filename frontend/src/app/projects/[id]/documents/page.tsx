@@ -67,20 +67,22 @@ export default function DocumentsDashboardPage() {
   const { data: dashboard, isLoading } = useQuery<DashboardData>({
     queryKey: ["documents-dashboard", id],
     queryFn: () =>
-      apiFetch(`/api/projects/${id}/documents/dashboard`, { token }),
+      apiFetch(`/api/projects/${id}/documents/dashboard`, { token: token! }),
+    enabled: !!token,
   });
 
   const { data: missingItems } = useQuery<MissingItem[]>({
     queryKey: ["documents-missing", id],
     queryFn: () =>
-      apiFetch(`/api/projects/${id}/documents/missing`, { token }),
+      apiFetch(`/api/projects/${id}/documents/missing`, { token: token! }),
+    enabled: !!token,
   });
 
   const batchGenerate = useMutation({
     mutationFn: () =>
       apiFetch(`/api/projects/${id}/documents/batch-generate`, {
         method: "POST",
-        token,
+        token: token!,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents-dashboard", id] });
@@ -92,7 +94,7 @@ export default function DocumentsDashboardPage() {
     mutationFn: (phaseId: string) =>
       apiFetch(`/api/projects/${id}/documents/generate/${phaseId}`, {
         method: "POST",
-        token,
+        token: token!,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents-dashboard", id] });

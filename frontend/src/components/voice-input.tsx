@@ -124,7 +124,7 @@ export function VoiceInput({
     recognitionRef.current = recognition;
     recognition.start();
     setIsRecording(true);
-  }, [onResult, mode]);
+  }, [onResult]);
 
   const stopRecording = useCallback(() => {
     recognitionRef.current?.stop();

@@ -10,7 +10,7 @@ import {
   ArrowLeft, Camera, ChevronRight, ChevronDown,
   CheckCircle2, Circle, Clock, AlertCircle, Sparkles, Package,
   ClipboardList, Shield, Search, DollarSign, FileImage,
-  Handshake, AlertTriangle, Calendar, BookOpen, BarChart2,
+  Handshake, AlertTriangle, Calendar, BookOpen, BarChart2, FileEdit,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -105,6 +105,7 @@ const FEATURES = [
   { key: "waste",              label: "廃棄物",    icon: AlertTriangle,  bg: "bg-stone-50",   ring: "ring-stone-200",   iconColor: "text-stone-600",   badgeBg: "bg-stone-100",   badgeText: "text-stone-700" },
   { key: "calendar",           label: "カレンダー", icon: Calendar,      bg: "bg-pink-50",    ring: "ring-pink-200",    iconColor: "text-pink-600",    badgeBg: "bg-pink-100",    badgeText: "text-pink-700" },
   { key: "schedule",           label: "ガント",     icon: BarChart2,     bg: "bg-violet-50",  ring: "ring-violet-200",  iconColor: "text-violet-600",  badgeBg: "bg-violet-100",  badgeText: "text-violet-700" },
+  { key: "design-changes",     label: "設計変更",   icon: FileEdit,      bg: "bg-yellow-50",  ring: "ring-yellow-200",  iconColor: "text-yellow-600",  badgeBg: "bg-yellow-100",  badgeText: "text-yellow-700" },
   { key: "capture",            label: "写真撮影",  icon: Camera,         bg: "bg-cyan-50",    ring: "ring-cyan-200",    iconColor: "text-cyan-600",    badgeBg: "bg-cyan-100",    badgeText: "text-cyan-700",   isCapture: true },
 ] as const;
 

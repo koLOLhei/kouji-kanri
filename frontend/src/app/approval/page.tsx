@@ -31,7 +31,8 @@ export default function ApprovalQueuePage() {
 
   const { data: items, isLoading } = useQuery<ApprovalItem[]>({
     queryKey: ["approval-queue"],
-    queryFn: () => apiFetch("/api/approval-queue", { token }),
+    queryFn: () => apiFetch("/api/approval-queue", { token: token! }),
+    enabled: !!token,
   });
 
   const approveMutation = useMutation({
@@ -39,12 +40,12 @@ export default function ApprovalQueuePage() {
       if (item.type === "daily_report") {
         return apiFetch(
           `/api/projects/${item.project_id}/daily-reports/${item.id}/approve`,
-          { method: "PUT", token }
+          { method: "PUT", token: token! }
         );
       }
       return apiFetch(
         `/api/projects/${item.project_id}/reports/${item.id}/review?action=approve`,
-        { method: "PUT", token }
+        { method: "PUT", token: token! }
       );
     },
     onSuccess: (_, item) => {
@@ -60,12 +61,12 @@ export default function ApprovalQueuePage() {
       if (item.type === "daily_report") {
         return apiFetch(
           `/api/projects/${item.project_id}/daily-reports/${item.id}/reject`,
-          { method: "PUT", token }
+          { method: "PUT", token: token! }
         );
       }
       return apiFetch(
         `/api/projects/${item.project_id}/reports/${item.id}/review?action=reject`,
-        { method: "PUT", token }
+        { method: "PUT", token: token! }
       );
     },
     onSuccess: (_, item) => {

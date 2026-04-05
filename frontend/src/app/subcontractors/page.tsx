@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/utils";
-import { Building2, Plus, Phone, User } from "lucide-react";
+import Link from "next/link";
+import { Building2, Plus, Phone, User, Star } from "lucide-react";
 
 interface Subcontractor {
   id: string;
@@ -160,6 +161,14 @@ export default function SubcontractorsPage() {
               {s.registration_number && (
                 <p className="text-xs text-gray-400 mt-2">登録番号: {s.registration_number}</p>
               )}
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <Link
+                  href={`/subcontractors/${s.id}/evaluations`}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                >
+                  <Star className="w-3 h-3" /> 評価を見る
+                </Link>
+              </div>
             </div>
           ))}
         </div>

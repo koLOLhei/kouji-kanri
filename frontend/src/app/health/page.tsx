@@ -94,12 +94,14 @@ export default function ProjectHealthPage() {
 
   const { data: health, isLoading: healthLoading } = useQuery<HealthData>({
     queryKey: ["project-health"],
-    queryFn: () => apiFetch("/api/project-health", { token }),
+    queryFn: () => apiFetch("/api/project-health", { token: token! }),
+    enabled: !!token,
   });
 
   const { data: alerts } = useQuery<Alert[]>({
     queryKey: ["alerts"],
-    queryFn: () => apiFetch("/api/alerts?days=14", { token }),
+    queryFn: () => apiFetch("/api/alerts?days=14", { token: token! }),
+    enabled: !!token,
   });
 
   const avgScore = health?.average_score ?? 0;
