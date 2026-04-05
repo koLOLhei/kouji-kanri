@@ -20,6 +20,7 @@ interface Milestone {
   title: string;
   due_date: string;
   milestone_type: string;
+  description?: string;
   notes: string | null;
   status: string;
 }

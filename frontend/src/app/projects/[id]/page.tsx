@@ -284,7 +284,7 @@ export default function ProjectDetailPage() {
           </h2>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {FEATURES.map((f) => {
-              const href = f.isCapture
+              const href = "isCapture" in f && f.isCapture
                 ? `/capture?project=${id}`
                 : `/projects/${id}/${f.key}`;
               const Icon = f.icon;
