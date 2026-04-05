@@ -1,5 +1,6 @@
 """工事管理SaaS - FastAPI entry point."""
 
+import os
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -52,7 +53,11 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        os.environ.get("FRONTEND_URL", ""),
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
