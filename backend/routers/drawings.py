@@ -1,0 +1,171 @@
+"""Drawing (図面) management router with revision history."""
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from database import get_db
+from models.drawing import Drawing, DrawingRevision
+from models.user import User
+from services.auth_service import get_current_user
+
+router = APIRouter(prefix="/api/projects/{project_id}/drawings", tags=["drawings"])
+
+
+# ---------- Schemas ----------
+
+class DrawingCreate(BaseModel):
+    drawing_number: str | None = None
+    title: str
+    category: str
+    file_key: str
+    file_size: int | None = None
+    change_description: str | None = None
+
+
+class DrawingUpdate(BaseModel):
+    drawing_number: str | None = None
+    title: str | None = None
+    category: str | None = None
+    status: str | None = None
+
+
+class RevisionCreate(BaseModel):
+    file_key: str
+    thumbnail_key: str | None = None
+    file_size: int | None = None
+    change_description: str | None = None
+
+
+# ---------- Drawings ----------
+
+@router.get("")
+def list_drawings(
+    project_id: str,
+    category: str | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Drawing).filter(Drawing.project_id == project_id)
+    if category:
+        q = q.filter(Drawing.category == category)
+    return q.order_by(Drawing.drawing_number).all()
+
+
+@router.post("")
+def create_drawing(
+    project_id: str,
+    req: DrawingCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    drawing = Drawing(
+        project_id=project_id,
+        drawing_number=req.drawing_number,
+        title=req.title,
+        category=req.category,
+        current_revision=1,
+        created_by=user.id,
+    )
+    db.add(drawing)
+    db.flush()
+    rev = DrawingRevision(
+        drawing_id=drawing.id,
+        revision_number=1,
+        file_key=req.file_key,
+        file_size=req.file_size,
+        change_description=req.change_description or "初版",
+        uploaded_by=user.id,
+    )
+    db.add(rev)
+    db.commit()
+    db.refresh(drawing)
+    return drawing
+
+
+@router.get("/{drawing_id}")
+def get_drawing(
+    project_id: str, drawing_id: str,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    drawing = db.query(Drawing).filter(
+        Drawing.id == drawing_id, Drawing.project_id == project_id
+    ).first()
+    if not drawing:
+        raise HTTPException(status_code=404, detail="図面が見つかりません")
+    revisions = db.query(DrawingRevision).filter(
+        DrawingRevision.drawing_id == drawing_id
+    ).order_by(DrawingRevision.revision_number.desc()).all()
+    return {"drawing": drawing, "revisions": revisions}
+
+
+@router.put("/{drawing_id}")
+def update_drawing(
+    project_id: str, drawing_id: str, req: DrawingUpdate,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    drawing = db.query(Drawing).filter(
+        Drawing.id == drawing_id, Drawing.project_id == project_id
+    ).first()
+    if not drawing:
+        raise HTTPException(status_code=404, detail="図面が見つかりません")
+    for k, v in req.model_dump(exclude_unset=True).items():
+        setattr(drawing, k, v)
+    db.commit()
+    db.refresh(drawing)
+    return drawing
+
+
+@router.delete("/{drawing_id}")
+def delete_drawing(
+    project_id: str, drawing_id: str,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    drawing = db.query(Drawing).filter(
+        Drawing.id == drawing_id, Drawing.project_id == project_id
+    ).first()
+    if not drawing:
+        raise HTTPException(status_code=404, detail="図面が見つかりません")
+    db.query(DrawingRevision).filter(DrawingRevision.drawing_id == drawing_id).delete()
+    db.delete(drawing)
+    db.commit()
+    return {"status": "ok"}
+
+
+# ---------- Revisions ----------
+
+@router.get("/{drawing_id}/revisions")
+def list_revisions(
+    project_id: str, drawing_id: str,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    return db.query(DrawingRevision).filter(
+        DrawingRevision.drawing_id == drawing_id
+    ).order_by(DrawingRevision.revision_number.desc()).all()
+
+
+@router.post("/{drawing_id}/revisions")
+def create_revision(
+    project_id: str, drawing_id: str, req: RevisionCreate,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    drawing = db.query(Drawing).filter(
+        Drawing.id == drawing_id, Drawing.project_id == project_id
+    ).first()
+    if not drawing:
+        raise HTTPException(status_code=404, detail="図面が見つかりません")
+    new_rev_num = drawing.current_revision + 1
+    rev = DrawingRevision(
+        drawing_id=drawing_id,
+        revision_number=new_rev_num,
+        file_key=req.file_key,
+        thumbnail_key=req.thumbnail_key,
+        file_size=req.file_size,
+        change_description=req.change_description,
+        uploaded_by=user.id,
+    )
+    db.add(rev)
+    drawing.current_revision = new_rev_num
+    db.commit()
+    db.refresh(rev)
+    return rev
