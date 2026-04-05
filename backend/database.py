@@ -5,8 +5,11 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from config import settings
 
+import sys
+_db_url = settings.database_url
+print(f"[database] URL host: {_db_url.split('@')[-1].split('/')[0] if '@' in _db_url else 'N/A'}", flush=True)
 engine = create_engine(
-    settings.database_url,
+    _db_url,
     echo=False,
     pool_pre_ping=True,
     pool_size=5,
