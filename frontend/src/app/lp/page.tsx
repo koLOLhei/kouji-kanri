@@ -207,9 +207,69 @@ function Navbar() {
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
 
+const LP_JSON_LD_SOFTWARE = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "工事管理SaaS",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web, iOS, Android",
+  url: "https://kouji.soara-mu.jp",
+  description:
+    "公共工事の施工管理を圧倒的に効率化する施工管理クラウドアプリ。写真管理、工事日報、電子納品、書類自動生成まで。",
+  offers: [
+    { "@type": "Offer", price: "0", priceCurrency: "JPY", name: "フリープラン" },
+    { "@type": "Offer", price: "29800", priceCurrency: "JPY", name: "スタンダードプラン" },
+    { "@type": "Offer", price: "98000", priceCurrency: "JPY", name: "エンタープライズプラン" },
+  ],
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "4.8",
+    reviewCount: "127",
+  },
+};
+
+const LP_FAQ_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "施工管理アプリは無料で使えますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "はい。工事管理SaaSのフリープランは案件3件・ユーザー5名まで完全無料です。クレジットカード不要で30秒から利用開始できます。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "電子納品（CALS/EC）に対応していますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "はい。PHOTO.XMLおよびINDEX_C.XMLの自動生成、電子納品用ZIPファイルのワンクリック生成に対応しています。",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "スマートフォンで使えますか？",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "はい。PWA（プログレッシブウェブアプリ）対応でアプリインストール不要です。iPhoneでもAndroidでも、ブラウザからホーム画面に追加するだけで使えます。",
+      },
+    },
+  ],
+};
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(LP_JSON_LD_SOFTWARE) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(LP_FAQ_JSON_LD) }}
+      />
       <Navbar />
 
       {/* ─── Hero ─── */}
@@ -513,6 +573,90 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ─── Guide Articles / Column ─── */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
+              お役立ち<span className="text-blue-600">コラム</span>
+            </h2>
+            <p className="text-gray-500 text-lg">
+              公共工事・施工管理のDXに役立つ実践ガイド
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                href: "/guide/public-works-bidding",
+                title: "【初心者向け】公共工事の入札方法を完全解説",
+                desc: "建設業許可・経審・入札参加資格申請から落札まで",
+                tag: "入札・公共工事",
+                tagColor: "bg-blue-100 text-blue-700",
+              },
+              {
+                href: "/guide/construction-photo-management",
+                title: "工事写真の撮り方・管理方法を完全解説",
+                desc: "電子黒板・PHOTO.XML・写真台帳まで",
+                tag: "工事写真",
+                tagColor: "bg-amber-100 text-amber-700",
+              },
+              {
+                href: "/guide/electronic-delivery",
+                title: "電子納品とは？やり方・フォルダ構成を解説",
+                desc: "CALS/EC対応・XML生成・チェックまで",
+                tag: "電子納品",
+                tagColor: "bg-green-100 text-green-700",
+              },
+              {
+                href: "/guide/daily-report-template",
+                title: "【無料テンプレート】工事日報の書き方ガイド",
+                desc: "記入例・よくある間違いと正しい書き方",
+                tag: "日報テンプレート",
+                tagColor: "bg-purple-100 text-purple-700",
+              },
+              {
+                href: "/guide/construction-management-app",
+                title: "施工管理アプリ比較【2026年最新】",
+                desc: "ANDPAD・蔵衛門・Photorectionとの比較",
+                tag: "アプリ比較",
+                tagColor: "bg-indigo-100 text-indigo-700",
+              },
+              {
+                href: "/guide/ky-activity",
+                title: "KY活動のやり方を完全解説",
+                desc: "KYT4ラウンド法・TBM-KY・記録シートの書き方",
+                tag: "安全管理",
+                tagColor: "bg-red-100 text-red-700",
+              },
+            ].map((article) => (
+              <Link
+                key={article.href}
+                href={article.href}
+                className="border border-gray-200 rounded-2xl p-6 hover:border-blue-300 hover:shadow-md transition-all group"
+              >
+                <span
+                  className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full mb-3 ${article.tagColor}`}
+                >
+                  {article.tag}
+                </span>
+                <h3 className="font-bold text-gray-900 text-sm leading-snug mb-2 group-hover:text-blue-700 transition-colors">
+                  {article.title}
+                </h3>
+                <p className="text-xs text-gray-500">{article.desc}</p>
+              </Link>
+            ))}
+          </div>
+          <div className="text-center mt-8">
+            <Link
+              href="/guide"
+              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-semibold text-sm"
+            >
+              すべてのガイドを見る →
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Footer ─── */}
       <footer className="bg-gray-900 text-gray-400 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -530,7 +674,7 @@ export default function LandingPage() {
               </p>
             </div>
             <div>
-              <h4 className="text-white font-bold text-sm mb-4">サービス</h4>
+              <h3 className="text-white font-bold text-sm mb-4">サービス</h3>
               <ul className="space-y-2 text-sm">
                 <li><a href="#features" className="hover:text-white transition-colors">機能一覧</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">料金プラン</a></li>
@@ -539,7 +683,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-bold text-sm mb-4">機能</h4>
+              <h3 className="text-white font-bold text-sm mb-4">機能</h3>
               <ul className="space-y-2 text-sm">
                 <li>写真管理</li>
                 <li>書類自動生成</li>
@@ -550,9 +694,12 @@ export default function LandingPage() {
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-bold text-sm mb-4">サポート</h4>
+              <h3 className="text-white font-bold text-sm mb-4">サポート・情報</h3>
               <ul className="space-y-2 text-sm">
                 <li><Link href="/login" className="hover:text-white transition-colors">ログイン</Link></li>
+                <li><Link href="/guide" className="hover:text-white transition-colors">お役立ちガイド</Link></li>
+                <li><Link href="/guide/public-works-bidding" className="hover:text-white transition-colors">公共工事 入札方法</Link></li>
+                <li><Link href="/guide/electronic-delivery" className="hover:text-white transition-colors">電子納品のやり方</Link></li>
                 <li><Link href="/specs" className="hover:text-white transition-colors">仕様書ブラウザ</Link></li>
               </ul>
             </div>

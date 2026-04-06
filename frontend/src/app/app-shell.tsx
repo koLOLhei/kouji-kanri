@@ -30,7 +30,11 @@ function AuthGate({ children }: { children: ReactNode }) {
   }
 
   // Public pages (no auth required)
-  if (pathname === "/login" || pathname === "/lp") {
+  if (
+    pathname === "/login" ||
+    pathname === "/lp" ||
+    pathname.startsWith("/guide")
+  ) {
     return <>{children}</>;
   }
 
