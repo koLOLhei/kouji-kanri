@@ -1,0 +1,327 @@
+"""外部システム連携API — Webhook/APIキー/iCal出力（APIファースト設計）"""
+
+import hashlib
+import secrets
+import uuid
+from datetime import datetime, timezone, date
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
+from pydantic import BaseModel, Field
+from sqlalchemy import String, Boolean, DateTime, JSON
+from sqlalchemy.orm import Mapped, Session, mapped_column
+
+from database import Base, get_db
+from models.client_portal import InspectionScheduleTemplate
+from models.user import User
+from services.auth_service import get_current_user
+
+router = APIRouter(
+    prefix="/api/integrations",
+    tags=["integrations"],
+)
+
+
+# ── インラインモデル ──────────────────────────────────────────────────────────
+
+class WebhookConfig(Base):
+    """Webhook設定"""
+    __tablename__ = "webhook_configs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    events: Mapped[dict] = mapped_column(JSON, default=list)
+    secret: Mapped[str | None] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ApiKey(Base):
+    """外部APIキー"""
+    __tablename__ = "api_keys"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    key_prefix: Mapped[str] = mapped_column(String(8), nullable=False)
+    scopes: Mapped[dict] = mapped_column(JSON, default=list)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ── 定数 ──────────────────────────────────────────────────────────────────────
+
+VALID_EVENTS = [
+    "daily_report.submitted",
+    "photo.uploaded",
+    "inspection.completed",
+    "phase.completed",
+    "document.generated",
+    "ncr.created",
+]
+
+VALID_SCOPES = [
+    "read:projects",
+    "read:photos",
+    "read:daily_reports",
+    "write:photos",
+    "read:inspections",
+]
+
+
+# ── スキーマ ─────────────────────────────────────────────────────────────────
+
+class WebhookCreate(BaseModel):
+    name: str
+    url: str
+    events: list[str] = Field(
+        ...,
+        description=f"有効イベント: {VALID_EVENTS}",
+    )
+    secret: str | None = None
+
+
+class WebhookResponse(BaseModel):
+    id: str
+    name: str
+    url: str
+    events: list[str]
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+
+
+class ApiKeyCreate(BaseModel):
+    name: str
+    scopes: list[str] = Field(
+        ...,
+        description=f"有効スコープ: {VALID_SCOPES}",
+    )
+
+
+class ApiKeyResponse(BaseModel):
+    id: str
+    name: str
+    key_prefix: str
+    scopes: list[str]
+    is_active: bool
+    last_used_at: datetime | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ApiKeyCreatedResponse(BaseModel):
+    """作成直後のみ生のキーを返す"""
+    id: str
+    name: str
+    key: str
+    key_prefix: str
+    scopes: list[str]
+    created_at: datetime
+
+
+# ── Webhook エンドポイント ──────────────────────────────────────────────────
+
+@router.get("/webhooks", response_model=list[WebhookResponse])
+def list_webhooks(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """テナントに設定されたWebhook一覧"""
+    hooks = db.query(WebhookConfig).filter(
+        WebhookConfig.tenant_id == user.tenant_id,
+    ).order_by(WebhookConfig.created_at.desc()).all()
+    return hooks
+
+
+@router.post("/webhooks", response_model=WebhookResponse)
+def create_webhook(
+    req: WebhookCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Webhook登録"""
+
+    # イベント検証
+    invalid = [e for e in req.events if e not in VALID_EVENTS]
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"無効なイベント: {invalid}。有効値: {VALID_EVENTS}",
+        )
+
+    hook = WebhookConfig(
+        tenant_id=user.tenant_id,
+        name=req.name,
+        url=req.url,
+        events=req.events,
+        secret=req.secret,
+    )
+    db.add(hook)
+    db.commit()
+    db.refresh(hook)
+    return hook
+
+
+@router.delete("/webhooks/{webhook_id}")
+def delete_webhook(
+    webhook_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Webhook削除"""
+    wh = db.query(WebhookConfig).filter(
+        WebhookConfig.id == webhook_id,
+        WebhookConfig.tenant_id == user.tenant_id,
+    ).first()
+    if not wh:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    db.delete(wh)
+    db.commit()
+    return {"status": "ok"}
+
+
+# ── APIキー エンドポイント ──────────────────────────────────────────────────
+
+@router.get("/api-keys", response_model=list[ApiKeyResponse])
+def list_api_keys(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """テナントのAPIキー一覧（キー本体は非表示）"""
+    keys = db.query(ApiKey).filter(
+        ApiKey.tenant_id == user.tenant_id,
+    ).order_by(ApiKey.created_at.desc()).all()
+    return keys
+
+
+@router.post("/api-keys", response_model=ApiKeyCreatedResponse)
+def create_api_key(
+    req: ApiKeyCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """APIキーを発行（生のキーは作成時のみ返す）"""
+
+    # スコープ検証
+    invalid = [s for s in req.scopes if s not in VALID_SCOPES]
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"無効なスコープ: {invalid}。有効値: {VALID_SCOPES}",
+        )
+
+    # ランダムキー生成
+    raw_key = f"kk_{secrets.token_urlsafe(32)}"
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    key_prefix = raw_key[:8]
+
+    api_key = ApiKey(
+        tenant_id=user.tenant_id,
+        name=req.name,
+        key_hash=key_hash,
+        key_prefix=key_prefix,
+        scopes=req.scopes,
+    )
+    db.add(api_key)
+    db.commit()
+    db.refresh(api_key)
+
+    return ApiKeyCreatedResponse(
+        id=api_key.id,
+        name=api_key.name,
+        key=raw_key,
+        key_prefix=key_prefix,
+        scopes=req.scopes,
+        created_at=api_key.created_at,
+    )
+
+
+@router.delete("/api-keys/{key_id}")
+def delete_api_key(
+    key_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """APIキー削除"""
+    key = db.query(ApiKey).filter(
+        ApiKey.id == key_id,
+        ApiKey.tenant_id == user.tenant_id,
+    ).first()
+    if not key:
+        raise HTTPException(status_code=404, detail="API Key not found")
+    db.delete(key)
+    db.commit()
+    return {"status": "ok"}
+
+
+# ── iCal エクスポート ──────────────────────────────────────────────────────
+
+@router.get("/ical/{project_id}", response_class=Response)
+def export_ical(
+    project_id: str,
+    db: Session = Depends(get_db),
+):
+    """点検スケジュールをiCal形式でエクスポート（認証不要・外部カレンダー連携用）"""
+
+    schedules = db.query(InspectionScheduleTemplate).filter(
+        InspectionScheduleTemplate.facility_id == project_id,
+        InspectionScheduleTemplate.is_active == True,
+        InspectionScheduleTemplate.next_due.isnot(None),
+    ).all()
+
+    # iCal生成
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//KoujiKanri//InspectionSchedule//JP",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+    ]
+
+    for sched in schedules:
+        uid = f"{sched.id}@kouji-kanri"
+        dtstart = sched.next_due.strftime("%Y%m%d")
+        summary = _ical_escape(sched.name)
+        description_parts = []
+        if sched.legal_basis:
+            description_parts.append(f"法的根拠: {sched.legal_basis}")
+        if sched.category:
+            description_parts.append(f"区分: {sched.category}")
+        if sched.assigned_company:
+            description_parts.append(f"担当: {sched.assigned_company}")
+        description = _ical_escape("\\n".join(description_parts))
+
+        lines.extend([
+            "BEGIN:VEVENT",
+            f"UID:{uid}",
+            f"DTSTART;VALUE=DATE:{dtstart}",
+            f"SUMMARY:{summary}",
+            f"DESCRIPTION:{description}",
+            "END:VEVENT",
+        ])
+
+    lines.append("END:VCALENDAR")
+    ical_content = "\r\n".join(lines)
+
+    return Response(
+        content=ical_content,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=inspections.ics"},
+    )
+
+
+def _ical_escape(text: str) -> str:
+    """iCalフィールド用のエスケープ"""
+    return (
+        text
+        .replace("\\", "\\\\")
+        .replace(",", "\\,")
+        .replace(";", "\\;")
+        .replace("\n", "\\n")
+    )

@@ -15,28 +15,26 @@ from models.cost import CostBudget, CostActual
 from models.inspection import Inspection
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/exports", tags=["exports"])
 
 
-def _csv_response(rows: list[dict], filename: str) -> StreamingResponse:
-    if not rows:
-        output = io.StringIO()
-        output.write("")
-        output.seek(0)
-        return StreamingResponse(
-            iter([output.getvalue()]),
-            media_type="text/csv",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )
+def _csv_response(rows: list[dict], filename: str, fieldnames: list[str] | None = None) -> StreamingResponse:
+    """CSV出力。BOM付きUTF-8でExcelで文字化けしない。"""
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=rows[0].keys())
-    writer.writeheader()
-    writer.writerows(rows)
+    if rows:
+        writer = csv.DictWriter(output, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+    elif fieldnames:
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
     output.seek(0)
+    # utf-8-sig は自動でBOMを1回だけ付与する
     return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
+        iter([output.getvalue().encode('utf-8-sig')]),
+        media_type="text/csv; charset=utf-8-sig",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
@@ -49,6 +47,7 @@ def export_daily_reports(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(DailyReport).filter(DailyReport.project_id == project_id)
     if date_from:
         q = q.filter(DailyReport.report_date >= date_from)
@@ -81,6 +80,7 @@ def export_attendance(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(Attendance).filter(Attendance.project_id == project_id)
     if date_from:
         q = q.filter(Attendance.work_date >= date_from)
@@ -99,7 +99,8 @@ def export_attendance(
         }
         for a in records
     ]
-    return _csv_response(rows, "attendance.csv")
+    return _csv_response(rows, "attendance.csv",
+        fieldnames=["日付", "作業員ID", "出勤", "退勤", "作業時間", "勤務種別", "備考"])
 
 
 @router.get("/costs")
@@ -108,6 +109,7 @@ def export_costs(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     budgets = db.query(CostBudget).filter(CostBudget.project_id == project_id).all()
     actuals = db.query(CostActual).filter(CostActual.project_id == project_id).order_by(CostActual.expense_date).all()
 
@@ -141,6 +143,7 @@ def export_inspections(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     inspections = db.query(Inspection).filter(
         Inspection.project_id == project_id
     ).order_by(Inspection.scheduled_date).all()

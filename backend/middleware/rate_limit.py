@@ -18,7 +18,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # Configuration
 # ---------------------------------------------------------------------------
 
-API_RATE_LIMIT = 100        # requests per window
+API_RATE_LIMIT = 500        # requests per window (dev: 500, prod: 100)
 UPLOAD_RATE_LIMIT = 10      # requests per window
 TENANT_RATE_LIMIT = 300     # requests per window per tenant
 WINDOW_SECONDS = 60         # sliding-window size in seconds

@@ -1,7 +1,7 @@
 """Project (案件) model."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, BigInteger, Date, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column

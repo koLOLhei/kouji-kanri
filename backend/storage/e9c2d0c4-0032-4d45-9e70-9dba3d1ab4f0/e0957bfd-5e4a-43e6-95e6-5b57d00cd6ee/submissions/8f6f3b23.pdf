@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+body { font-family: "Noto Sans JP", sans-serif; margin: 40px; font-size: 12px; }
+h1 { font-size: 18px; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }
+h2 { font-size: 14px; margin-top: 20px; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+th, td { border: 1px solid #333; padding: 6px 8px; text-align: left; }
+th { background: #f0f0f0; }
+.photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+.photo-item { text-align: center; }
+.photo-item img { max-width: 100%; max-height: 200px; }
+.footer { margin-top: 30px; text-align: right; font-size: 10px; }
+</style></head><body>
+<h1>工程完了報告書</h1>
+<table>
+<tr><th>工事名</th><td>渋谷区立中央図書館 新築工事</td></tr>
+<tr><th>工程名</th><td>1章 各章共通事項</td></tr>
+<tr><th>施工者</th><td>デモ建設株式会社</td></tr>
+<tr><th>発注者</th><td>渋谷区</td></tr>
+<tr><th>報告日</th><td>2026年04月10日</td></tr>
+</table>
+<h2>工事写真</h2>
+<div class="photos">
+
+<div class="photo-item">
+<p>1章共通事項 工事写真テスト</p>
+</div>
+
+</div>
+<h2>検査・試験報告</h2>
+<table>
+<tr><th>No.</th><th>報告書名</th><th>種別</th><th>状態</th></tr>
+
+<tr><td>1</td><td>実施工程表</td><td>inspection</td><td>approved</td></tr>
+
+<tr><td>2</td><td>施工計画書</td><td>inspection</td><td>approved</td></tr>
+
+<tr><td>3</td><td>施工図</td><td>inspection</td><td>approved</td></tr>
+
+<tr><td>4</td><td>品質管理記録</td><td>inspection</td><td>approved</td></tr>
+
+</table>
+<div class="footer">自動生成: 2026-04-10 04:30</div>
+</body></html>

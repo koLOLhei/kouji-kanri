@@ -10,7 +10,7 @@ import {
   LayoutDashboard, FolderKanban, Camera, BookOpen, Settings, LogOut,
   Building2, BarChart3, HardHat, Truck, Bell, Search,
   ChevronLeft, ChevronRight, Shield, ClipboardCheck, Activity,
-  CalendarCheck, Wrench, SearchIcon, TrendingUp,
+  CalendarCheck, Wrench, SearchIcon, TrendingUp, Users,
 } from "lucide-react";
 import { OutdoorModeToggle } from "@/components/outdoor-mode-toggle";
 
@@ -28,6 +28,7 @@ const mainItems: NavItem[] = [
   { href: "/capture", label: "写真撮影", icon: Camera },
   { href: "/health", label: "プロジェクトヘルス", icon: Activity },
   { href: "/approval", label: "承認キュー", icon: ClipboardCheck },
+  { href: "/company", label: "全社ダッシュボード", icon: BarChart3 },
 ];
 
 const orgItems: NavItem[] = [
@@ -35,6 +36,12 @@ const orgItems: NavItem[] = [
   { href: "/subcontractors", label: "協力業者", icon: Truck },
   { href: "/equipment", label: "車両・重機", icon: Wrench },
   { href: "/search", label: "横断検索", icon: SearchIcon },
+  { href: "/crm", label: "顧客管理(CRM)", icon: Users },
+  { href: "/facilities", label: "施設インフラDB", icon: Building2 },
+  { href: "/sales", label: "受注パイプライン", icon: BarChart3 },
+  { href: "/estimates", label: "見積書", icon: ClipboardCheck },
+  { href: "/contracts", label: "契約書", icon: Shield },
+  { href: "/tasks", label: "タスク", icon: CalendarCheck },
   { href: "/specs", label: "仕様書", icon: BookOpen },
 ];
 

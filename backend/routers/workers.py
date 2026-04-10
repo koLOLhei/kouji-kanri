@@ -11,6 +11,7 @@ from database import get_db
 from models.worker import Worker, WorkerQualification, Attendance
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api", tags=["workers"])
 
@@ -325,6 +326,7 @@ def list_attendance(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(Attendance).filter(Attendance.project_id == project_id)
     if work_date:
         q = q.filter(Attendance.work_date == work_date)
@@ -340,6 +342,7 @@ def create_attendance(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     att = Attendance(project_id=project_id, **req.model_dump())
     db.add(att)
     db.commit()
@@ -355,6 +358,7 @@ def update_attendance(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     att = db.query(Attendance).filter(Attendance.id == att_id, Attendance.project_id == project_id).first()
     if not att:
         raise HTTPException(status_code=404, detail="出勤記録が見つかりません")
@@ -372,6 +376,7 @@ def delete_attendance(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     att = db.query(Attendance).filter(Attendance.id == att_id, Attendance.project_id == project_id).first()
     if not att:
         raise HTTPException(status_code=404, detail="出勤記録が見つかりません")
@@ -388,6 +393,7 @@ def attendance_summary(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(
         Attendance.worker_id,
         func.count(Attendance.id).label("total_days"),

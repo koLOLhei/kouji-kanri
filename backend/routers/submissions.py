@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database import get_db
 from models.submission import Submission
@@ -10,6 +10,7 @@ from models.document_version import DocumentVersion
 from models.user import User
 from schemas.submission import SubmissionResponse, GenerateRequest
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 from services.storage_service import generate_presigned_url, compute_checksum, read_file
 from services.submission_engine import generate_submission_package, check_phase_completeness
 
@@ -22,6 +23,7 @@ def list_submissions(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     subs = db.query(Submission).filter(
         Submission.project_id == project_id
     ).order_by(Submission.created_at.desc()).all()
@@ -42,6 +44,7 @@ def generate_submission(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """手動で提出書類を生成"""
     check = check_phase_completeness(db, req.phase_id)
     if not check["complete"]:
@@ -110,6 +113,7 @@ def check_readiness(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """工程の書類充足状況を確認"""
     return check_phase_completeness(db, phase_id)
 
@@ -121,12 +125,13 @@ def mark_submitted(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     sub = db.query(Submission).filter(
         Submission.id == submission_id, Submission.project_id == project_id
     ).first()
     if not sub:
         raise HTTPException(status_code=404, detail="提出書類が見つかりません")
     sub.status = "submitted"
-    sub.submitted_at = datetime.utcnow()
+    sub.submitted_at = datetime.now(timezone.utc)
     db.commit()
     return {"id": sub.id, "status": sub.status}

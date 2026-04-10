@@ -1,7 +1,7 @@
 """車両・重機管理 (Equipment Management) model."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, Integer, Float, Boolean, Date, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column

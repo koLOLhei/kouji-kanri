@@ -11,6 +11,7 @@ from database import get_db
 from models.waste import WasteManifest
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/waste-manifests", tags=["waste-manifests"])
 
@@ -73,6 +74,7 @@ def list_waste_manifests(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(WasteManifest).filter(WasteManifest.project_id == project_id)
     if status:
         q = q.filter(WasteManifest.status == status)
@@ -86,6 +88,7 @@ def create_waste_manifest(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     manifest = WasteManifest(
         project_id=project_id,
         **req.model_dump(),
@@ -102,6 +105,7 @@ def waste_summary(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Waste totals by type."""
     rows = (
         db.query(
@@ -126,6 +130,7 @@ def get_waste_manifest(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     manifest = db.query(WasteManifest).filter(
         WasteManifest.id == manifest_id, WasteManifest.project_id == project_id
     ).first()
@@ -142,6 +147,7 @@ def update_waste_manifest(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     manifest = db.query(WasteManifest).filter(
         WasteManifest.id == manifest_id, WasteManifest.project_id == project_id
     ).first()
@@ -162,6 +168,7 @@ def update_manifest_status(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Update manifest status following the flow: issued -> collected -> disposed -> final_disposed -> completed."""
     manifest = db.query(WasteManifest).filter(
         WasteManifest.id == manifest_id, WasteManifest.project_id == project_id

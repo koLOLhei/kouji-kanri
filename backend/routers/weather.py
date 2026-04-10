@@ -10,6 +10,7 @@ from database import get_db
 from models.weather import WeatherRecord
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/weather", tags=["weather"])
 
@@ -57,6 +58,7 @@ def list_weather(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(WeatherRecord).filter(WeatherRecord.project_id == project_id)
     if date_from:
         q = q.filter(WeatherRecord.record_date >= date_from)
@@ -72,6 +74,7 @@ def create_weather(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     record = WeatherRecord(project_id=project_id, **req.model_dump())
     db.add(record)
     db.commit()
@@ -86,6 +89,7 @@ def get_weather_by_date(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     record = db.query(WeatherRecord).filter(
         WeatherRecord.project_id == project_id,
         WeatherRecord.record_date == record_date,
@@ -102,6 +106,7 @@ def get_weather(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     record = db.query(WeatherRecord).filter(
         WeatherRecord.id == record_id, WeatherRecord.project_id == project_id
     ).first()
@@ -118,6 +123,7 @@ def update_weather(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     record = db.query(WeatherRecord).filter(
         WeatherRecord.id == record_id, WeatherRecord.project_id == project_id
     ).first()
@@ -137,6 +143,7 @@ def delete_weather(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     record = db.query(WeatherRecord).filter(
         WeatherRecord.id == record_id, WeatherRecord.project_id == project_id
     ).first()

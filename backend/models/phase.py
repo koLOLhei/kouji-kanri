@@ -1,7 +1,7 @@
 """Phase/Process (工程) models."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, Integer, Boolean, Date, DateTime, Text, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column

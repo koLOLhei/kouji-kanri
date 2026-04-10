@@ -1,7 +1,7 @@
 """Report (報告書・試験結果) model."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column

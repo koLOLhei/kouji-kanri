@@ -1,7 +1,7 @@
 """汎用書類生成ルーター — 30種類以上の政府書類テンプレートを提供"""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,6 +13,7 @@ from database import get_db
 from models.project import Project
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 from services.submission_engine import TEMPLATE_REGISTRY, generate_document
 from services.storage_service import upload_file, generate_upload_key, generate_presigned_url
 
@@ -156,6 +157,7 @@ def generate_project_document(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """
     指定したプロジェクトの任意の書類テンプレートを生成し、
     ストレージに保存してダウンロードURLを返す。
@@ -214,7 +216,7 @@ def generate_project_document(
         label_en=info["label_en"],
         file_key=file_key,
         download_url=download_url,
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(timezone.utc),
         content_type=content_type,
     )
 
@@ -230,6 +232,7 @@ def preview_project_document(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """
     書類をHTML形式でブラウザに直接返す（プレビュー用）。
     ストレージには保存しない。
@@ -254,7 +257,7 @@ def preview_project_document(
     from services.submission_engine import jinja_env
     try:
         tmpl = jinja_env.get_template(info["file"])
-        context.setdefault("generated_at", datetime.utcnow())
+        context.setdefault("generated_at", datetime.now(timezone.utc))
         html_content = tmpl.render(**context)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"テンプレート描画に失敗しました: {e}")
@@ -274,6 +277,7 @@ def list_document_categories(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """利用可能な書類カテゴリーと、そのカテゴリーに属するテンプレートの数を返す"""
     project = db.query(Project).filter(
         Project.id == project_id,

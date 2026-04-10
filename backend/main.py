@@ -27,8 +27,23 @@ from routers import approval_workflow, document_versions, file_integrity, docume
 from routers import electronic_delivery
 from routers import schedule as schedule_router
 from routers import dashboard, design_changes, subcontractor_evaluations
+from routers import work_packages
+from routers import concrete, staffing, legal_inspections, company_dashboard, performance, material_approvals
+from routers import (
+    steel_inspections, instructions, special_specs, finish_samples,
+    completion_drawings, sales_pipeline, ve_proposals, photo_guides,
+    drawing_mappings, telemetry, daily_report_photos, ncr_templates,
+    facilities, client_portal,
+    photo_album, batch_documents, inspection_schedules, external_api,
+    crm, entity_links, project_history,
+    cron_tasks, data_export, onboarding, project_members,
+    estimates, invoices, government_filings, handover,
+    platform, business_flows,
+    user_tasks, announcements,
+)
 from middleware.rate_limit import RateLimitMiddleware
 from services.seed import seed_initial_data
+from services.tolerance_seed import seed_tolerance_standards
 from services.storage_service import ensure_bucket
 
 
@@ -71,6 +86,7 @@ async def lifespan(app: FastAPI):
         db = SessionLocal()
         try:
             seed_initial_data(db)
+            seed_tolerance_standards(db)
         finally:
             db.close()
         print("[init] DB setup complete", flush=True)
@@ -151,6 +167,48 @@ app.include_router(schedule_router.router)
 app.include_router(dashboard.router)
 app.include_router(design_changes.router)
 app.include_router(subcontractor_evaluations.router)
+app.include_router(work_packages.router)
+app.include_router(concrete.router)
+app.include_router(staffing.tenant_router)
+app.include_router(staffing.project_router)
+app.include_router(legal_inspections.router)
+app.include_router(company_dashboard.router)
+app.include_router(performance.router)
+app.include_router(material_approvals.router)
+app.include_router(steel_inspections.router)
+app.include_router(instructions.router)
+app.include_router(special_specs.router)
+app.include_router(finish_samples.router)
+app.include_router(completion_drawings.router)
+app.include_router(sales_pipeline.router)
+app.include_router(ve_proposals.router)
+app.include_router(photo_guides.router)
+app.include_router(drawing_mappings.router)
+app.include_router(telemetry.router)
+app.include_router(daily_report_photos.router)
+app.include_router(ncr_templates.router)
+app.include_router(facilities.router)
+app.include_router(client_portal.admin_router)
+app.include_router(client_portal.public_router)
+app.include_router(photo_album.router)
+app.include_router(batch_documents.router)
+app.include_router(inspection_schedules.router)
+app.include_router(external_api.router)
+app.include_router(crm.router)
+app.include_router(entity_links.router)
+app.include_router(project_history.router)
+app.include_router(cron_tasks.router)
+app.include_router(data_export.router)
+app.include_router(onboarding.router)
+app.include_router(project_members.router)
+app.include_router(estimates.router)
+app.include_router(invoices.router)
+app.include_router(government_filings.router)
+app.include_router(handover.router)
+app.include_router(user_tasks.router)
+app.include_router(announcements.router)
+app.include_router(platform.router)
+app.include_router(business_flows.router)
 
 
 @app.get("/api/health")

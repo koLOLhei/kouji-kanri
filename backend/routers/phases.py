@@ -12,6 +12,7 @@ from models.spec import SpecChapter
 from models.user import User
 from schemas.phase import PhaseCreate, PhaseUpdate, PhaseResponse, RequirementCreate, RequirementResponse
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/phases", tags=["phases"])
 
@@ -31,6 +32,7 @@ def list_phases(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     _verify_project(project_id, user, db)
     phases = db.query(Phase).filter(
         Phase.project_id == project_id
@@ -61,6 +63,7 @@ def create_phase(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     _verify_project(project_id, user, db)
     phase = Phase(project_id=project_id, **req.model_dump())
     db.add(phase)
@@ -77,6 +80,7 @@ def init_phases_from_spec(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """仕様書の章構成から工程を自動生成"""
     project = _verify_project(project_id, user, db)
 
@@ -127,6 +131,7 @@ def get_phase(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     _verify_project(project_id, user, db)
     phase = db.query(Phase).filter(Phase.id == phase_id, Phase.project_id == project_id).first()
     if not phase:
@@ -142,6 +147,7 @@ def update_phase(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     _verify_project(project_id, user, db)
     phase = db.query(Phase).filter(Phase.id == phase_id, Phase.project_id == project_id).first()
     if not phase:
@@ -161,6 +167,7 @@ def get_checklist(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """工程の必要書類チェックリスト"""
     _verify_project(project_id, user, db)
     reqs = db.query(PhaseRequirement).filter_by(phase_id=phase_id).order_by(PhaseRequirement.sort_order).all()
@@ -184,6 +191,7 @@ def add_requirement(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     _verify_project(project_id, user, db)
     requirement = PhaseRequirement(phase_id=phase_id, **req.model_dump())
     db.add(requirement)

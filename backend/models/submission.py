@@ -1,7 +1,7 @@
 """Submission (提出書類パッケージ) and DocumentTemplate models."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, Boolean, DateTime, Text, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column

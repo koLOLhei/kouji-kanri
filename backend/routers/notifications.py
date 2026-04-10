@@ -1,6 +1,6 @@
 """Notification (通知) router."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
@@ -56,7 +56,7 @@ def mark_read(
     if not n:
         raise HTTPException(status_code=404, detail="通知が見つかりません")
     n.is_read = True
-    n.read_at = datetime.utcnow()
+    n.read_at = datetime.now(timezone.utc)
     db.commit()
     return {"status": "ok"}
 
@@ -70,7 +70,7 @@ def mark_all_read(
         Notification.user_id == user.id,
         Notification.tenant_id == user.tenant_id,
         Notification.is_read == False,
-    ).update({"is_read": True, "read_at": datetime.utcnow()})
+    ).update({"is_read": True, "read_at": datetime.now(timezone.utc)})
     db.commit()
     return {"status": "ok"}
 

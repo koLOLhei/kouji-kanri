@@ -10,6 +10,7 @@ from database import get_db
 from models.inspection import Inspection, InspectionChecklist
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/inspections", tags=["inspections"])
 
@@ -62,6 +63,7 @@ def list_inspections(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(Inspection).filter(Inspection.project_id == project_id)
     if status:
         q = q.filter(Inspection.status == status)
@@ -77,6 +79,7 @@ def create_inspection(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     checklist_data = req.checklist_items
     insp = Inspection(
         project_id=project_id,
@@ -97,6 +100,7 @@ def get_inspection(
     project_id: str, inspection_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     insp = db.query(Inspection).filter(
         Inspection.id == inspection_id, Inspection.project_id == project_id
     ).first()
@@ -113,6 +117,7 @@ def update_inspection(
     project_id: str, inspection_id: str, req: InspectionUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     insp = db.query(Inspection).filter(
         Inspection.id == inspection_id, Inspection.project_id == project_id
     ).first()
@@ -130,6 +135,7 @@ def delete_inspection(
     project_id: str, inspection_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     insp = db.query(Inspection).filter(
         Inspection.id == inspection_id, Inspection.project_id == project_id
     ).first()
@@ -147,6 +153,7 @@ def update_checklist_item(
     req: ChecklistItemUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     item = db.query(InspectionChecklist).filter(
         InspectionChecklist.id == item_id, InspectionChecklist.inspection_id == inspection_id
     ).first()
@@ -164,6 +171,7 @@ def complete_inspection(
     project_id: str, inspection_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Mark inspection as completed, checking all checklist items."""
     insp = db.query(Inspection).filter(
         Inspection.id == inspection_id, Inspection.project_id == project_id

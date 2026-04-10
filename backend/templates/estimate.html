@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 15mm 20mm 20mm 20mm;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic Pro", "Yu Gothic", "MS Gothic", sans-serif;
+    font-size: 10.5pt;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+  }
+
+  /* ── ヘッダー ── */
+  .title {
+    font-size: 22pt;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 8px;
+    margin: 20px 0 30px;
+  }
+
+  /* ── レイアウト ── */
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .left-col { width: 55%; }
+  .right-col { width: 40%; text-align: right; }
+
+  /* ── 顧客情報 ── */
+  .customer-name {
+    font-size: 14pt;
+    font-weight: bold;
+    border-bottom: 2px solid #1a1a1a;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+  }
+  .customer-suffix {
+    font-size: 11pt;
+    margin-left: 8px;
+  }
+
+  /* ── 合計金額 ── */
+  .total-box {
+    border: 2px solid #1a1a1a;
+    padding: 10px 16px;
+    margin: 16px 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .total-label {
+    font-size: 12pt;
+    font-weight: bold;
+  }
+  .total-amount {
+    font-size: 18pt;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── 会社情報 ── */
+  .company-info {
+    font-size: 9pt;
+    line-height: 1.5;
+  }
+  .company-name {
+    font-size: 11pt;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+
+  /* ── 見積情報 ── */
+  .meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+    font-size: 9.5pt;
+  }
+  .meta-table th {
+    background: #e8eaf0;
+    border: 1px solid #333;
+    padding: 4px 8px;
+    text-align: center;
+    white-space: nowrap;
+    width: 100px;
+    font-weight: bold;
+  }
+  .meta-table td {
+    border: 1px solid #333;
+    padding: 4px 8px;
+  }
+
+  /* ── 明細テーブル ── */
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  table.items th {
+    background: #2c3e50;
+    color: #fff;
+    border: 1px solid #2c3e50;
+    padding: 6px 8px;
+    font-size: 9.5pt;
+    font-weight: bold;
+    text-align: center;
+  }
+  table.items td {
+    border: 1px solid #ccc;
+    padding: 5px 8px;
+    font-size: 9.5pt;
+    vertical-align: top;
+  }
+  table.items tr:nth-child(even) td {
+    background: #f9f9f9;
+  }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .center { text-align: center; }
+
+  /* ── 合計欄 ── */
+  .summary-table {
+    width: 260px;
+    margin-left: auto;
+    margin-top: 10px;
+    border-collapse: collapse;
+  }
+  .summary-table th {
+    background: #e8eaf0;
+    border: 1px solid #333;
+    padding: 4px 10px;
+    font-size: 9.5pt;
+    text-align: center;
+    font-weight: bold;
+    width: 100px;
+  }
+  .summary-table td {
+    border: 1px solid #333;
+    padding: 4px 10px;
+    font-size: 10pt;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .summary-table tr.total-row th,
+  .summary-table tr.total-row td {
+    font-size: 11pt;
+    font-weight: bold;
+    background: #fff8e1;
+  }
+
+  /* ── 備考 ── */
+  .notes-section {
+    margin-top: 20px;
+  }
+  .notes-section h3 {
+    font-size: 10pt;
+    font-weight: bold;
+    border-bottom: 1px solid #555;
+    padding-bottom: 2px;
+    margin: 10px 0 5px;
+  }
+  .notes-box {
+    border: 1px solid #999;
+    min-height: 60px;
+    padding: 8px;
+    font-size: 9pt;
+    white-space: pre-wrap;
+  }
+
+  /* ── 押印欄 ── */
+  .stamp-area {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 30px;
+  }
+  .stamp-box {
+    width: 70px;
+    height: 70px;
+    border: 1px solid #333;
+    text-align: center;
+    font-size: 8pt;
+    padding-top: 4px;
+  }
+
+  /* ── 印刷最適化 ── */
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="title">御 見 積 書</div>
+
+  <div class="header-row">
+    <div class="left-col">
+      <div class="customer-name">
+        {{ estimate.customer_name }}<span class="customer-suffix">御中</span>
+      </div>
+
+      <div class="total-box">
+        <span class="total-label">御見積金額（税込）</span>
+        <span class="total-amount">&yen; {{ "{:,}".format(estimate.total) }}</span>
+      </div>
+
+      <table class="meta-table">
+        <tr>
+          <th>見積番号</th>
+          <td>{{ estimate.estimate_number }}</td>
+        </tr>
+        <tr>
+          <th>見積日</th>
+          <td>{{ estimate.estimate_date if estimate.estimate_date else "-" }}</td>
+        </tr>
+        <tr>
+          <th>有効期限</th>
+          <td>{{ estimate.valid_until if estimate.valid_until else "-" }}</td>
+        </tr>
+        <tr>
+          <th>件名</th>
+          <td>{{ estimate.project_name }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="right-col">
+      <div class="company-info">
+        <div class="company-name">{{ company.name }}</div>
+        <div>{{ company.address }}</div>
+        <div>TEL: {{ company.phone }}</div>
+        {% if company.registration_number %}
+        <div>適格請求書発行事業者番号:</div>
+        <div>{{ company.registration_number }}</div>
+        {% endif %}
+      </div>
+
+      <div class="stamp-area">
+        <div>
+          <div class="stamp-box"></div>
+          <div style="text-align:center; font-size:8pt; margin-top:2px;">承認</div>
+        </div>
+        <div>
+          <div class="stamp-box"></div>
+          <div style="text-align:center; font-size:8pt; margin-top:2px;">確認</div>
+        </div>
+        <div>
+          <div class="stamp-box"></div>
+          <div style="text-align:center; font-size:8pt; margin-top:2px;">担当</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 明細 -->
+  <table class="items">
+    <thead>
+      <tr>
+        <th style="width:35px;">No.</th>
+        <th>項目名</th>
+        <th style="width:120px;">仕様</th>
+        <th style="width:50px;">数量</th>
+        <th style="width:40px;">単位</th>
+        <th style="width:80px;">単価</th>
+        <th style="width:90px;">金額</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in estimate.items %}
+      <tr>
+        <td class="center">{{ loop.index }}</td>
+        <td>{{ item.name }}</td>
+        <td>{{ item.spec | default("") }}</td>
+        <td class="num">{{ item.quantity | default("") }}</td>
+        <td class="center">{{ item.unit | default("") }}</td>
+        <td class="num">{{ "{:,}".format(item.unit_price) if item.unit_price else "" }}</td>
+        <td class="num">{{ "{:,}".format(item.amount) if item.amount else "" }}</td>
+      </tr>
+      {% endfor %}
+      {% for _ in range([0, 10 - (estimate.items | length)] | max) %}
+      <tr>
+        <td class="center">&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- 合計 -->
+  <table class="summary-table">
+    <tr>
+      <th>小計</th>
+      <td>&yen; {{ "{:,}".format(estimate.subtotal) }}</td>
+    </tr>
+    <tr>
+      <th>消費税(10%)</th>
+      <td>&yen; {{ "{:,}".format(estimate.tax_amount) }}</td>
+    </tr>
+    <tr class="total-row">
+      <th>合計</th>
+      <td>&yen; {{ "{:,}".format(estimate.total) }}</td>
+    </tr>
+  </table>
+
+  <!-- 備考 -->
+  <div class="notes-section">
+    <h3>備考</h3>
+    <div class="notes-box">{{ estimate.notes | default("") }}</div>
+  </div>
+
+</body>
+</html>

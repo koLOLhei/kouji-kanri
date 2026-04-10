@@ -1,7 +1,7 @@
 """Corrective action / NCR management model."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, Date, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column

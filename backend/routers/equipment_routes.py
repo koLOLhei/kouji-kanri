@@ -10,6 +10,7 @@ from database import get_db
 from models.equipment import Equipment, EquipmentDailyCheck, EquipmentUsage
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 equipment_router = APIRouter(prefix="/api/equipment", tags=["equipment"])
 project_equipment_router = APIRouter(tags=["equipment"])
@@ -124,6 +125,7 @@ def list_equipment_checks(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return (
         db.query(EquipmentDailyCheck)
         .filter(EquipmentDailyCheck.project_id == project_id)
@@ -139,6 +141,7 @@ def create_equipment_check(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     check = EquipmentDailyCheck(
         project_id=project_id,
         **req.model_dump(),
@@ -157,6 +160,7 @@ def list_equipment_usage(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return (
         db.query(EquipmentUsage)
         .filter(EquipmentUsage.project_id == project_id)
@@ -172,6 +176,7 @@ def create_equipment_usage(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     usage = EquipmentUsage(
         project_id=project_id,
         **req.model_dump(),

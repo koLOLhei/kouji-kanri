@@ -1,7 +1,7 @@
 """Weather record model."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, Float, Date, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column

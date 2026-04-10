@@ -1,7 +1,7 @@
 """Submission auto-generation engine."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any
 
@@ -284,7 +284,7 @@ def generate_document(
         context_data["project"] = project
 
     # 生成日時を自動付与
-    context_data.setdefault("generated_at", datetime.utcnow())
+    context_data.setdefault("generated_at", datetime.now(timezone.utc))
 
     # DBテンプレートを優先、なければファイルから
     db_template = db.query(DocumentTemplate).filter_by(
@@ -397,7 +397,7 @@ def generate_submission_package(
         phase=phase,
         photos=photos,
         reports=reports,
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(timezone.utc),
     )
 
     # PDF生成
@@ -423,7 +423,7 @@ def generate_submission_package(
         title=f"{phase.name} - {submission_type}",
         file_key=key,
         status="ready",
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(timezone.utc),
         metadata_json={
             "photo_ids": [p.id for p in photos],
             "report_ids": [r.id for r in reports],

@@ -20,6 +20,7 @@ from database import get_db
 from models.project import Project
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 from services.electronic_delivery import (
     generate_photo_xml,
     generate_index_xml,
@@ -83,6 +84,7 @@ def preview_electronic_delivery(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """
     Preview what will be included in the electronic delivery package.
     Returns folder structure summary and validation results.
@@ -100,6 +102,7 @@ def validate_electronic_delivery(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """
     Validate the completeness of the electronic delivery package.
     Returns errors and warnings without generating any files.
@@ -114,6 +117,7 @@ def download_photo_xml(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """
     Download PHOTO.XML for the project.
     Conforms to デジタル写真管理情報基準 令和7年3月.
@@ -140,6 +144,7 @@ def download_index_xml(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """
     Download INDEX_C.XML for the project.
     Conforms to 工事完成図書の電子納品等要領 令和7年3月.
@@ -166,6 +171,7 @@ def download_meet_xml(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """
     Download MEET.XML for the project (meeting minutes).
     """
@@ -191,6 +197,7 @@ def generate_delivery_package(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """
     Generate the full electronic delivery ZIP package.
 

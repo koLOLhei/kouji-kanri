@@ -60,8 +60,8 @@ export default function ApprovalQueuePage() {
     mutationFn: (item: ApprovalItem) => {
       if (item.type === "daily_report") {
         return apiFetch(
-          `/api/projects/${item.project_id}/daily-reports/${item.id}/reject`,
-          { method: "PUT", token: token! }
+          `/api/projects/${item.project_id}/daily-reports/${item.id}`,
+          { method: "PUT", token: token!, body: JSON.stringify({ status: "rejected" }) }
         );
       }
       return apiFetch(

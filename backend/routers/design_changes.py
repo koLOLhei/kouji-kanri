@@ -1,6 +1,6 @@
 """Design Change (設計変更) router."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -11,6 +11,7 @@ from database import get_db
 from models.design_change import DesignChange
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/design-changes", tags=["design-changes"])
 
@@ -62,6 +63,7 @@ class DesignChangeUpdate(BaseModel):
 # ---------- Helpers ----------
 
 def _get_next_change_number(project_id: str, db: Session) -> int:
+    verify_project_access(project_id, user, db)
     max_num = db.query(func.max(DesignChange.change_number)).filter(
         DesignChange.project_id == project_id
     ).scalar()
@@ -83,6 +85,7 @@ def list_design_changes(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(DesignChange).filter(
         DesignChange.project_id == project_id,
         DesignChange.tenant_id == user.tenant_id,
@@ -99,6 +102,7 @@ def create_design_change(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     change_number = _get_next_change_number(project_id, db)
     data = req.model_dump()
     # Auto-calculate difference
@@ -122,6 +126,7 @@ def design_changes_summary(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """設計変更サマリー（件数・金額影響・工期影響）"""
     changes = db.query(DesignChange).filter(
         DesignChange.project_id == project_id,
@@ -165,6 +170,7 @@ def get_design_change(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     dc = db.query(DesignChange).filter(
         DesignChange.id == change_id,
         DesignChange.project_id == project_id,
@@ -183,6 +189,7 @@ def update_design_change(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     dc = db.query(DesignChange).filter(
         DesignChange.id == change_id,
         DesignChange.project_id == project_id,
@@ -201,7 +208,7 @@ def update_design_change(
 
     # Set approved_at when approving
     if data.get("status") == "approved" and dc.status != "approved":
-        data["approved_at"] = datetime.utcnow()
+        data["approved_at"] = datetime.now(timezone.utc)
 
     for k, v in data.items():
         setattr(dc, k, v)
@@ -217,6 +224,7 @@ def delete_design_change(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     dc = db.query(DesignChange).filter(
         DesignChange.id == change_id,
         DesignChange.project_id == project_id,
@@ -238,6 +246,7 @@ def submit_design_change(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     dc = db.query(DesignChange).filter(
         DesignChange.id == change_id,
         DesignChange.project_id == project_id,
@@ -248,7 +257,7 @@ def submit_design_change(
     if dc.status != "draft":
         raise HTTPException(status_code=400, detail="下書き状態のみ提出できます")
     dc.status = "submitted"
-    dc.requested_at = datetime.utcnow()
+    dc.requested_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(dc)
     return dc
@@ -262,6 +271,7 @@ def approve_design_change(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     dc = db.query(DesignChange).filter(
         DesignChange.id == change_id,
         DesignChange.project_id == project_id,
@@ -271,7 +281,7 @@ def approve_design_change(
         raise HTTPException(status_code=404, detail="設計変更が見つかりません")
     dc.status = "approved"
     dc.approved_by = approved_by or user.name
-    dc.approved_at = datetime.utcnow()
+    dc.approved_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(dc)
     return dc
@@ -284,6 +294,7 @@ def reject_design_change(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     dc = db.query(DesignChange).filter(
         DesignChange.id == change_id,
         DesignChange.project_id == project_id,

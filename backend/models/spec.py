@@ -1,7 +1,7 @@
 """Specification chapter and regional override models."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, Integer, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column

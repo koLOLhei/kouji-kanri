@@ -1,7 +1,7 @@
 """Safety management models (KY, patrols, incidents, trainings, orientations)."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, Integer, Boolean, Date, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column

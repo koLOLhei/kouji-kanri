@@ -11,6 +11,7 @@ from database import get_db
 from models.corrective_action import CorrectiveAction
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/corrective-actions", tags=["corrective-actions"])
 
@@ -54,6 +55,7 @@ class VerifyRequest(BaseModel):
 # ---------- Endpoints ----------
 
 def _next_ncr_number(db: Session, project_id: str) -> str:
+    verify_project_access(project_id, user, db)
     max_num = db.query(func.count(CorrectiveAction.id)).filter(
         CorrectiveAction.project_id == project_id
     ).scalar()
@@ -68,6 +70,7 @@ def list_corrective_actions(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(CorrectiveAction).filter(CorrectiveAction.project_id == project_id)
     if status:
         q = q.filter(CorrectiveAction.status == status)
@@ -83,6 +86,7 @@ def create_corrective_action(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ncr_number = _next_ncr_number(db, project_id)
     ca = CorrectiveAction(
         project_id=project_id,
@@ -101,6 +105,7 @@ def get_corrective_action(
     project_id: str, ca_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ca = db.query(CorrectiveAction).filter(
         CorrectiveAction.id == ca_id, CorrectiveAction.project_id == project_id
     ).first()
@@ -114,6 +119,7 @@ def update_corrective_action(
     project_id: str, ca_id: str, req: CorrectiveActionUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ca = db.query(CorrectiveAction).filter(
         CorrectiveAction.id == ca_id, CorrectiveAction.project_id == project_id
     ).first()
@@ -131,6 +137,7 @@ def delete_corrective_action(
     project_id: str, ca_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ca = db.query(CorrectiveAction).filter(
         CorrectiveAction.id == ca_id, CorrectiveAction.project_id == project_id
     ).first()
@@ -146,6 +153,7 @@ def verify_corrective_action(
     project_id: str, ca_id: str, req: VerifyRequest,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Verify the corrective action was effective."""
     ca = db.query(CorrectiveAction).filter(
         CorrectiveAction.id == ca_id, CorrectiveAction.project_id == project_id
@@ -156,7 +164,7 @@ def verify_corrective_action(
         raise HTTPException(status_code=400, detail="対応中または完了済みの是正処置のみ検証できます")
     ca.verification_result = req.verification_result
     ca.verified_by = user.id
-    ca.verified_at = datetime.utcnow()
+    ca.verified_at = datetime.now(timezone.utc)
     ca.status = "verified"
     db.commit()
     db.refresh(ca)
@@ -168,6 +176,7 @@ def close_corrective_action(
     project_id: str, ca_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Close a verified corrective action."""
     ca = db.query(CorrectiveAction).filter(
         CorrectiveAction.id == ca_id, CorrectiveAction.project_id == project_id

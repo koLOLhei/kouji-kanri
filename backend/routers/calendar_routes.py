@@ -12,6 +12,7 @@ from models.inspection import Inspection
 from models.milestone import Milestone
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/calendar", tags=["calendar"])
 
@@ -46,9 +47,11 @@ def get_calendar(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     events = []
 
     # Daily reports
+    verify_project_access(project_id, user, db)
     rq = db.query(DailyReport).filter(DailyReport.project_id == project_id)
     if date_from:
         rq = rq.filter(DailyReport.report_date >= date_from)
@@ -106,6 +109,7 @@ def list_milestones(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(Milestone).filter(Milestone.project_id == project_id)
     if status:
         q = q.filter(Milestone.status == status)
@@ -119,6 +123,7 @@ def create_milestone(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ms = Milestone(project_id=project_id, **req.model_dump())
     db.add(ms)
     db.commit()
@@ -131,6 +136,7 @@ def get_milestone(
     project_id: str, milestone_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ms = db.query(Milestone).filter(
         Milestone.id == milestone_id, Milestone.project_id == project_id
     ).first()
@@ -144,6 +150,7 @@ def update_milestone(
     project_id: str, milestone_id: str, req: MilestoneUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ms = db.query(Milestone).filter(
         Milestone.id == milestone_id, Milestone.project_id == project_id
     ).first()
@@ -161,6 +168,7 @@ def delete_milestone(
     project_id: str, milestone_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ms = db.query(Milestone).filter(
         Milestone.id == milestone_id, Milestone.project_id == project_id
     ).first()

@@ -10,6 +10,7 @@ from database import get_db
 from models.meeting import Meeting
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/meetings", tags=["meetings"])
 
@@ -51,6 +52,7 @@ def list_meetings(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(Meeting).filter(Meeting.project_id == project_id)
     if meeting_type:
         q = q.filter(Meeting.meeting_type == meeting_type)
@@ -64,6 +66,7 @@ def create_meeting(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     meeting = Meeting(
         project_id=project_id,
         created_by=user.id,
@@ -82,6 +85,7 @@ def get_meeting(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     meeting = db.query(Meeting).filter(
         Meeting.id == meeting_id, Meeting.project_id == project_id
     ).first()
@@ -98,6 +102,7 @@ def update_meeting(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     meeting = db.query(Meeting).filter(
         Meeting.id == meeting_id, Meeting.project_id == project_id
     ).first()

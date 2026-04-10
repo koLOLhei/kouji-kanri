@@ -1,6 +1,6 @@
 """品質管理・出来高管理ルーター (Quality control, Stage confirmations, Progress payments)."""
 
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 from typing import Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -11,6 +11,7 @@ from database import get_db
 from models.quality import QualityControlItem, QualityMeasurement, StageConfirmation, ProgressPayment
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 from services.quality_statistics import (
     calculate_xbar_r_chart,
     calculate_histogram,
@@ -155,6 +156,7 @@ def list_quality_items(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(QualityControlItem).filter(QualityControlItem.project_id == project_id)
     if phase_id:
         q = q.filter(QualityControlItem.phase_id == phase_id)
@@ -170,6 +172,7 @@ def create_quality_item(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     item = QualityControlItem(
         project_id=project_id,
         tenant_id=user.tenant_id,
@@ -188,6 +191,7 @@ def get_quality_item(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     item = db.query(QualityControlItem).filter(
         QualityControlItem.id == item_id,
         QualityControlItem.project_id == project_id,
@@ -205,6 +209,7 @@ def update_quality_item(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     item = db.query(QualityControlItem).filter(
         QualityControlItem.id == item_id,
         QualityControlItem.project_id == project_id,
@@ -225,6 +230,7 @@ def delete_quality_item(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     item = db.query(QualityControlItem).filter(
         QualityControlItem.id == item_id,
         QualityControlItem.project_id == project_id,
@@ -259,6 +265,7 @@ def list_measurements(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     _get_item_or_404(db, project_id, item_id)
     return (
         db.query(QualityMeasurement)
@@ -276,11 +283,12 @@ def create_measurement(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ctrl_item = _get_item_or_404(db, project_id, item_id)
     is_passed = _auto_is_passed(ctrl_item, req.measured_value)
     data = req.model_dump()
     if data.get("measured_at") is None:
-        data["measured_at"] = datetime.utcnow()
+        data["measured_at"] = datetime.now(timezone.utc)
     m = QualityMeasurement(
         item_id=item_id,
         tenant_id=user.tenant_id,
@@ -301,6 +309,7 @@ def get_measurement(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     _get_item_or_404(db, project_id, item_id)
     m = db.query(QualityMeasurement).filter(
         QualityMeasurement.id == measurement_id,
@@ -320,6 +329,7 @@ def update_measurement(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ctrl_item = _get_item_or_404(db, project_id, item_id)
     m = db.query(QualityMeasurement).filter(
         QualityMeasurement.id == measurement_id,
@@ -346,6 +356,7 @@ def delete_measurement(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     _get_item_or_404(db, project_id, item_id)
     m = db.query(QualityMeasurement).filter(
         QualityMeasurement.id == measurement_id,
@@ -370,6 +381,7 @@ def get_xbar_r_chart(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """x̄-R管理図データを返す"""
     ctrl_item = _get_item_or_404(db, project_id, item_id)
     rows = (
@@ -403,6 +415,7 @@ def get_histogram(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """ヒストグラム・度数分布表データを返す"""
     ctrl_item = _get_item_or_404(db, project_id, item_id)
     rows = (
@@ -437,6 +450,7 @@ def get_as_built_chart(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """出来形管理図データを返す"""
     ctrl_item = _get_item_or_404(db, project_id, item_id)
     if ctrl_item.upper_limit is None or ctrl_item.lower_limit is None or ctrl_item.design_value is None:
@@ -487,6 +501,7 @@ def list_stage_confirmations(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(StageConfirmation).filter(StageConfirmation.project_id == project_id)
     if phase_id:
         q = q.filter(StageConfirmation.phase_id == phase_id)
@@ -504,6 +519,7 @@ def create_stage_confirmation(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     data = req.model_dump()
     # Convert photos list to JSON-storable format
     sc = StageConfirmation(
@@ -524,6 +540,7 @@ def get_stage_confirmation(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     sc = db.query(StageConfirmation).filter(
         StageConfirmation.id == confirmation_id,
         StageConfirmation.project_id == project_id,
@@ -541,6 +558,7 @@ def update_stage_confirmation(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     sc = db.query(StageConfirmation).filter(
         StageConfirmation.id == confirmation_id,
         StageConfirmation.project_id == project_id,
@@ -561,6 +579,7 @@ def delete_stage_confirmation(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     sc = db.query(StageConfirmation).filter(
         StageConfirmation.id == confirmation_id,
         StageConfirmation.project_id == project_id,
@@ -583,6 +602,7 @@ def list_progress_payments(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(ProgressPayment).filter(ProgressPayment.project_id == project_id)
     if status:
         q = q.filter(ProgressPayment.status == status)
@@ -596,6 +616,7 @@ def create_progress_payment(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     pp = ProgressPayment(
         project_id=project_id,
         tenant_id=user.tenant_id,
@@ -614,6 +635,7 @@ def get_progress_payment(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     pp = db.query(ProgressPayment).filter(
         ProgressPayment.id == payment_id,
         ProgressPayment.project_id == project_id,
@@ -631,6 +653,7 @@ def update_progress_payment(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     pp = db.query(ProgressPayment).filter(
         ProgressPayment.id == payment_id,
         ProgressPayment.project_id == project_id,
@@ -651,6 +674,7 @@ def delete_progress_payment(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     pp = db.query(ProgressPayment).filter(
         ProgressPayment.id == payment_id,
         ProgressPayment.project_id == project_id,
@@ -669,6 +693,7 @@ def get_progress_payment_summary(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """出来高支払い請求の集計サマリーを返す"""
     pp = db.query(ProgressPayment).filter(
         ProgressPayment.id == payment_id,

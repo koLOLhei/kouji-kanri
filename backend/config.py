@@ -20,3 +20,11 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# アプリケーション設定
+class AppSettings:
+    app_domain: str = "https://kouji.soara-mu.jp"
+    default_tax_rate: float = 10.0  # 消費税率(%)
+    invoice_registration_number: str = ""  # 適格請求書発行事業者番号
+
+app_settings = AppSettings()

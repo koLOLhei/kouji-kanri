@@ -1,6 +1,6 @@
 """書類ダッシュボード — 全工程の書類充足状況を一覧、一括生成、提出トラッキング"""
 
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,6 +16,7 @@ from models.submission import Submission
 from models.project import Project
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 from services.submission_engine import check_phase_completeness, generate_submission_package
 
 router = APIRouter(prefix="/api/projects/{project_id}/documents", tags=["document-dashboard"])
@@ -36,6 +37,7 @@ def document_dashboard(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """全工程の書類充足状況を一覧表示。管理者が一目で何が足りないか分かる。"""
     project = db.query(Project).filter(
         Project.id == project_id, Project.tenant_id == user.tenant_id
@@ -147,6 +149,7 @@ def batch_generate(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """全ての書類が揃った工程の提出書類を一括生成"""
     project = db.query(Project).filter(
         Project.id == project_id, Project.tenant_id == user.tenant_id
@@ -205,6 +208,7 @@ def track_submission(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """提出書類の提出先・提出日を記録"""
     sub = db.query(Submission).filter(
         Submission.id == submission_id, Submission.project_id == project_id
@@ -218,7 +222,7 @@ def track_submission(
     meta["submitted_to"] = req.submitted_to
     meta["submission_notes"] = req.notes
     meta["tracked_by"] = user.id
-    meta["tracked_at"] = datetime.utcnow().isoformat()
+    meta["tracked_at"] = datetime.now(timezone.utc).isoformat()
     sub.metadata_json = meta
     db.commit()
     db.refresh(sub)
@@ -233,6 +237,7 @@ def missing_documents(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """不足書類だけを抽出して返す。「あと何が必要か」に特化。"""
     phases = db.query(Phase).filter(Phase.project_id == project_id).order_by(Phase.sort_order).all()
 

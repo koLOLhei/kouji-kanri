@@ -1,11 +1,12 @@
 """Authentication router."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.user import User
 from models.tenant import Tenant
+from models.platform import LoginHistory
 from schemas.auth import LoginRequest, TokenResponse, UserInfo
 from services.auth_service import verify_password, create_access_token, get_current_user
 
@@ -13,10 +14,22 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email, User.is_active == True).first()
     if not user or not verify_password(req.password, user.password_hash):
+        # 失敗ログも記録
+        if user:
+            db.add(LoginHistory(user_id=user.id, tenant_id=user.tenant_id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent", "")[:500], success=False))
+            db.commit()
         raise HTTPException(status_code=401, detail="メールアドレスまたはパスワードが正しくありません")
+
+    # ログイン成功記録
+    db.add(LoginHistory(user_id=user.id, tenant_id=user.tenant_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent", "")[:500], success=True))
+    db.commit()
 
     tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
     token = create_access_token({"sub": user.id, "tenant_id": user.tenant_id, "role": user.role})

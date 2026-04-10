@@ -1,7 +1,7 @@
 """Daily report (日報) model."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, Integer, Float, Date, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column

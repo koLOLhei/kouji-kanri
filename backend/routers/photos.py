@@ -1,6 +1,10 @@
 """Photo (工事写真) router."""
 
+import io
+import zipfile
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -9,11 +13,43 @@ from models.photo import Photo
 from models.user import User
 from schemas.photo import PhotoResponse, PhotoUpdate
 from services.auth_service import get_current_user
-from services.storage_service import generate_upload_key, upload_file, generate_presigned_url, compute_checksum
+from services.storage_service import generate_upload_key, upload_file, generate_presigned_url, compute_checksum, read_file
 from services.photo_service import extract_exif, create_thumbnail
 from services.submission_engine import auto_generate_if_ready
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/photos", tags=["photos"])
+
+
+@router.get("/download-zip")
+def download_photos_zip(
+    project_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """プロジェクトの全写真をZIPでダウンロードする。"""
+    verify_project_access(project_id, user, db)
+    photos = db.query(Photo).filter(Photo.project_id == project_id).all()
+    if not photos:
+        raise HTTPException(status_code=404, detail="写真が見つかりません")
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for idx, photo in enumerate(photos, 1):
+            file_data = read_file(photo.file_key)
+            if file_data is None:
+                continue
+            filename = photo.original_filename or f"photo_{idx}.jpg"
+            # 重複ファイル名を回避
+            arcname = f"{idx:04d}_{filename}"
+            zf.writestr(arcname, file_data)
+
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=photos_{project_id}.zip"},
+    )
 
 
 @router.get("", response_model=list[PhotoResponse])
@@ -23,6 +59,7 @@ def list_photos(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(Photo).filter(Photo.project_id == project_id)
     if phase_id:
         q = q.filter(Photo.phase_id == phase_id)
@@ -112,6 +149,7 @@ def update_photo(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     photo = db.query(Photo).filter(Photo.id == photo_id, Photo.project_id == project_id).first()
     if not photo:
         raise HTTPException(status_code=404, detail="写真が見つかりません")
@@ -130,6 +168,7 @@ def delete_photo(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     photo = db.query(Photo).filter(Photo.id == photo_id, Photo.project_id == project_id).first()
     if not photo:
         raise HTTPException(status_code=404, detail="写真が見つかりません")

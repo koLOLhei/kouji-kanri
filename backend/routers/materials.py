@@ -10,6 +10,7 @@ from database import get_db
 from models.material import MaterialOrder, MaterialOrderItem, MaterialTestRecord
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/materials", tags=["materials"])
 
@@ -77,6 +78,7 @@ def list_orders(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(MaterialOrder).filter(MaterialOrder.project_id == project_id)
     if status:
         q = q.filter(MaterialOrder.status == status)
@@ -90,6 +92,7 @@ def create_order(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     items_data = req.items
     order = MaterialOrder(
         project_id=project_id,
@@ -110,6 +113,7 @@ def get_order(
     project_id: str, order_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     order = db.query(MaterialOrder).filter(
         MaterialOrder.id == order_id, MaterialOrder.project_id == project_id
     ).first()
@@ -124,6 +128,7 @@ def update_order(
     project_id: str, order_id: str, req: OrderUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     order = db.query(MaterialOrder).filter(
         MaterialOrder.id == order_id, MaterialOrder.project_id == project_id
     ).first()
@@ -141,6 +146,7 @@ def delete_order(
     project_id: str, order_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     order = db.query(MaterialOrder).filter(
         MaterialOrder.id == order_id, MaterialOrder.project_id == project_id
     ).first()
@@ -157,6 +163,7 @@ def receive_items(
     project_id: str, order_id: str, req: ReceiveRequest,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Record delivery of a material order item."""
     order = db.query(MaterialOrder).filter(
         MaterialOrder.id == order_id, MaterialOrder.project_id == project_id
@@ -190,6 +197,7 @@ def list_test_records(
     project_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return db.query(MaterialTestRecord).filter(
         MaterialTestRecord.project_id == project_id
     ).order_by(MaterialTestRecord.created_at.desc()).all()
@@ -200,6 +208,7 @@ def create_test_record(
     project_id: str, req: TestRecordCreate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     record = MaterialTestRecord(project_id=project_id, **req.model_dump())
     db.add(record)
     db.commit()
@@ -212,6 +221,7 @@ def get_test_record(
     project_id: str, record_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     r = db.query(MaterialTestRecord).filter(
         MaterialTestRecord.id == record_id, MaterialTestRecord.project_id == project_id
     ).first()
@@ -225,6 +235,7 @@ def update_test_record(
     project_id: str, record_id: str, req: TestRecordUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     r = db.query(MaterialTestRecord).filter(
         MaterialTestRecord.id == record_id, MaterialTestRecord.project_id == project_id
     ).first()
@@ -242,6 +253,7 @@ def delete_test_record(
     project_id: str, record_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     r = db.query(MaterialTestRecord).filter(
         MaterialTestRecord.id == record_id, MaterialTestRecord.project_id == project_id
     ).first()

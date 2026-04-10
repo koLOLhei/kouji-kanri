@@ -8,6 +8,7 @@ from database import get_db
 from models.submission import Submission
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 from services.storage_service import generate_presigned_url
 
 router = APIRouter(prefix="/api/projects/{project_id}/bulk-download", tags=["bulk-download"])
@@ -27,7 +28,9 @@ def list_downloadable_documents(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Returns list of all downloadable documents (submissions with file_key)."""
+    verify_project_access(project_id, user, db)
     submissions = (
         db.query(Submission)
         .filter(
@@ -56,6 +59,7 @@ def bulk_download(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Generate presigned download URLs for the requested submissions."""
     if not req.submission_ids:
         raise HTTPException(status_code=400, detail="submission_ids が空です")

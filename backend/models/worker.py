@@ -1,7 +1,7 @@
 """Worker, qualification, and attendance models."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, Integer, Float, Boolean, Date, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column

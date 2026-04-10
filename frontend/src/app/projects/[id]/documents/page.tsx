@@ -92,9 +92,10 @@ export default function DocumentsDashboardPage() {
 
   const phaseGenerate = useMutation({
     mutationFn: (phaseId: string) =>
-      apiFetch(`/api/projects/${id}/documents/generate/${phaseId}`, {
+      apiFetch(`/api/projects/${id}/submissions/generate`, {
         method: "POST",
         token: token!,
+        body: JSON.stringify({ phase_id: phaseId }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents-dashboard", id] });

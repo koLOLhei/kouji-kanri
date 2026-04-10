@@ -1,7 +1,7 @@
 """Photo (工事写真) model."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, Integer, Float, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column

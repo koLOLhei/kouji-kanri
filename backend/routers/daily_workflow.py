@@ -15,6 +15,7 @@ from models.safety import KYActivity
 from models.inspection import Inspection
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/today", tags=["daily-workflow"])
 
@@ -26,6 +27,8 @@ def today_workflow(
     db: Session = Depends(get_db),
 ):
     """今日やるべきことを全て返す。作業員はこれだけ見ればいい。"""
+    if project_id:
+        verify_project_access(project_id, user, db)
     today = date.today()
 
     # アクティブな案件を取得

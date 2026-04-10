@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 20mm 20mm;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic Pro", "Yu Gothic", "MS Gothic", sans-serif;
+    font-size: 10.5pt;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+  }
+
+  .title {
+    font-size: 18pt;
+    font-weight: bold;
+    text-align: center;
+    border: 2px solid #1a1a1a;
+    padding: 6px 0;
+    margin-bottom: 12px;
+    letter-spacing: 6px;
+  }
+
+  /* ── 基本情報 ── */
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+  }
+  .info-table th {
+    background: #e8eaf0;
+    border: 1px solid #333;
+    padding: 4px 8px;
+    font-size: 9.5pt;
+    font-weight: bold;
+    text-align: center;
+    white-space: nowrap;
+    width: 90px;
+  }
+  .info-table td {
+    border: 1px solid #333;
+    padding: 4px 8px;
+    font-size: 9.5pt;
+  }
+
+  /* ── セクション見出し ── */
+  h2 {
+    font-size: 11pt;
+    font-weight: bold;
+    border-left: 5px solid #2563eb;
+    padding: 3px 8px;
+    margin: 14px 0 6px;
+    background: #f0f4ff;
+  }
+
+  /* ── 作業内容欄 ── */
+  .work-box {
+    border: 1px solid #333;
+    min-height: 180px;
+    padding: 8px;
+    font-size: 9.5pt;
+    white-space: pre-wrap;
+    line-height: 1.6;
+  }
+
+  /* ── 天候テーブル ── */
+  .weather-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+  }
+  .weather-table th {
+    background: #e8eaf0;
+    border: 1px solid #333;
+    padding: 4px 8px;
+    font-size: 9.5pt;
+    font-weight: bold;
+    text-align: center;
+    width: 90px;
+  }
+  .weather-table td {
+    border: 1px solid #333;
+    padding: 4px 8px;
+    font-size: 9.5pt;
+    text-align: center;
+  }
+
+  /* ── 詳細テーブル ── */
+  .detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+  }
+  .detail-table th {
+    background: #e8eaf0;
+    border: 1px solid #333;
+    padding: 4px 8px;
+    font-size: 9.5pt;
+    font-weight: bold;
+    text-align: center;
+    white-space: nowrap;
+    width: 110px;
+  }
+  .detail-table td {
+    border: 1px solid #333;
+    padding: 4px 8px;
+    font-size: 9.5pt;
+    vertical-align: top;
+  }
+
+  /* ── 備考欄 ── */
+  .notes-box {
+    border: 1px solid #333;
+    min-height: 60px;
+    padding: 6px 8px;
+    font-size: 9pt;
+    white-space: pre-wrap;
+  }
+
+  /* ── 承認欄 ── */
+  .approval-area {
+    margin-top: 24px;
+  }
+  .approval-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .approval-table th {
+    background: #e8eaf0;
+    border: 1px solid #333;
+    padding: 4px 8px;
+    font-size: 9pt;
+    font-weight: bold;
+    text-align: center;
+    width: 33.33%;
+  }
+  .approval-table td {
+    border: 1px solid #333;
+    height: 70px;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 9pt;
+  }
+
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .center { text-align: center; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="title">工 事 日 報</div>
+
+  <!-- 基本情報 -->
+  <table class="info-table">
+    <tr>
+      <th>工事名</th>
+      <td colspan="3">{{ project.name }}</td>
+    </tr>
+    <tr>
+      <th>工事番号</th>
+      <td>{{ project.project_code | default("-") }}</td>
+      <th>施工者</th>
+      <td>{{ company.name | default("-") }}</td>
+    </tr>
+    <tr>
+      <th>日付</th>
+      <td colspan="3">{{ report.report_date }}</td>
+    </tr>
+  </table>
+
+  <!-- 天候・気温 -->
+  <table class="weather-table">
+    <tr>
+      <th></th>
+      <th>天候</th>
+      <th>気温</th>
+    </tr>
+    <tr>
+      <th>午前</th>
+      <td>{{ report.weather_morning | default("-") }}</td>
+      <td rowspan="2">
+        最高 {{ report.temperature_max | default("-") }}℃ ／
+        最低 {{ report.temperature_min | default("-") }}℃
+      </td>
+    </tr>
+    <tr>
+      <th>午後</th>
+      <td>{{ report.weather_afternoon | default("-") }}</td>
+    </tr>
+  </table>
+
+  <!-- 作業内容 -->
+  <h2>作業内容</h2>
+  <div class="work-box">{{ report.work_description | default("") }}</div>
+
+  <!-- 作業員数・使用機材 -->
+  <table class="detail-table">
+    <tr>
+      <th>作業員数</th>
+      <td>{{ report.worker_count | default("-") }} 名</td>
+    </tr>
+    <tr>
+      <th>使用機材</th>
+      <td>{{ report.equipment_used | default("-") }}</td>
+    </tr>
+  </table>
+
+  <!-- 安全事項 -->
+  <h2>安全事項</h2>
+  <div class="notes-box">{{ report.safety_notes | default("") }}</div>
+
+  <!-- 特記事項 -->
+  <h2>特記事項</h2>
+  <div class="notes-box">{{ report.special_notes | default("") }}</div>
+
+  <!-- 承認欄 -->
+  <div class="approval-area">
+    <table class="approval-table">
+      <tr>
+        <th>監督員</th>
+        <th>現場代理人</th>
+        <th>主任技術者</th>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+    </table>
+  </div>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 """Tenant model for multi-tenant SaaS."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, Boolean, Integer, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column

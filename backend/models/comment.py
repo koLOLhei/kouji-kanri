@@ -1,7 +1,7 @@
 """Comment model (polymorphic comments on any entity)."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, Boolean, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column

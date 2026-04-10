@@ -11,6 +11,7 @@ from database import get_db
 from models.measurement import Measurement
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/measurements", tags=["measurements"])
 
@@ -50,6 +51,7 @@ def list_measurements(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(Measurement).filter(Measurement.project_id == project_id)
     if measurement_type:
         q = q.filter(Measurement.measurement_type == measurement_type)
@@ -63,6 +65,7 @@ def create_measurement(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     data = req.model_dump()
     if data.get("measured_date") is None:
         from datetime import date as d
@@ -83,6 +86,7 @@ def measurement_stats(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Summary of pass/fail counts."""
     q = db.query(Measurement).filter(Measurement.project_id == project_id)
     total = q.count()
@@ -104,6 +108,7 @@ def get_measurement(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     measurement = db.query(Measurement).filter(
         Measurement.id == measurement_id, Measurement.project_id == project_id
     ).first()
@@ -120,6 +125,7 @@ def update_measurement(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     measurement = db.query(Measurement).filter(
         Measurement.id == measurement_id, Measurement.project_id == project_id
     ).first()

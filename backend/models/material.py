@@ -1,7 +1,7 @@
 """Material management models."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, BigInteger, Float, Date, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column

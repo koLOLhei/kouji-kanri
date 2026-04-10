@@ -10,6 +10,7 @@ from database import get_db
 from models.subcontractor import Subcontractor, SubcontractorContract
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api", tags=["subcontractors"])
 
@@ -151,6 +152,7 @@ def list_contracts(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return db.query(SubcontractorContract).filter(
         SubcontractorContract.project_id == project_id
     ).order_by(SubcontractorContract.created_at.desc()).all()
@@ -163,6 +165,7 @@ def create_contract(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     contract = SubcontractorContract(project_id=project_id, **req.model_dump())
     db.add(contract)
     db.commit()
@@ -175,6 +178,7 @@ def get_contract(
     project_id: str, contract_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     c = db.query(SubcontractorContract).filter(
         SubcontractorContract.id == contract_id, SubcontractorContract.project_id == project_id
     ).first()
@@ -188,6 +192,7 @@ def update_contract(
     project_id: str, contract_id: str, req: ContractUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     c = db.query(SubcontractorContract).filter(
         SubcontractorContract.id == contract_id, SubcontractorContract.project_id == project_id
     ).first()
@@ -205,6 +210,7 @@ def delete_contract(
     project_id: str, contract_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     c = db.query(SubcontractorContract).filter(
         SubcontractorContract.id == contract_id, SubcontractorContract.project_id == project_id
     ).first()
@@ -221,6 +227,7 @@ def construction_system(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """施工体制台帳 tree structure."""
     contracts = db.query(SubcontractorContract).filter(
         SubcontractorContract.project_id == project_id

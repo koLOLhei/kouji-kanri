@@ -10,6 +10,7 @@ from models.phase import Phase
 from models.user import User
 from schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 from services.plan_service import check_project_limit
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -26,15 +27,20 @@ def list_projects(
         q = q.filter(Project.status == status)
     projects = q.order_by(Project.created_at.desc()).all()
 
+    # Subquery: phase counts (N+1クエリ回避)
+    from sqlalchemy import case
+    phase_counts = db.query(
+        Phase.project_id,
+        func.count(Phase.id).label("total"),
+        func.count(case((Phase.status == "completed", Phase.id))).label("completed"),
+    ).group_by(Phase.project_id).subquery()
+
     result = []
     for p in projects:
-        total = db.query(func.count(Phase.id)).filter(Phase.project_id == p.id).scalar()
-        completed = db.query(func.count(Phase.id)).filter(
-            Phase.project_id == p.id, Phase.status == "completed"
-        ).scalar()
         resp = ProjectResponse.model_validate(p)
-        resp.phase_count = total
-        resp.completed_phases = completed
+        row = db.query(phase_counts).filter(phase_counts.c.project_id == p.id).first()
+        resp.phase_count = row.total if row else 0
+        resp.completed_phases = row.completed if row else 0
         result.append(resp)
     return result
 
@@ -64,6 +70,7 @@ def get_project(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     project = db.query(Project).filter(
         Project.id == project_id, Project.tenant_id == user.tenant_id
     ).first()
@@ -87,6 +94,7 @@ def update_project(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     project = db.query(Project).filter(
         Project.id == project_id, Project.tenant_id == user.tenant_id
     ).first()
@@ -106,6 +114,7 @@ def delete_project(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     project = db.query(Project).filter(
         Project.id == project_id, Project.tenant_id == user.tenant_id
     ).first()

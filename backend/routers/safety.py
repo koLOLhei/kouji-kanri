@@ -12,6 +12,7 @@ from database import get_db
 from models.safety import KYActivity, SafetyPatrol, IncidentReport, SafetyTraining, WorkerOrientation
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 from services.storage_service import generate_upload_key, upload_file
 from services.photo_service import extract_exif
 
@@ -126,6 +127,7 @@ def list_ky_activities(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return db.query(KYActivity).filter(
         KYActivity.project_id == project_id
     ).order_by(KYActivity.activity_date.desc()).all()
@@ -138,6 +140,7 @@ def create_ky_activity(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ky = KYActivity(project_id=project_id, created_by=user.id, **req.model_dump())
     db.add(ky)
     db.commit()
@@ -150,6 +153,7 @@ def get_ky_activity(
     project_id: str, ky_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ky = db.query(KYActivity).filter(KYActivity.id == ky_id, KYActivity.project_id == project_id).first()
     if not ky:
         raise HTTPException(status_code=404, detail="KY活動が見つかりません")
@@ -161,6 +165,7 @@ def update_ky_activity(
     project_id: str, ky_id: str, req: KYActivityUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ky = db.query(KYActivity).filter(KYActivity.id == ky_id, KYActivity.project_id == project_id).first()
     if not ky:
         raise HTTPException(status_code=404, detail="KY活動が見つかりません")
@@ -176,6 +181,7 @@ def delete_ky_activity(
     project_id: str, ky_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     ky = db.query(KYActivity).filter(KYActivity.id == ky_id, KYActivity.project_id == project_id).first()
     if not ky:
         raise HTTPException(status_code=404, detail="KY活動が見つかりません")
@@ -191,6 +197,7 @@ def list_patrols(
     project_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return db.query(SafetyPatrol).filter(
         SafetyPatrol.project_id == project_id
     ).order_by(SafetyPatrol.patrol_date.desc()).all()
@@ -201,6 +208,7 @@ def create_patrol(
     project_id: str, req: SafetyPatrolCreate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     patrol = SafetyPatrol(project_id=project_id, created_by=user.id, **req.model_dump())
     db.add(patrol)
     db.commit()
@@ -213,6 +221,7 @@ def get_patrol(
     project_id: str, patrol_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     patrol = db.query(SafetyPatrol).filter(SafetyPatrol.id == patrol_id, SafetyPatrol.project_id == project_id).first()
     if not patrol:
         raise HTTPException(status_code=404, detail="安全パトロールが見つかりません")
@@ -224,6 +233,7 @@ def update_patrol(
     project_id: str, patrol_id: str, req: SafetyPatrolUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     patrol = db.query(SafetyPatrol).filter(SafetyPatrol.id == patrol_id, SafetyPatrol.project_id == project_id).first()
     if not patrol:
         raise HTTPException(status_code=404, detail="安全パトロールが見つかりません")
@@ -239,6 +249,7 @@ def delete_patrol(
     project_id: str, patrol_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     patrol = db.query(SafetyPatrol).filter(SafetyPatrol.id == patrol_id, SafetyPatrol.project_id == project_id).first()
     if not patrol:
         raise HTTPException(status_code=404, detail="安全パトロールが見つかりません")
@@ -254,6 +265,7 @@ def list_incidents(
     project_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return db.query(IncidentReport).filter(
         IncidentReport.project_id == project_id
     ).order_by(IncidentReport.incident_date.desc()).all()
@@ -264,6 +276,7 @@ def create_incident(
     project_id: str, req: IncidentReportCreate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     incident = IncidentReport(project_id=project_id, reporter_id=user.id, **req.model_dump())
     db.add(incident)
     db.commit()
@@ -276,6 +289,7 @@ def get_incident(
     project_id: str, incident_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     inc = db.query(IncidentReport).filter(IncidentReport.id == incident_id, IncidentReport.project_id == project_id).first()
     if not inc:
         raise HTTPException(status_code=404, detail="事故報告が見つかりません")
@@ -287,6 +301,7 @@ def update_incident(
     project_id: str, incident_id: str, req: IncidentReportUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     inc = db.query(IncidentReport).filter(IncidentReport.id == incident_id, IncidentReport.project_id == project_id).first()
     if not inc:
         raise HTTPException(status_code=404, detail="事故報告が見つかりません")
@@ -302,6 +317,7 @@ def delete_incident(
     project_id: str, incident_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     inc = db.query(IncidentReport).filter(IncidentReport.id == incident_id, IncidentReport.project_id == project_id).first()
     if not inc:
         raise HTTPException(status_code=404, detail="事故報告が見つかりません")
@@ -321,6 +337,7 @@ async def quick_incident_report(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Simplified near-miss (ヒヤリハット) report - minimal fields, photo optional."""
     valid_severities = {"low", "medium", "high", "critical"}
     if severity not in valid_severities:
@@ -367,6 +384,7 @@ def safety_trends(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Monthly counts of KY activities, patrols, incidents, trainings."""
     today = date.today()
 
@@ -429,6 +447,7 @@ def incident_analysis(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """Breakdown of incidents by severity, type, and location."""
     incidents = db.query(IncidentReport).filter(
         IncidentReport.project_id == project_id
@@ -462,6 +481,7 @@ def list_trainings(
     project_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return db.query(SafetyTraining).filter(
         SafetyTraining.project_id == project_id
     ).order_by(SafetyTraining.training_date.desc()).all()
@@ -472,6 +492,7 @@ def create_training(
     project_id: str, req: SafetyTrainingCreate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     training = SafetyTraining(project_id=project_id, created_by=user.id, **req.model_dump())
     db.add(training)
     db.commit()
@@ -484,6 +505,7 @@ def get_training(
     project_id: str, training_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     t = db.query(SafetyTraining).filter(SafetyTraining.id == training_id, SafetyTraining.project_id == project_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="安全教育が見つかりません")
@@ -495,6 +517,7 @@ def update_training(
     project_id: str, training_id: str, req: SafetyTrainingUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     t = db.query(SafetyTraining).filter(SafetyTraining.id == training_id, SafetyTraining.project_id == project_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="安全教育が見つかりません")
@@ -510,6 +533,7 @@ def delete_training(
     project_id: str, training_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     t = db.query(SafetyTraining).filter(SafetyTraining.id == training_id, SafetyTraining.project_id == project_id).first()
     if not t:
         raise HTTPException(status_code=404, detail="安全教育が見つかりません")
@@ -526,6 +550,7 @@ def list_orientations(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return db.query(WorkerOrientation).filter(
         WorkerOrientation.project_id == project_id
     ).order_by(WorkerOrientation.orientation_date.desc()).all()
@@ -538,6 +563,7 @@ def create_orientation(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     orientation = WorkerOrientation(
         project_id=project_id,
         tenant_id=user.tenant_id,
@@ -554,6 +580,7 @@ def get_orientation(
     project_id: str, orientation_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     o = db.query(WorkerOrientation).filter(
         WorkerOrientation.id == orientation_id,
         WorkerOrientation.project_id == project_id,
@@ -568,6 +595,7 @@ def update_orientation(
     project_id: str, orientation_id: str, req: WorkerOrientationUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     o = db.query(WorkerOrientation).filter(
         WorkerOrientation.id == orientation_id,
         WorkerOrientation.project_id == project_id,
@@ -586,6 +614,7 @@ def delete_orientation(
     project_id: str, orientation_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     o = db.query(WorkerOrientation).filter(
         WorkerOrientation.id == orientation_id,
         WorkerOrientation.project_id == project_id,

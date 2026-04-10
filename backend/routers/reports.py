@@ -1,6 +1,6 @@
 """Report (報告書) router."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from models.user import User
 from services.auth_service import get_current_user
 from services.storage_service import generate_upload_key, upload_file, generate_presigned_url
 from services.submission_engine import auto_generate_if_ready
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/reports", tags=["reports"])
 
@@ -23,6 +24,7 @@ def list_reports(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(Report).filter(Report.project_id == project_id)
     if phase_id:
         q = q.filter(Report.phase_id == phase_id)
@@ -87,6 +89,7 @@ def review_report(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     report = db.query(Report).filter(Report.id == report_id, Report.project_id == project_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="報告書が見つかりません")
@@ -96,7 +99,7 @@ def review_report(
 
     report.status = "approved" if action == "approve" else "rejected"
     report.reviewed_by = user.id
-    report.reviewed_at = datetime.utcnow()
+    report.reviewed_at = datetime.now(timezone.utc)
     db.commit()
 
     # 承認後に自動書類生成チェック

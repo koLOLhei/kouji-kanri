@@ -1,6 +1,6 @@
 """Multi-level approval workflow router."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -145,12 +145,12 @@ def _advance_flow(db: Session, flow: ApprovalFlow) -> None:
         rejected = next((s for s in steps if s.status in ("rejected", "returned") and s.is_required), None)
         if rejected:
             flow.status = rejected.status
-            flow.completed_at = datetime.utcnow()
+            flow.completed_at = datetime.now(timezone.utc)
         else:
             # All required steps approved (possibly some conditionally)
             cond = next((s for s in steps if s.status == "conditionally_approved"), None)
             flow.status = "conditionally_approved" if cond else "approved"
-            flow.completed_at = datetime.utcnow()
+            flow.completed_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -284,13 +284,13 @@ def act_on_step(
     step.comment = req.comment
     step.conditions = req.conditions if req.action == "conditionally_approve" else step.conditions
     step.acted_by = user.id
-    step.acted_at = datetime.utcnow()
+    step.acted_at = datetime.now(timezone.utc)
     db.commit()
 
     # Update flow status
     if step.status in ("rejected", "returned") and step.is_required:
         flow.status = step.status
-        flow.completed_at = datetime.utcnow()
+        flow.completed_at = datetime.now(timezone.utc)
         db.commit()
     else:
         _advance_flow(db, flow)
@@ -341,6 +341,6 @@ def cancel_flow(
     if flow.status in ("approved", "rejected"):
         raise HTTPException(status_code=400, detail="完了済みのフローはキャンセルできません")
     flow.status = "rejected"
-    flow.completed_at = datetime.utcnow()
+    flow.completed_at = datetime.now(timezone.utc)
     db.commit()
     return {"status": "ok", "message": "承認フローをキャンセルしました"}

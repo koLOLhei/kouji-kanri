@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 15mm 20mm 20mm 20mm;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic Pro", "Yu Gothic", "MS Gothic", sans-serif;
+    font-size: 10.5pt;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+  }
+
+  .title {
+    font-size: 22pt;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 8px;
+    margin: 20px 0 30px;
+  }
+
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .left-col { width: 55%; }
+  .right-col { width: 40%; text-align: right; }
+
+  .recipient-name {
+    font-size: 14pt;
+    font-weight: bold;
+    border-bottom: 2px solid #1a1a1a;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+  }
+  .recipient-suffix {
+    font-size: 11pt;
+    margin-left: 8px;
+  }
+
+  .company-info {
+    font-size: 9pt;
+    line-height: 1.5;
+  }
+  .company-name {
+    font-size: 11pt;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+
+  .meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+    font-size: 9.5pt;
+  }
+  .meta-table th {
+    background: #e8eaf0;
+    border: 1px solid #333;
+    padding: 4px 8px;
+    text-align: center;
+    white-space: nowrap;
+    width: 120px;
+    font-weight: bold;
+  }
+  .meta-table td {
+    border: 1px solid #333;
+    padding: 4px 8px;
+  }
+
+  .total-box {
+    border: 2px solid #1a1a1a;
+    padding: 10px 16px;
+    margin: 16px 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .total-label {
+    font-size: 12pt;
+    font-weight: bold;
+  }
+  .total-amount {
+    font-size: 18pt;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 明細テーブル */
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  table.items th {
+    background: #2c3e50;
+    color: #fff;
+    border: 1px solid #2c3e50;
+    padding: 6px 8px;
+    font-size: 9.5pt;
+    font-weight: bold;
+    text-align: center;
+  }
+  table.items td {
+    border: 1px solid #ccc;
+    padding: 5px 8px;
+    font-size: 9.5pt;
+    vertical-align: top;
+  }
+  table.items tr:nth-child(even) td {
+    background: #f9f9f9;
+  }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .center { text-align: center; }
+
+  .summary-table {
+    width: 280px;
+    margin-left: auto;
+    margin-top: 10px;
+    border-collapse: collapse;
+  }
+  .summary-table th {
+    background: #e8eaf0;
+    border: 1px solid #333;
+    padding: 4px 10px;
+    font-size: 9.5pt;
+    text-align: center;
+    font-weight: bold;
+    width: 120px;
+  }
+  .summary-table td {
+    border: 1px solid #333;
+    padding: 4px 10px;
+    font-size: 10pt;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .summary-table tr.total-row th,
+  .summary-table tr.total-row td {
+    font-size: 11pt;
+    font-weight: bold;
+    background: #fff8e1;
+  }
+
+  .stamp-area {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 30px;
+  }
+  .stamp-box {
+    width: 70px;
+    height: 70px;
+    border: 1px solid #333;
+    text-align: center;
+    font-size: 8pt;
+    padding-top: 4px;
+  }
+
+  .notice-text {
+    margin-top: 20px;
+    font-size: 9pt;
+    color: #555;
+    line-height: 1.6;
+  }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="title">支 払 通 知 書</div>
+
+  <div class="header-row">
+    <div class="left-col">
+      <div class="recipient-name">
+        {{ notice.subcontractor_name }}<span class="recipient-suffix">御中</span>
+      </div>
+
+      <p style="font-size:9.5pt; margin:10px 0;">
+        下記の通りお支払いいたしますので、ご査収ください。
+      </p>
+
+      <table class="meta-table">
+        <tr>
+          <th>通知番号</th>
+          <td>{{ notice.notice_number }}</td>
+        </tr>
+        <tr>
+          <th>工事名</th>
+          <td>{{ notice.project_name }}</td>
+        </tr>
+        <tr>
+          <th>支払日</th>
+          <td>{{ notice.payment_date }}</td>
+        </tr>
+      </table>
+
+      <div class="total-box">
+        <span class="total-label">差引支払額</span>
+        <span class="total-amount">&yen; {{ "{:,}".format(notice.total) }}</span>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="company-info">
+        <div class="company-name">{{ company.name }}</div>
+        <div>{{ company.address }}</div>
+        <div>TEL: {{ company.phone }}</div>
+      </div>
+
+      <div class="stamp-area">
+        <div>
+          <div class="stamp-box"></div>
+          <div style="text-align:center; font-size:8pt; margin-top:2px;">承認</div>
+        </div>
+        <div>
+          <div class="stamp-box"></div>
+          <div style="text-align:center; font-size:8pt; margin-top:2px;">確認</div>
+        </div>
+        <div>
+          <div class="stamp-box"></div>
+          <div style="text-align:center; font-size:8pt; margin-top:2px;">担当</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 明細 -->
+  <table class="items">
+    <thead>
+      <tr>
+        <th style="width:35px;">No.</th>
+        <th>項目</th>
+        <th style="width:120px;">金額</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in notice.items %}
+      <tr>
+        <td class="center">{{ loop.index }}</td>
+        <td>{{ item.name }}</td>
+        <td class="num">&yen; {{ "{:,}".format(item.amount) }}</td>
+      </tr>
+      {% endfor %}
+      {% for _ in range([0, 8 - (notice.items | length)] | max) %}
+      <tr>
+        <td class="center">&nbsp;</td>
+        <td>&nbsp;</td>
+        <td>&nbsp;</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- 合計 -->
+  <table class="summary-table">
+    <tr>
+      <th>小計</th>
+      <td>&yen; {{ "{:,}".format(notice.subtotal) }}</td>
+    </tr>
+    <tr>
+      <th>消費税(10%)</th>
+      <td>&yen; {{ "{:,}".format(notice.tax_amount) }}</td>
+    </tr>
+    <tr class="total-row">
+      <th>差引支払額</th>
+      <td>&yen; {{ "{:,}".format(notice.total) }}</td>
+    </tr>
+  </table>
+
+  <div class="notice-text">
+    ※ 本通知書の内容にご不明な点がございましたら、お手数ですがご連絡ください。
+  </div>
+
+</body>
+</html>

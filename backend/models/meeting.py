@@ -1,7 +1,7 @@
 """打合せ記録 (Meeting Minutes) model."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, Integer, Date, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column

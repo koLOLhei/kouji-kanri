@@ -2,6 +2,8 @@
    Service Worker - 工事管理SaaS
    Network-first for API, cache-first for static assets
    IndexedDB queue for failed POST/PUT during offline
+   Photo upload queue with retry on network restore
+   "オフライン" banner notification to clients
    ============================================================ */
 
 const CACHE_NAME = "kouji-kanri-v1";
@@ -10,6 +12,9 @@ const OFFLINE_QUEUE_STORE = "requests";
 
 const STATIC_ASSETS = [
   "/",
+  "/today",
+  "/capture",
+  "/projects",
   "/manifest.json",
   "/favicon.ico",
 ];
@@ -99,7 +104,13 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET for cache (but queue offline POST/PUT)
+  // Photo upload - special handling with queue on failure
+  if (request.method === "POST" && url.pathname.includes("/photos")) {
+    event.respondWith(handlePhotoUpload(request));
+    return;
+  }
+
+  // Other mutable requests (POST/PUT/PATCH) - queue offline
   if (request.method === "POST" || request.method === "PUT" || request.method === "PATCH") {
     event.respondWith(handleMutableRequest(request));
     return;
@@ -114,6 +125,44 @@ self.addEventListener("fetch", (event) => {
   // Static assets: cache-first
   event.respondWith(cacheFirst(request));
 });
+
+async function handlePhotoUpload(request) {
+  try {
+    return await fetch(request);
+  } catch {
+    // No network - store photo in IndexedDB queue
+    try {
+      const body = await request.arrayBuffer();
+      const headers = {};
+      request.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+      await queueRequest(request.url, request.method, body, headers);
+
+      // Notify clients about queued upload
+      const clients = await self.clients.matchAll();
+      clients.forEach((client) => {
+        client.postMessage({ type: "PHOTO_QUEUED", url: request.url });
+      });
+
+      return new Response(
+        JSON.stringify({
+          queued: true,
+          message: "オフライン: 写真をキューに追加しました。接続回復時に自動送信されます。",
+        }),
+        {
+          status: 202,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    } catch (queueError) {
+      return new Response(
+        JSON.stringify({ error: "写真のキューイングに失敗しました" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
+}
 
 async function networkFirst(request) {
   try {
@@ -181,7 +230,7 @@ async function handleMutableRequest(request) {
 
 /* ---- Background Sync ---- */
 self.addEventListener("sync", (event) => {
-  if (event.tag === "sync-offline-queue") {
+  if (event.tag === "sync-offline-queue" || event.tag === "photo-upload-retry") {
     event.waitUntil(syncQueue());
   }
 });
@@ -205,6 +254,8 @@ async function syncQueue() {
       }
     } catch {
       results.failed++;
+      // Still offline - stop retrying
+      break;
     }
   }
 
@@ -222,12 +273,39 @@ self.addEventListener("message", async (event) => {
   if (event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
-  if (event.data.type === "SYNC_NOW") {
+  if (event.data.type === "SYNC_NOW" || event.data === "retry-uploads") {
     const results = await syncQueue();
-    event.ports[0]?.postMessage({ type: "SYNC_RESULT", ...results });
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ type: "SYNC_RESULT", ...results });
+    }
   }
-  if (event.data.type === "GET_QUEUE_COUNT") {
+  if (event.data.type === "GET_QUEUE_COUNT" || event.data === "get-queue-count") {
     const requests = await getQueuedRequests();
-    event.ports[0]?.postMessage({ type: "QUEUE_COUNT", count: requests.length });
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ type: "QUEUE_COUNT", count: requests.length });
+    } else if (event.source) {
+      event.source.postMessage({ type: "QUEUE_COUNT", count: requests.length });
+    }
   }
 });
+
+/*
+  Client-side offline banner integration:
+  Add to your layout/root component:
+
+  useEffect(() => {
+    const showBanner = () => {
+      // Show "オフライン" banner
+    };
+    const hideBanner = () => {
+      // Hide banner, trigger sync
+      navigator.serviceWorker?.controller?.postMessage({ type: "SYNC_NOW" });
+    };
+    window.addEventListener('offline', showBanner);
+    window.addEventListener('online', hideBanner);
+    return () => {
+      window.removeEventListener('offline', showBanner);
+      window.removeEventListener('online', hideBanner);
+    };
+  }, []);
+*/

@@ -121,11 +121,18 @@ def list_tenants(
     db: Session = Depends(get_db),
 ):
     tenants = db.query(Tenant).order_by(Tenant.created_at.desc()).all()
+    # Batch count (N+1回避)
+    tenant_ids = [t.id for t in tenants]
+    user_counts = dict(db.query(User.tenant_id, func.count(User.id)).filter(
+        User.tenant_id.in_(tenant_ids)).group_by(User.tenant_id).all())
+    project_counts = dict(db.query(Project.tenant_id, func.count(Project.id)).filter(
+        Project.tenant_id.in_(tenant_ids)).group_by(Project.tenant_id).all())
+
     result = []
     for t in tenants:
         resp = TenantResponse.model_validate(t)
-        resp.user_count = db.query(func.count(User.id)).filter(User.tenant_id == t.id).scalar()
-        resp.project_count = db.query(func.count(Project.id)).filter(Project.tenant_id == t.id).scalar()
+        resp.user_count = user_counts.get(t.id, 0)
+        resp.project_count = project_counts.get(t.id, 0)
         result.append(resp)
     return result
 

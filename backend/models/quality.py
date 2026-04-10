@@ -1,7 +1,7 @@
 """品質管理・出来高管理モデル (Quality Control, Stage Confirmation, Progress Payment)."""
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 from sqlalchemy import String, Float, Integer, Boolean, Date, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column

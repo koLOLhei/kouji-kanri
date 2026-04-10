@@ -8,6 +8,7 @@ from database import get_db
 from models.drawing import Drawing, DrawingRevision
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/drawings", tags=["drawings"])
 
@@ -46,6 +47,7 @@ def list_drawings(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(Drawing).filter(Drawing.project_id == project_id)
     if category:
         q = q.filter(Drawing.category == category)
@@ -59,6 +61,7 @@ def create_drawing(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     drawing = Drawing(
         project_id=project_id,
         drawing_number=req.drawing_number,
@@ -88,6 +91,7 @@ def get_drawing(
     project_id: str, drawing_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     drawing = db.query(Drawing).filter(
         Drawing.id == drawing_id, Drawing.project_id == project_id
     ).first()
@@ -104,6 +108,7 @@ def update_drawing(
     project_id: str, drawing_id: str, req: DrawingUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     drawing = db.query(Drawing).filter(
         Drawing.id == drawing_id, Drawing.project_id == project_id
     ).first()
@@ -121,6 +126,7 @@ def delete_drawing(
     project_id: str, drawing_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     drawing = db.query(Drawing).filter(
         Drawing.id == drawing_id, Drawing.project_id == project_id
     ).first()
@@ -139,6 +145,7 @@ def list_revisions(
     project_id: str, drawing_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return db.query(DrawingRevision).filter(
         DrawingRevision.drawing_id == drawing_id
     ).order_by(DrawingRevision.revision_number.desc()).all()
@@ -149,6 +156,7 @@ def create_revision(
     project_id: str, drawing_id: str, req: RevisionCreate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     drawing = db.query(Drawing).filter(
         Drawing.id == drawing_id, Drawing.project_id == project_id
     ).first()

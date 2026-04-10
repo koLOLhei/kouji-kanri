@@ -11,6 +11,7 @@ from database import get_db
 from models.cost import CostBudget, CostActual, CostForecast
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/costs", tags=["costs"])
 
@@ -75,6 +76,7 @@ def list_budgets(
     project_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return db.query(CostBudget).filter(CostBudget.project_id == project_id).order_by(CostBudget.category).all()
 
 
@@ -83,6 +85,7 @@ def create_budget(
     project_id: str, req: BudgetCreate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     b = CostBudget(project_id=project_id, **req.model_dump())
     db.add(b)
     db.commit()
@@ -95,6 +98,7 @@ def update_budget(
     project_id: str, budget_id: str, req: BudgetUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     b = db.query(CostBudget).filter(CostBudget.id == budget_id, CostBudget.project_id == project_id).first()
     if not b:
         raise HTTPException(status_code=404, detail="予算が見つかりません")
@@ -110,6 +114,7 @@ def delete_budget(
     project_id: str, budget_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     b = db.query(CostBudget).filter(CostBudget.id == budget_id, CostBudget.project_id == project_id).first()
     if not b:
         raise HTTPException(status_code=404, detail="予算が見つかりません")
@@ -128,6 +133,7 @@ def list_actuals(
     date_to: date | None = None,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     q = db.query(CostActual).filter(CostActual.project_id == project_id)
     if category:
         q = q.filter(CostActual.category == category)
@@ -143,6 +149,7 @@ def create_actual(
     project_id: str, req: ActualCreate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     a = CostActual(project_id=project_id, recorded_by=user.id, **req.model_dump())
     db.add(a)
     db.commit()
@@ -155,6 +162,7 @@ def update_actual(
     project_id: str, actual_id: str, req: ActualUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     a = db.query(CostActual).filter(CostActual.id == actual_id, CostActual.project_id == project_id).first()
     if not a:
         raise HTTPException(status_code=404, detail="実績が見つかりません")
@@ -170,6 +178,7 @@ def delete_actual(
     project_id: str, actual_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     a = db.query(CostActual).filter(CostActual.id == actual_id, CostActual.project_id == project_id).first()
     if not a:
         raise HTTPException(status_code=404, detail="実績が見つかりません")
@@ -185,6 +194,7 @@ def list_forecasts(
     project_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     return db.query(CostForecast).filter(
         CostForecast.project_id == project_id
     ).order_by(CostForecast.forecast_date.desc()).all()
@@ -195,6 +205,7 @@ def create_forecast(
     project_id: str, req: ForecastCreate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     f = CostForecast(project_id=project_id, created_by=user.id, **req.model_dump())
     db.add(f)
     db.commit()
@@ -207,6 +218,7 @@ def update_forecast(
     project_id: str, forecast_id: str, req: ForecastUpdate,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     f = db.query(CostForecast).filter(CostForecast.id == forecast_id, CostForecast.project_id == project_id).first()
     if not f:
         raise HTTPException(status_code=404, detail="予測が見つかりません")
@@ -222,6 +234,7 @@ def delete_forecast(
     project_id: str, forecast_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     f = db.query(CostForecast).filter(CostForecast.id == forecast_id, CostForecast.project_id == project_id).first()
     if not f:
         raise HTTPException(status_code=404, detail="予測が見つかりません")
@@ -237,6 +250,7 @@ def cost_summary(
     project_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_project_access(project_id, user, db)
     """予実対比 - Budget vs Actual comparison by category."""
     budgets = db.query(
         CostBudget.category,
