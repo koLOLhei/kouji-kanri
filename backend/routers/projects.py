@@ -12,6 +12,7 @@ from schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
 from services.plan_service import check_project_limit
+from services.errors import AppError
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -79,7 +80,7 @@ def get_project(
         Project.status != "deleted",  # A7: block access to soft-deleted projects
     ).first()
     if not project:
-        raise HTTPException(status_code=404, detail="案件が見つかりません")
+        raise AppError(404, "案件が見つかりません", "PROJECT_NOT_FOUND")
 
     total = db.query(func.count(Phase.id)).filter(Phase.project_id == project.id).scalar()
     completed = db.query(func.count(Phase.id)).filter(
@@ -103,7 +104,7 @@ def update_project(
         Project.id == project_id, Project.tenant_id == user.tenant_id
     ).first()
     if not project:
-        raise HTTPException(status_code=404, detail="案件が見つかりません")
+        raise AppError(404, "案件が見つかりません", "PROJECT_NOT_FOUND")
 
     for key, value in req.model_dump(exclude_unset=True).items():
         setattr(project, key, value)
@@ -123,7 +124,7 @@ def delete_project(
         Project.id == project_id, Project.tenant_id == user.tenant_id
     ).first()
     if not project:
-        raise HTTPException(status_code=404, detail="案件が見つかりません")
+        raise AppError(404, "案件が見つかりません", "PROJECT_NOT_FOUND")
     project.status = "deleted"
     # A7: Cascade soft-delete to phases so their data is not returned via other queries.
     # We update status to "archived" to distinguish from normal completed/cancelled phases.

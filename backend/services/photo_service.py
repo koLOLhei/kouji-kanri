@@ -74,3 +74,26 @@ def create_thumbnail(image_data: bytes, max_size: tuple = (400, 400)) -> bytes:
         fmt = "JPEG"
     img.save(buf, format=fmt, quality=85)
     return buf.getvalue()
+
+
+def create_optimized_version(image_data: bytes, max_width: int = 1920) -> bytes:
+    """Create an optimized version of the image (resize if needed + WebP conversion).
+
+    Returns WebP bytes. Falls back to original data on any error.
+    """
+    try:
+        img = Image.open(BytesIO(image_data))
+        # Resize if wider than max_width while preserving aspect ratio
+        if img.width > max_width:
+            ratio = max_width / img.width
+            new_size = (max_width, int(img.height * ratio))
+            img = img.resize(new_size, Image.LANCZOS)
+        # Convert to RGB if needed (WebP supports RGBA but convert for consistency)
+        if img.mode not in ("RGB", "RGBA"):
+            img = img.convert("RGB")
+        buf = BytesIO()
+        img.save(buf, format="WEBP", quality=85)
+        return buf.getvalue()
+    except Exception as e:
+        print(f"[photo_service] create_optimized_version failed: {e}", flush=True)
+        return image_data

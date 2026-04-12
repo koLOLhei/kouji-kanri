@@ -12,6 +12,7 @@ from models.quality import QualityControlItem, QualityMeasurement, StageConfirma
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.errors import AppError
 from services.quality_statistics import (
     calculate_xbar_r_chart,
     calculate_histogram,
@@ -197,7 +198,7 @@ def get_quality_item(
         QualityControlItem.project_id == project_id,
     ).first()
     if not item:
-        raise HTTPException(status_code=404, detail="品質管理項目が見つかりません")
+        raise AppError(404, "品質管理項目が見つかりません", "QUALITY_ITEM_NOT_FOUND")
     return item
 
 
@@ -215,7 +216,7 @@ def update_quality_item(
         QualityControlItem.project_id == project_id,
     ).first()
     if not item:
-        raise HTTPException(status_code=404, detail="品質管理項目が見つかりません")
+        raise AppError(404, "品質管理項目が見つかりません", "QUALITY_ITEM_NOT_FOUND")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(item, k, v)
     db.commit()
@@ -236,7 +237,7 @@ def delete_quality_item(
         QualityControlItem.project_id == project_id,
     ).first()
     if not item:
-        raise HTTPException(status_code=404, detail="品質管理項目が見つかりません")
+        raise AppError(404, "品質管理項目が見つかりません", "QUALITY_ITEM_NOT_FOUND")
     # Cascade delete measurements
     db.query(QualityMeasurement).filter(QualityMeasurement.item_id == item_id).delete()
     db.delete(item)
@@ -254,7 +255,7 @@ def _get_item_or_404(db: Session, project_id: str, item_id: str) -> QualityContr
         QualityControlItem.project_id == project_id,
     ).first()
     if not item:
-        raise HTTPException(status_code=404, detail="品質管理項目が見つかりません")
+        raise AppError(404, "品質管理項目が見つかりません", "QUALITY_ITEM_NOT_FOUND")
     return item
 
 

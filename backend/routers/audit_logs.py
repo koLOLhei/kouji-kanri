@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -21,8 +21,8 @@ def list_audit_logs(
     action: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -42,7 +42,10 @@ def list_audit_logs(
         q = q.filter(AuditLog.created_at >= date_from)
     if date_to:
         q = q.filter(AuditLog.created_at <= date_to)
-    return q.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
+
+    total = q.count()
+    items = q.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 @router.get("/{log_id}")

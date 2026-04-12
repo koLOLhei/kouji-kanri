@@ -6,6 +6,7 @@ import zipfile
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 # C17: Magic bytes for allowed file types.
@@ -37,9 +38,10 @@ from models.user import User
 from schemas.photo import PhotoResponse, PhotoUpdate
 from services.auth_service import get_current_user
 from services.storage_service import generate_upload_key, upload_file, generate_presigned_url, compute_checksum, read_file
-from services.photo_service import extract_exif, create_thumbnail
+from services.photo_service import extract_exif, create_thumbnail, create_optimized_version
 from services.submission_engine import auto_generate_if_ready
 from services.project_access import verify_project_access
+from services.errors import AppError
 
 router = APIRouter(prefix="/api/projects/{project_id}/photos", tags=["photos"])
 
@@ -57,12 +59,9 @@ def download_photos_zip(
 
     photo_count = db.query(Photo).filter(Photo.project_id == project_id).count()
     if photo_count == 0:
-        raise HTTPException(status_code=404, detail="写真が見つかりません")
+        raise AppError(404, "写真が見つかりません", "PHOTOS_NOT_FOUND")
     if photo_count > MAX_BULK_PHOTOS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"写真が{MAX_BULK_PHOTOS}枚を超えています。範囲を絞ってください。",
-        )
+        raise AppError(400, f"写真が{MAX_BULK_PHOTOS}枚を超えています。範囲を絞ってください。", "TOO_MANY_PHOTOS")
 
     photos = db.query(Photo).filter(Photo.project_id == project_id).all()
 
@@ -85,7 +84,7 @@ def download_photos_zip(
     )
 
 
-@router.get("", response_model=list[PhotoResponse])
+@router.get("")
 def list_photos(
     project_id: str,
     phase_id: str | None = None,
@@ -98,6 +97,7 @@ def list_photos(
     q = db.query(Photo).filter(Photo.project_id == project_id)
     if phase_id:
         q = q.filter(Photo.phase_id == phase_id)
+    total = q.count()
     photos = q.order_by(Photo.created_at.desc()).offset(offset).limit(limit).all()
 
     result = []
@@ -107,7 +107,7 @@ def list_photos(
         if p.thumbnail_key:
             resp.thumbnail_url = generate_presigned_url(p.thumbnail_key)
         result.append(resp)
-    return result
+    return {"items": result, "total": total, "limit": limit, "offset": offset}
 
 
 @router.post("", response_model=PhotoResponse)
@@ -132,19 +132,20 @@ async def upload_photo(
 
     # C17: Validate file magic bytes before any processing
     if not _validate_file_magic(file_data):
-        raise HTTPException(
-            status_code=400,
-            detail="サポートされていないファイル形式です。JPEG・PNG・GIF・WebP・PDFのみ許可されています",
-        )
+        raise AppError(400, "サポートされていないファイル形式です。JPEG・PNG・GIF・WebP・PDFのみ許可されています", "INVALID_FILE_TYPE")
 
-    # EXIF抽出・サムネイル作成・アップロードはブロッキングI/O → スレッドプールで実行
+    # EXIF抽出・サムネイル作成・WebP最適化・アップロードはブロッキングI/O → スレッドプールで実行
     def _process_and_upload():
         exif = extract_exif(file_data)
         thumbnail_data = create_thumbnail(file_data)
+        optimized_data = create_optimized_version(file_data)
         file_key = generate_upload_key(user.tenant_id, project_id, "photos", file.filename or "photo.jpg")
         upload_file(file_data, file_key, file.content_type or "image/jpeg")
         thumb_key = file_key.replace("/photos/", "/thumbnails/")
         upload_file(thumbnail_data, thumb_key, "image/jpeg")
+        # Store WebP optimized version alongside original
+        optimized_key = file_key.replace("/photos/", "/optimized/").rsplit(".", 1)[0] + ".webp"
+        upload_file(optimized_data, optimized_key, "image/webp")
         checksum = compute_checksum(file_data)
         return exif, file_key, thumb_key, checksum
 
@@ -181,6 +182,50 @@ async def upload_photo(
     resp.url = generate_presigned_url(photo.file_key)
     resp.thumbnail_url = generate_presigned_url(photo.thumbnail_key)
     return resp
+
+
+class BulkClassifyRequest(BaseModel):
+    photo_ids: list[str]
+    work_type: str | None = None
+    work_subtype: str | None = None
+    work_detail: str | None = None
+    photo_category: str | None = None
+    phase_id: str | None = None
+    tags: list | None = None
+
+
+@router.put("/bulk-classify")
+def bulk_classify_photos(
+    project_id: str,
+    req: BulkClassifyRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Classify multiple photos at once (bulk update work_type, category, phase, tags)."""
+    verify_project_access(project_id, user, db)
+
+    if not req.photo_ids:
+        raise AppError(400, "photo_ids は1件以上指定してください", "NO_PHOTO_IDS")
+    if len(req.photo_ids) > MAX_BULK_PHOTOS:
+        raise AppError(400, f"一度に処理できる写真は{MAX_BULK_PHOTOS}件までです", "TOO_MANY_PHOTOS")
+
+    photos = db.query(Photo).filter(
+        Photo.id.in_(req.photo_ids),
+        Photo.project_id == project_id,
+    ).all()
+
+    if not photos:
+        raise AppError(404, "指定された写真が見つかりません", "PHOTOS_NOT_FOUND")
+
+    update_fields = req.model_dump(exclude={"photo_ids"}, exclude_none=True)
+    updated = 0
+    for photo in photos:
+        for field, value in update_fields.items():
+            setattr(photo, field, value)
+        updated += 1
+
+    db.commit()
+    return {"updated": updated, "photo_ids": [p.id for p in photos]}
 
 
 @router.put("/{photo_id}", response_model=PhotoResponse)

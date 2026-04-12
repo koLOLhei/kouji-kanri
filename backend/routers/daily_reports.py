@@ -1,6 +1,6 @@
 """Daily report (日報) router."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -174,3 +174,54 @@ def approve_daily_report(
         on_daily_report_approved(db, user.tenant_id, project_id,
                                   report.id, report.submitted_by)
     return report
+
+
+class BulkApproveRequest(BaseModel):
+    report_ids: list[str]
+
+
+@router.post("/bulk-approve")
+def bulk_approve_reports(
+    project_id: str,
+    req: BulkApproveRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Approve multiple daily reports at once. Only submitted reports are approved; others are skipped."""
+    if user.role not in ("admin", "super_admin", "manager"):
+        raise HTTPException(status_code=403, detail="承認権限がありません")
+    verify_project_access(project_id, user, db)
+
+    if not req.report_ids:
+        raise HTTPException(status_code=400, detail="report_ids は1件以上指定してください")
+    if len(req.report_ids) > 200:
+        raise HTTPException(status_code=400, detail="一度に承認できる日報は200件までです")
+
+    reports = db.query(DailyReport).filter(
+        DailyReport.id.in_(req.report_ids),
+        DailyReport.project_id == project_id,
+        DailyReport.status == "submitted",
+    ).all()
+
+    now = datetime.now(timezone.utc)
+    approved_ids = []
+    for report in reports:
+        report.status = "approved"
+        report.approved_by = user.id
+        report.approved_at = now
+        approved_ids.append(report.id)
+
+    db.commit()
+
+    # 提出者に承認通知（非同期的に実行）
+    for report in reports:
+        if report.submitted_by:
+            try:
+                from services.notification_triggers import on_daily_report_approved
+                on_daily_report_approved(db, user.tenant_id, project_id,
+                                          report.id, report.submitted_by)
+            except Exception as e:
+                print(f"[bulk-approve] Notification failed for report {report.id}: {e}", flush=True)
+
+    skipped = len(req.report_ids) - len(approved_ids)
+    return {"approved": len(approved_ids), "skipped": skipped, "report_ids": approved_ids}

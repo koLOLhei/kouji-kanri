@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from services.timezone_utils import today_jst
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -18,6 +18,7 @@ from services.auth_service import get_current_user
 from services.project_access import verify_project_access
 from services.storage_service import generate_upload_key, upload_file
 from services.photo_service import extract_exif
+from services.errors import AppError
 
 router = APIRouter(prefix="/api/projects/{project_id}/safety", tags=["safety"])
 
@@ -127,13 +128,14 @@ class WorkerOrientationUpdate(BaseModel):
 @router.get("/ky-activities")
 def list_ky_activities(
     project_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    return db.query(KYActivity).filter(
-        KYActivity.project_id == project_id
-    ).order_by(KYActivity.activity_date.desc()).all()
+    q = db.query(KYActivity).filter(KYActivity.project_id == project_id)
+    return q.order_by(KYActivity.activity_date.desc()).offset(offset).limit(limit).all()
 
 
 @router.post("/ky-activities")
@@ -198,12 +200,14 @@ def delete_ky_activity(
 @router.get("/patrols")
 def list_patrols(
     project_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
     return db.query(SafetyPatrol).filter(
         SafetyPatrol.project_id == project_id
-    ).order_by(SafetyPatrol.patrol_date.desc()).all()
+    ).order_by(SafetyPatrol.patrol_date.desc()).offset(offset).limit(limit).all()
 
 
 @router.post("/patrols")
@@ -266,12 +270,14 @@ def delete_patrol(
 @router.get("/incidents")
 def list_incidents(
     project_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
     return db.query(IncidentReport).filter(
         IncidentReport.project_id == project_id
-    ).order_by(IncidentReport.incident_date.desc()).all()
+    ).order_by(IncidentReport.incident_date.desc()).offset(offset).limit(limit).all()
 
 
 @router.post("/incidents")
@@ -344,7 +350,7 @@ async def quick_incident_report(
     """Simplified near-miss (ヒヤリハット) report - minimal fields, photo optional."""
     valid_severities = {"low", "medium", "high", "critical"}
     if severity not in valid_severities:
-        raise HTTPException(status_code=400, detail=f"severity は {valid_severities} のいずれかを指定してください")
+        raise AppError(400, f"severity は {valid_severities} のいずれかを指定してください", "INVALID_SEVERITY")
 
     location: str | None = None
     photo_key: str | None = None
@@ -486,12 +492,14 @@ def incident_analysis(
 @router.get("/trainings")
 def list_trainings(
     project_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
     return db.query(SafetyTraining).filter(
         SafetyTraining.project_id == project_id
-    ).order_by(SafetyTraining.training_date.desc()).all()
+    ).order_by(SafetyTraining.training_date.desc()).offset(offset).limit(limit).all()
 
 
 @router.post("/trainings")

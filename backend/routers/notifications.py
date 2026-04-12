@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -17,8 +17,8 @@ router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 @router.get("")
 def list_notifications(
     is_read: bool | None = None,
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -28,7 +28,9 @@ def list_notifications(
     )
     if is_read is not None:
         q = q.filter(Notification.is_read == is_read)
-    return q.order_by(Notification.created_at.desc()).offset(offset).limit(limit).all()
+    total = q.count()
+    items = q.order_by(Notification.created_at.desc()).offset(offset).limit(limit).all()
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 @router.get("/unread-count")

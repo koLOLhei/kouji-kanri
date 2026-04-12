@@ -31,6 +31,7 @@ from middleware.rate_limit import RateLimitMiddleware
 from services.seed import seed_initial_data
 from services.tolerance_seed import seed_tolerance_standards
 from services.storage_service import ensure_bucket
+from services.logger import setup_logging
 
 
 # C19: SQL identifier whitelist — table/column names used in _run_migrations are
@@ -90,6 +91,9 @@ def _run_migrations(engine):
         ("cost_actuals", "approved", "BOOLEAN DEFAULT FALSE"),
         ("cost_actuals", "approved_by", "VARCHAR(36)"),
         ("cost_actuals", "approved_at", "TIMESTAMP"),
+        # E43: GreenFile extra columns (table itself is created by metadata.create_all)
+        ("green_files", "rejection_reason", "TEXT"),
+        ("green_files", "due_date", "TIMESTAMP"),
     ]
     with engine.connect() as conn:
         # Advisory lock prevents race conditions in multi-worker deployments.
@@ -140,6 +144,8 @@ def _run_migrations(engine):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # G55: Structured JSON logging
+    setup_logging()
     # DB初期化（同期 - テーブル作成を確実に完了させる）
     try:
         Base.metadata.create_all(bind=engine)
@@ -159,6 +165,16 @@ async def lifespan(app: FastAPI):
         print(f"[Warning] S3 bucket setup failed: {e}", flush=True)
     yield
 
+
+# G54: Error monitoring — set SENTRY_DSN env var to enable
+_sentry_dsn = os.environ.get("SENTRY_DSN")
+if _sentry_dsn:
+    try:
+        import sentry_sdk
+        sentry_sdk.init(dsn=_sentry_dsn, traces_sample_rate=0.1)
+        print("[init] Sentry enabled", flush=True)
+    except ImportError:
+        print("[init] sentry-sdk not installed, skipping", flush=True)
 
 app = FastAPI(
     title="工事管理SaaS",
@@ -184,6 +200,14 @@ app.add_middleware(
 
 # Rate limiting (applied after CORS so CORS headers are still set on 429 responses)
 app.add_middleware(RateLimitMiddleware)
+
+# API Versioning (E38):
+# Current API is v1. All routes are served at /api/* which corresponds to /api/v1/*.
+# Versioning strategy:
+#   - Current routes remain at /api/* (backwards-compatible)
+#   - When breaking changes are needed, introduce /api/v2/* prefix in a new router set
+#   - The routers/ package naming convention supports this: v2 routers go in routers/v2/
+# No action needed now — this documents the current state as v1 for future migration.
 
 # Routers — auto-discovered from routers/ package
 for r in discover_routers():

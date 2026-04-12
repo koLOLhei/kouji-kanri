@@ -3,7 +3,7 @@
 from datetime import date, datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -79,10 +79,12 @@ class ForecastUpdate(BaseModel):
 @router.get("/budgets")
 def list_budgets(
     project_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    return db.query(CostBudget).filter(CostBudget.project_id == project_id).order_by(CostBudget.category).all()
+    return db.query(CostBudget).filter(CostBudget.project_id == project_id).order_by(CostBudget.category).offset(offset).limit(limit).all()
 
 
 @router.post("/budgets")
@@ -136,6 +138,8 @@ def list_actuals(
     category: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
@@ -146,7 +150,7 @@ def list_actuals(
         q = q.filter(CostActual.expense_date >= date_from)
     if date_to:
         q = q.filter(CostActual.expense_date <= date_to)
-    return q.order_by(CostActual.created_at.desc()).all()
+    return q.order_by(CostActual.created_at.desc()).offset(offset).limit(limit).all()
 
 
 @router.post("/actuals")

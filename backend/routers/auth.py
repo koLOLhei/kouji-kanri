@@ -14,6 +14,7 @@ from models.tenant import Tenant
 from models.platform import LoginHistory
 from schemas.auth import LoginRequest, TokenResponse, UserInfo
 from services.auth_service import verify_password, hash_password, create_access_token, get_current_user
+from services.errors import AppError
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -157,11 +158,15 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
         hashed = hashlib.sha256(raw_token.encode()).hexdigest()
         expiry = time.monotonic() + _RESET_TOKEN_TTL
         _reset_tokens[hashed] = (user.id, expiry)
-        # TODO: replace with actual email delivery via Resend/SMTP
-        print(
-            f"[password-reset] token for {req.email}: {raw_token}  (expires in 1 hour)",
-            flush=True,
-        )
+        # Send password reset email via Resend API
+        from services.email_service import send_password_reset_email
+        result = send_password_reset_email(req.email, raw_token)
+        if result.get("status") in ("dev_mode", "failed"):
+            # Fallback: log token so developers can still test locally
+            print(
+                f"[password-reset] token for {req.email}: {raw_token}  (expires in 1 hour)",
+                flush=True,
+            )
     # Always return success — never reveal whether the email exists
     return {"detail": "パスワードリセットのメールを送信しました（登録済みの場合）"}
 
@@ -178,15 +183,15 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
     hashed = hashlib.sha256(req.token.encode()).hexdigest()
     entry = _reset_tokens.get(hashed)
     if not entry or now > entry[1]:
-        raise HTTPException(status_code=400, detail="無効または期限切れのトークンです")
+        raise AppError(400, "無効または期限切れのトークンです", "INVALID_RESET_TOKEN")
 
     user_id, _ = entry
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
-        raise HTTPException(status_code=400, detail="ユーザーが見つかりません")
+        raise AppError(400, "ユーザーが見つかりません", "USER_NOT_FOUND")
 
     if len(req.new_password) < 8:
-        raise HTTPException(status_code=400, detail="パスワードは8文字以上にしてください")
+        raise AppError(400, "パスワードは8文字以上にしてください", "PASSWORD_TOO_SHORT")
 
     user.password_hash = hash_password(req.new_password)
     # Invalidate all existing sessions by bumping token_version

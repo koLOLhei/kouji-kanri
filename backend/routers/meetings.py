@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -49,6 +49,8 @@ class MeetingUpdate(BaseModel):
 def list_meetings(
     project_id: str,
     meeting_type: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -56,7 +58,7 @@ def list_meetings(
     q = db.query(Meeting).filter(Meeting.project_id == project_id)
     if meeting_type:
         q = q.filter(Meeting.meeting_type == meeting_type)
-    return q.order_by(Meeting.meeting_date.desc()).all()
+    return q.order_by(Meeting.meeting_date.desc()).offset(offset).limit(limit).all()
 
 
 @router.post("")

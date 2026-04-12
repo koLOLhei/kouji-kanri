@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -66,6 +66,8 @@ def list_inspections(
     project_id: str,
     status: str | None = None,
     inspection_type: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -75,7 +77,7 @@ def list_inspections(
         q = q.filter(Inspection.status == status)
     if inspection_type:
         q = q.filter(Inspection.inspection_type == inspection_type)
-    return q.order_by(Inspection.scheduled_date.desc()).all()
+    return q.order_by(Inspection.scheduled_date.desc()).offset(offset).limit(limit).all()
 
 
 @router.post("")

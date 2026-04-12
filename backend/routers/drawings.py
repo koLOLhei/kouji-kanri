@@ -1,4 +1,6 @@
-"""Drawing (図面) management router with revision history."""
+"""Drawing (図面) management router with revision history and approval workflow."""
+
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -20,6 +22,7 @@ class DrawingCreate(BaseModel):
     drawing_number: str | None = None
     title: str
     category: str
+    drawing_category: str | None = None  # "design", "construction", "shop"
     file_key: str
     file_size: int | None = None
     change_description: str | None = None
@@ -29,7 +32,12 @@ class DrawingUpdate(BaseModel):
     drawing_number: str | None = None
     title: str | None = None
     category: str | None = None
+    drawing_category: str | None = None
     status: str | None = None
+
+
+class ApprovalRejectBody(BaseModel):
+    rejection_reason: str | None = None
 
 
 class RevisionCreate(BaseModel):
@@ -68,6 +76,7 @@ def create_drawing(
         drawing_number=req.drawing_number,
         title=req.title,
         category=req.category,
+        drawing_category=req.drawing_category,
         current_revision=1,
         created_by=user.id,
     )
@@ -144,6 +153,71 @@ def delete_drawing(
     db.delete(drawing)
     db.commit()
     return {"status": "ok"}
+
+
+# ---------- Approval Workflow ----------
+
+@router.put("/{drawing_id}/submit-for-approval")
+def submit_for_approval(
+    project_id: str, drawing_id: str,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    verify_project_access(project_id, user, db)
+    drawing = db.query(Drawing).filter(
+        Drawing.id == drawing_id, Drawing.project_id == project_id
+    ).first()
+    if not drawing:
+        raise HTTPException(status_code=404, detail="図面が見つかりません")
+    if drawing.approval_status not in ("draft", "rejected"):
+        raise HTTPException(status_code=400, detail=f"承認申請できない状態です: {drawing.approval_status}")
+    drawing.approval_status = "submitted"
+    drawing.rejection_reason = None
+    db.commit()
+    db.refresh(drawing)
+    return drawing
+
+
+@router.put("/{drawing_id}/approve")
+def approve_drawing(
+    project_id: str, drawing_id: str,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    verify_project_access(project_id, user, db)
+    drawing = db.query(Drawing).filter(
+        Drawing.id == drawing_id, Drawing.project_id == project_id
+    ).first()
+    if not drawing:
+        raise HTTPException(status_code=404, detail="図面が見つかりません")
+    if drawing.approval_status != "submitted":
+        raise HTTPException(status_code=400, detail="承認申請中の図面のみ承認できます")
+    drawing.approval_status = "approved"
+    drawing.approved_by = user.id
+    drawing.approved_at = datetime.utcnow()
+    drawing.rejection_reason = None
+    db.commit()
+    db.refresh(drawing)
+    return drawing
+
+
+@router.put("/{drawing_id}/reject")
+def reject_drawing(
+    project_id: str, drawing_id: str,
+    req: ApprovalRejectBody,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    verify_project_access(project_id, user, db)
+    drawing = db.query(Drawing).filter(
+        Drawing.id == drawing_id, Drawing.project_id == project_id
+    ).first()
+    if not drawing:
+        raise HTTPException(status_code=404, detail="図面が見つかりません")
+    if drawing.approval_status != "submitted":
+        raise HTTPException(status_code=400, detail="承認申請中の図面のみ却下できます")
+    drawing.approval_status = "rejected"
+    drawing.rejection_reason = req.rejection_reason
+    db.commit()
+    db.refresh(drawing)
+    return drawing
 
 
 # ---------- Revisions ----------
