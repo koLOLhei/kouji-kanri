@@ -1,8 +1,6 @@
 """Daily report (日報) router."""
 
 from datetime import date, datetime, timezone
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session

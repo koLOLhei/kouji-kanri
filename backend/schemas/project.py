@@ -1,7 +1,7 @@
 """Project schemas."""
 
 from datetime import date, datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ProjectCreate(BaseModel):
@@ -55,5 +55,4 @@ class ProjectResponse(BaseModel):
     phase_count: int | None = None
     completed_phases: int | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

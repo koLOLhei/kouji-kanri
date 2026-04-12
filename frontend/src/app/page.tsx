@@ -20,7 +20,6 @@ import {
   Bell,
   Search,
   Package,
-  DollarSign,
   BarChart2,
   AlertTriangle,
 } from "lucide-react";

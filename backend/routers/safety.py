@@ -1,7 +1,7 @@
 """Safety management (安全管理) router - KY, patrols, incidents, trainings, orientations."""
 
 import asyncio
-from datetime import date, datetime, timedelta
+from datetime import date
 from collections import defaultdict
 
 from services.timezone_utils import today_jst

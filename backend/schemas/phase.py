@@ -1,7 +1,7 @@
 """Phase schemas."""
 
 from datetime import date, datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class PhaseCreate(BaseModel):
@@ -61,8 +61,7 @@ class PhaseResponse(BaseModel):
     requirements_met: int | None = None
     requirements_total: int | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RequirementCreate(BaseModel):
@@ -85,5 +84,4 @@ class RequirementResponse(BaseModel):
     sort_order: int
     fulfilled_count: int | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from models.user import User
-from models.tenant import Tenant
 
 security = HTTPBearer()
 

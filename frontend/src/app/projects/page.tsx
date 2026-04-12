@@ -39,7 +39,7 @@ export default function ProjectsPage() {
     end_date: "",
   });
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], isLoading, isError, error } = useQuery({
     queryKey: ["projects"],
     queryFn: () => apiFetch<Project[]>("/api/projects", { token: token! }),
     enabled: !!token,
@@ -150,41 +150,66 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      <div className="space-y-3">
-        {filtered.map((project) => {
-          const progress = project.phase_count ? Math.round(((project.completed_phases || 0) / project.phase_count) * 100) : 0;
-          return (
-            <Link
-              key={project.id}
-              href={`/projects/${project.id}`}
-              className="block bg-white rounded-xl shadow-sm p-4 border border-gray-100 hover:border-blue-300 transition-colors"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-gray-900">{project.name}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(project.status)}`}>
-                      {statusLabel(project.status)}
-                    </span>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16 text-gray-400">
+          <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mr-3" />
+          <span>読み込み中...</span>
+        </div>
+      ) : isError ? (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+          <p className="font-semibold mb-1">案件の読み込みに失敗しました</p>
+          <p className="text-sm">{(error as Error)?.message}</p>
+        </div>
+      ) : filtered.length === 0 && !search ? (
+        <div className="bg-white rounded-xl border-2 border-dashed border-gray-200 p-12 text-center">
+          <p className="text-gray-500 mb-2">案件がまだ登録されていません</p>
+          <button
+            onClick={() => setShowForm(true)}
+            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+          >
+            最初の案件を作成する
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((project) => {
+            const progress = project.phase_count ? Math.round(((project.completed_phases || 0) / project.phase_count) * 100) : 0;
+            return (
+              <Link
+                key={project.id}
+                href={`/projects/${project.id}`}
+                className="block bg-white rounded-xl shadow-sm p-4 border border-gray-100 hover:border-blue-300 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-gray-900">{project.name}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(project.status)}`}>
+                        {statusLabel(project.status)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+                      {project.project_code && <span>No. {project.project_code}</span>}
+                      {project.client_name && <span>発注: {project.client_name}</span>}
+                      {project.contract_amount && <span>{formatAmount(project.contract_amount)}</span>}
+                      <span>{formatDate(project.start_date)} ~ {formatDate(project.end_date)}</span>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
-                    {project.project_code && <span>No. {project.project_code}</span>}
-                    {project.client_name && <span>発注: {project.client_name}</span>}
-                    {project.contract_amount && <span>{formatAmount(project.contract_amount)}</span>}
-                    <span>{formatDate(project.start_date)} ~ {formatDate(project.end_date)}</span>
+                  <div className="text-right ml-4">
+                    <div className="text-sm text-gray-500">{project.completed_phases || 0}/{project.phase_count || 0} 工程</div>
+                    <div className="w-24 bg-gray-100 rounded-full h-1.5 mt-1">
+                      <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${progress}%` }} />
+                    </div>
                   </div>
                 </div>
-                <div className="text-right ml-4">
-                  <div className="text-sm text-gray-500">{project.completed_phases || 0}/{project.phase_count || 0} 工程</div>
-                  <div className="w-24 bg-gray-100 rounded-full h-1.5 mt-1">
-                    <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${progress}%` }} />
-                  </div>
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+              </Link>
+            );
+          })}
+          {filtered.length === 0 && search && (
+            <p className="text-center text-gray-400 py-8">「{search}」に一致する案件はありません</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

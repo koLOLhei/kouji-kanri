@@ -1,7 +1,7 @@
 """Photo schemas."""
 
 from datetime import datetime
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class PhotoResponse(BaseModel):
@@ -32,8 +32,7 @@ class PhotoResponse(BaseModel):
     photo_category: str | None = None
     photo_number: int | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PhotoUpdate(BaseModel):

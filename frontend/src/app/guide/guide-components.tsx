@@ -1,34 +1,36 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ReactNode } from "react";
 
 /* ------------------------------------------------------------------ */
-/*  Shared guide page components                                       */
+/*  Shared guide page components — LP/コーポレートサイト統一デザイン     */
 /* ------------------------------------------------------------------ */
 
 export function GuideNavbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-        <Link href="/lp" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-[#1a4d3e] rounded-lg flex items-center justify-center">
-            <span className="text-[#b8973a] text-xs font-bold">K</span>
-          </div>
-          <span className="text-base font-bold text-gray-900">
-            KAMO <span className="text-[#1a4d3e]">construction</span>
-          </span>
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 h-20 flex items-center justify-between">
+        <Link href="/lp" className="flex items-center">
+          <Image src="/logo.png" alt="KAMO construction" width={280} height={280} className="h-16 w-auto" priority />
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <Link
             href="/guide"
-            className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+            className="text-sm text-[#1a1a1a] hover:text-gray-500 transition-colors tracking-wide hidden md:block"
           >
             ガイド一覧
+          </Link>
+          <Link
+            href="/lp"
+            className="text-sm text-[#1a1a1a] hover:text-gray-500 transition-colors tracking-wide hidden md:block"
+          >
+            サービス紹介
           </Link>
           <a
             href="https://kamo.soara-mu.jp/contact"
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-[#1a4d3e] hover:bg-[#2d6a5a] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            className="bg-[#1a1a1a] hover:bg-[#333] text-white px-6 py-2.5 text-sm tracking-wider transition-colors"
           >
             お問い合わせ
           </a>
@@ -63,20 +65,20 @@ export function GuideBreadcrumb({ items }: { items: BreadcrumbItem[] }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <nav className="text-sm text-gray-500 mb-6" aria-label="パンくずリスト">
-        <ol className="flex flex-wrap items-center gap-1">
+      <nav className="text-sm text-gray-400 mb-8" aria-label="パンくずリスト">
+        <ol className="flex flex-wrap items-center gap-1.5">
           {items.map((item, i) => (
-            <li key={i} className="flex items-center gap-1">
+            <li key={i} className="flex items-center gap-1.5">
               {i > 0 && <span className="text-gray-300">/</span>}
               {item.href ? (
                 <Link
                   href={item.href}
-                  className="hover:text-blue-600 transition-colors"
+                  className="hover:text-[#1a1a1a] transition-colors tracking-wide"
                 >
                   {item.label}
                 </Link>
               ) : (
-                <span className="text-gray-700 font-medium">{item.label}</span>
+                <span className="text-[#1a1a1a] tracking-wide">{item.label}</span>
               )}
             </li>
           ))}
@@ -92,14 +94,14 @@ export function TableOfContents({
   items: { id: string; label: string }[];
 }) {
   return (
-    <aside className="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-8">
-      <p className="font-bold text-blue-800 text-sm mb-3">目次</p>
-      <ol className="space-y-1.5">
+    <aside className="bg-[#f7f6f3] p-6 mb-10">
+      <p className="text-[10px] tracking-[0.3em] text-gray-400 uppercase mb-4">Contents</p>
+      <ol className="space-y-2">
         {items.map((item, i) => (
           <li key={item.id}>
             <a
               href={`#${item.id}`}
-              className="text-sm text-blue-700 hover:text-blue-900 hover:underline"
+              className="text-sm text-[#1a1a1a] hover:text-gray-500 transition-colors tracking-wide"
             >
               {i + 1}. {item.label}
             </a>
@@ -114,19 +116,19 @@ export function CtaBanner({ text, href }: { text?: string; href?: string }) {
   const ctaHref = href ?? "https://kamo.soara-mu.jp/contact";
   const isExternal = ctaHref.startsWith("http");
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 sm:p-8 text-center my-10">
-      <p className="text-white font-bold text-xl mb-2">
+    <div className="bg-[#1a1a1a] p-8 sm:p-10 text-center my-12">
+      <p className="text-white font-extralight text-xl tracking-wider mb-3">
         {text ?? "工事の「見える化」について、まずはご相談ください。"}
       </p>
-      <p className="text-blue-200 text-sm mb-5">
+      <p className="text-white/40 text-sm tracking-wide mb-6">
         KAMO constructionは施工管理システムで工事の全工程を透明化。管理組合・施主様に安心をお届けします。
       </p>
       <a
         href={ctaHref}
         {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-        className="inline-block bg-white text-blue-700 font-bold px-7 py-3 rounded-xl hover:bg-blue-50 transition-colors"
+        className="inline-block bg-white text-[#1a1a1a] px-8 py-3 text-sm tracking-[0.15em] hover:bg-gray-100 transition-colors"
       >
-        KAMOに無料相談する →
+        KAMOに無料相談する
       </a>
     </div>
   );
@@ -134,15 +136,15 @@ export function CtaBanner({ text, href }: { text?: string; href?: string }) {
 
 export function AuthorBox() {
   return (
-    <div className="border border-gray-200 rounded-xl p-5 flex gap-4 items-start my-10">
-      <div className="w-14 h-14 bg-[#1a4d3e] rounded-full flex items-center justify-center flex-shrink-0">
-        <span className="text-[#b8973a] text-xl font-bold">K</span>
+    <div className="border-t border-gray-100 pt-8 flex gap-5 items-start my-12">
+      <div className="w-14 h-14 bg-[#1a1a1a] flex items-center justify-center flex-shrink-0">
+        <span className="text-white text-xs font-medium tracking-wider">KAMO</span>
       </div>
       <div>
-        <p className="font-bold text-gray-900 text-sm mb-1">
+        <p className="text-sm font-medium text-[#1a1a1a] tracking-wider mb-1">
           KAMO construction 編集部
         </p>
-        <p className="text-xs text-gray-500 leading-relaxed">
+        <p className="text-xs text-gray-400 leading-relaxed tracking-wide">
           公共建築工事の施工管理・DX化を専門とするライター・エンジニアチームが執筆しています。
           公共工事標準仕様書（建築工事編）令和7年版をはじめ、国土交通省の電子納品基準に基づいた正確な情報を提供しています。
         </p>
@@ -159,17 +161,17 @@ interface RelatedArticle {
 
 export function RelatedArticles({ articles }: { articles: RelatedArticle[] }) {
   return (
-    <section className="mt-12 border-t border-gray-100 pt-8">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">関連記事</h2>
+    <section className="mt-12 border-t border-gray-100 pt-10">
+      <p className="text-[10px] tracking-[0.3em] text-gray-400 uppercase mb-6">Related Articles</p>
       <div className="grid sm:grid-cols-2 gap-4">
         {articles.map((a) => (
           <Link
             key={a.href}
             href={a.href}
-            className="border border-gray-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-sm transition-all"
+            className="border border-gray-100 p-5 hover:bg-[#f7f6f3] transition-colors group"
           >
-            <p className="font-bold text-blue-700 text-sm mb-1">{a.title}</p>
-            <p className="text-xs text-gray-500">{a.description}</p>
+            <p className="text-sm font-medium text-[#1a1a1a] tracking-wider mb-1 group-hover:text-gray-600 transition-colors">{a.title}</p>
+            <p className="text-xs text-gray-400 tracking-wide">{a.description}</p>
           </Link>
         ))}
       </div>
@@ -179,44 +181,48 @@ export function RelatedArticles({ articles }: { articles: RelatedArticle[] }) {
 
 export function GuideFooter() {
   return (
-    <footer className="bg-gray-900 text-gray-400 py-10 mt-16">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
-        <Link href="/lp" className="text-white font-bold text-lg hover:text-[#b8973a] transition-colors">
-          KAMO construction
-        </Link>
-        <p className="text-sm mt-2 mb-6">
-          工事の見える化で、安心を届ける。施工管理システムで透明性を実現。
-        </p>
-        <div className="flex flex-wrap justify-center gap-4 text-sm">
-          <Link href="/lp" className="hover:text-white transition-colors">
-            サービス紹介
-          </Link>
-          <Link href="/guide" className="hover:text-white transition-colors">
-            ガイド一覧
-          </Link>
-          <Link href="/login" className="hover:text-white transition-colors">
-            ログイン
-          </Link>
-          <a
-            href="https://kamo.soara-mu.jp/contact"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-white transition-colors"
-          >
-            お問い合わせ
-          </a>
-          <a
-            href="https://kamo.soara-mu.jp"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-white transition-colors"
-          >
-            KAMO construction（会社サイト）
-          </a>
+    <footer className="bg-[#111] text-white/50">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16">
+        <div className="grid md:grid-cols-3 gap-12 mb-12">
+          <div>
+            <Image src="/logo.png" alt="KAMO construction" width={280} height={280} className="h-20 w-auto brightness-0 invert mb-6" />
+            <p className="text-sm leading-relaxed">
+              創業1994年。建設業許可8業種を持つ総合建設会社。
+              独自の施工管理システムで安心と透明性をお届けします。
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[10px] tracking-[0.3em] text-gray-500 uppercase mb-5">Guide</p>
+            <ul className="space-y-3 text-sm">
+              <li><Link href="/guide" className="hover:text-white transition-colors tracking-wide">ガイド一覧</Link></li>
+              <li><Link href="/guide/mansion-renovation" className="hover:text-white transition-colors tracking-wide">大規模修繕ガイド</Link></li>
+              <li><Link href="/guide/exterior-painting" className="hover:text-white transition-colors tracking-wide">外壁塗装業者選びガイド</Link></li>
+              <li><Link href="/guide/construction-photo-management" className="hover:text-white transition-colors tracking-wide">工事写真管理ガイド</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-[10px] tracking-[0.3em] text-gray-500 uppercase mb-5">Links</p>
+            <ul className="space-y-3 text-sm">
+              <li><Link href="/lp" className="hover:text-white transition-colors tracking-wide">サービス紹介</Link></li>
+              <li><a href="https://kamo.soara-mu.jp" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors tracking-wide">コーポレートサイト</a></li>
+              <li><a href="https://kamo.soara-mu.jp/contact" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors tracking-wide">お問い合わせ</a></li>
+              <li><Link href="/login" className="hover:text-white transition-colors tracking-wide">施工管理システム ログイン</Link></li>
+            </ul>
+          </div>
         </div>
-        <p className="text-xs mt-6">
-          &copy; 2026 KAMO construction. All rights reserved.
-        </p>
+
+        <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs tracking-widest">
+            &copy; {new Date().getFullYear()} KAMO construction. All rights reserved.
+          </p>
+          <p className="text-xs tracking-wider">
+            <a href="https://kamo.soara-mu.jp" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+              kamo.soara-mu.jp
+            </a>
+          </p>
+        </div>
       </div>
     </footer>
   );
@@ -226,7 +232,7 @@ export function GuideLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-white">
       <GuideNavbar />
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-20 pb-8">
+      <div className="max-w-3xl mx-auto px-6 lg:px-8 pt-28 pb-12">
         {children}
       </div>
       <GuideFooter />

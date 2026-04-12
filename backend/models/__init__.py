@@ -46,6 +46,26 @@ from models.client_portal import ClientPortalConfig, ClientNotificationLog, Insp
 from models.crm import Brand, Customer, CustomerContact, Lead, Interaction, EntityLink
 from models.project_member import ProjectMember
 
+from models.business_docs import (
+    Estimate, Invoice, PaymentNotice, ContractDocument,
+    GovernmentFiling, EnvironmentRecord, HandoverItem,
+    MaterialTraceability, UserTask, SystemAnnouncement,
+)
+from models.platform import PasswordResetToken, LoginHistory, FileAttachment, UserInvitation
+from models.construction_loan import ConstructionLoan, LoanPayment
+from models.painting_project import PaintingSurvey, PaintingEstimate, PaintingContract, ContractTemplate, PaintingSchedule
+from models.signature import DigitalSignature
+from models.push_subscription import PushSubscription
+from models.compliance import ComplianceItem
+from models.punch_list import PunchListItem
+from models.esign import ElectronicSignature
+from models.neighborhood import NeighborhoodRecord
+from models.temporary_works import TemporaryWork
+from models.retirement_mutual_aid import RetirementMutualAidRecord
+from models.ccus import CcusRecord
+from models.recycling import RecyclingNotice
+from models.green_file import GreenFile
+
 __all__ = [
     "Tenant", "User", "Project", "Phase", "PhaseRequirement",
     "Photo", "Report", "SpecChapter", "RegionalOverride",
@@ -83,22 +103,3 @@ __all__ = [
     "RetirementMutualAidRecord", "CcusRecord", "RecyclingNotice",
     "GreenFile",
 ]
-from models.business_docs import (
-    Estimate, Invoice, PaymentNotice, ContractDocument,
-    GovernmentFiling, EnvironmentRecord, HandoverItem,
-    MaterialTraceability, UserTask, SystemAnnouncement,
-)
-from models.platform import PasswordResetToken, LoginHistory, FileAttachment, UserInvitation
-from models.construction_loan import ConstructionLoan, LoanPayment
-from models.painting_project import PaintingSurvey, PaintingEstimate, PaintingContract, ContractTemplate, PaintingSchedule
-from models.signature import DigitalSignature
-from models.push_subscription import PushSubscription
-from models.compliance import ComplianceItem
-from models.punch_list import PunchListItem
-from models.esign import ElectronicSignature
-from models.neighborhood import NeighborhoodRecord
-from models.temporary_works import TemporaryWork
-from models.retirement_mutual_aid import RetirementMutualAidRecord
-from models.ccus import CcusRecord
-from models.recycling import RecyclingNotice
-from models.green_file import GreenFile
