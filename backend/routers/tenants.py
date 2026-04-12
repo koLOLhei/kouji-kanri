@@ -120,7 +120,7 @@ def list_plans():
 
 @router.get("", response_model=list[TenantResponse])
 def list_tenants(
-    user: User = Depends(require_role("admin", "super_admin")),
+    user: User = Depends(require_role("super_admin")),
     db: Session = Depends(get_db),
 ):
     tenants = db.query(Tenant).order_by(Tenant.created_at.desc()).all()
@@ -210,17 +210,27 @@ def update_tenant(
     if not tenant:
         raise HTTPException(status_code=404, detail="テナントが見つかりません")
 
-    for key, value in req.model_dump(exclude_unset=True).items():
+    # 一般adminは自社テナントの名前のみ変更可。プラン・上限はsuper_admin専用。
+    if user.role != "super_admin":
+        if tenant.id != user.tenant_id:
+            raise HTTPException(status_code=403, detail="他社テナントは変更できません")
+        if req.plan is not None or req.max_projects is not None or req.max_users is not None or req.is_active is not None:
+            raise HTTPException(status_code=403, detail="プラン・上限の変更はシステム管理者のみ可能です")
+
+    data = req.model_dump(exclude_unset=True)
+    # super_admin以外はmax_projects/max_usersを変更不可（二重防御）
+    if user.role != "super_admin":
+        data.pop("max_projects", None)
+        data.pop("max_users", None)
+        data.pop("plan", None)
+        data.pop("is_active", None)
+
+    for key, value in data.items():
         setattr(tenant, key, value)
 
-    # プラン変更時はlimitsも更新（plan_service経由で正規値に同期）
-    if req.plan:
+    # プラン変更時はlimitsも更新（super_adminのみ到達可能）
+    if req.plan and user.role == "super_admin":
         sync_tenant_limits_from_plan(db, tenant)
-        # Re-apply any explicit override from the request
-        if req.max_projects is not None:
-            tenant.max_projects = req.max_projects
-        if req.max_users is not None:
-            tenant.max_users = req.max_users
 
     db.commit()
     db.refresh(tenant)
@@ -342,7 +352,7 @@ def get_plan_usage_endpoint(
 
 @router.get("/stats/overview")
 def get_stats(
-    user: User = Depends(require_role("admin", "super_admin")),
+    user: User = Depends(require_role("super_admin")),
     db: Session = Depends(get_db),
 ):
     """SaaS全体の統計"""
@@ -372,14 +382,15 @@ def get_stats(
     }
 
 
-# ── D30: User invitation ──────────────────────────────────────────────────────
-# Invite tokens are stored in-memory. In production, persist to DB with expiry.
-_invite_tokens: dict[str, tuple[str, str, float]] = {}  # hashed -> (tenant_id, role, expiry)
+# ── D30: User invitation (DB永続化) ───────────────────────────────────────────
+
+from models.invite_token import InviteToken
 _INVITE_TOKEN_TTL = 86400  # 24 hours
 
 
 class InviteRequest(BaseModel):
     role: str = "worker"
+    email: str = ""  # 招待メール送信先（任意）
 
 
 @router.post("/{tenant_id}/invite")
@@ -389,33 +400,48 @@ def invite_user(
     user: User = Depends(require_role("admin", "super_admin")),
     db: Session = Depends(get_db),
 ):
-    """
-    D30: Generate a one-time invite link for a new user to join a tenant.
-    The raw token is returned and also logged; in production it would be emailed.
-    """
+    """招待リンクを生成してDBに永続化。複数台構成でも正常動作。"""
+    # adminは自社テナントのみ招待可能
+    if user.role != "super_admin" and tenant_id != user.tenant_id:
+        raise HTTPException(status_code=403, detail="他社テナントへの招待はできません")
+
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="テナントが見つかりません")
 
-    # Validate role value
     allowed_roles = {"admin", "project_manager", "worker", "inspector"}
     if req.role not in allowed_roles:
         raise HTTPException(status_code=400, detail=f"無効なロールです。許可値: {', '.join(allowed_roles)}")
 
     raw_token = secrets.token_urlsafe(32)
-    hashed = hashlib.sha256(raw_token.encode()).hexdigest()
-    expiry = time.monotonic() + _INVITE_TOKEN_TTL
-    _invite_tokens[hashed] = (tenant_id, req.role, expiry)
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 
-    # TODO: send via email. For now, return the token so it can be shared manually.
-    print(
-        f"[invite] token for tenant {tenant.name} (role={req.role}): {raw_token}",
-        flush=True,
+    from services.timezone_utils import now_utc
+    from datetime import timedelta
+    invite = InviteToken(
+        token_hash=token_hash,
+        tenant_id=tenant_id,
+        role=req.role,
+        email=req.email or None,
+        expires_at=now_utc() + timedelta(seconds=_INVITE_TOKEN_TTL),
     )
+    db.add(invite)
+    db.commit()
+
+    # メール送信（トークンをログに出力しない）
+    from services.email_service import send_email
+    invite_url = f"https://kouji.soara-mu.jp/accept-invite?token={raw_token}"
+    if req.email:
+        send_email(
+            req.email,
+            f"[KAMO] {tenant.name}への招待",
+            f"<p>{tenant.name}に招待されました。</p><p><a href='{invite_url}'>こちらからアカウントを作成</a>（24時間有効）</p>",
+        )
+
     return {
-        "invite_token": raw_token,
+        "invite_url": invite_url,
         "expires_in_seconds": _INVITE_TOKEN_TTL,
-        "message": "招待リンクを生成しました。新しいユーザーにトークンを共有してください。",
+        "message": "招待リンクを生成しました。",
     }
 
 
@@ -428,22 +454,19 @@ class AcceptInviteRequest(BaseModel):
 
 @router.post("/accept-invite", response_model=TenantUserResponse)
 def accept_invite(req: AcceptInviteRequest, db: Session = Depends(get_db)):
-    """D30: A new user accepts an invite token and registers their account."""
-    # Purge expired tokens
-    now = time.monotonic()
-    expired = [k for k, (_, _, exp) in _invite_tokens.items() if now > exp]
-    for k in expired:
-        del _invite_tokens[k]
+    """招待トークンを検証してユーザーアカウントを作成（DB永続化版）。"""
+    token_hash = hashlib.sha256(req.token.encode()).hexdigest()
 
-    hashed = hashlib.sha256(req.token.encode()).hexdigest()
-    entry = _invite_tokens.get(hashed)
-    if not entry or now > entry[2]:
+    from services.timezone_utils import now_utc
+    invite = db.query(InviteToken).filter(
+        InviteToken.token_hash == token_hash,
+        InviteToken.used == False,
+        InviteToken.expires_at > now_utc(),
+    ).first()
+    if not invite:
         raise HTTPException(status_code=400, detail="無効または期限切れの招待トークンです")
 
-    tenant_id, role, _ = entry
-
-    # Check user limit
-    check_user_limit(db, tenant_id)
+    check_user_limit(db, invite.tenant_id)
 
     existing = db.query(User).filter(User.email == req.email).first()
     if existing:
@@ -453,14 +476,14 @@ def accept_invite(req: AcceptInviteRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="パスワードは8文字以上にしてください")
 
     new_user = User(
-        tenant_id=tenant_id,
+        tenant_id=invite.tenant_id,
         email=req.email,
         password_hash=hash_password(req.password),
         name=req.name,
-        role=role,
+        role=invite.role,
     )
     db.add(new_user)
+    invite.used = True  # トークンを使用済みにする（削除ではなく監査証跡として残す）
     db.commit()
     db.refresh(new_user)
-    del _invite_tokens[hashed]
     return TenantUserResponse.model_validate(new_user)

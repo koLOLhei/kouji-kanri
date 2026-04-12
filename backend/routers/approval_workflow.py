@@ -276,6 +276,17 @@ def act_on_step(
     if step.status != "pending":
         raise HTTPException(status_code=400, detail=f"ステップは既に '{step.status}' 状態です")
 
+    # 順番チェック: 前の必須ステップが全て完了しているか確認
+    prior_steps = db.query(ApprovalStep).filter(
+        ApprovalStep.flow_id == flow_id,
+        ApprovalStep.step_order < step.step_order,
+        ApprovalStep.is_required == True,
+    ).all()
+    incomplete = [s for s in prior_steps if s.status not in ("approved", "conditionally_approved")]
+    if incomplete:
+        names = ", ".join(s.step_name for s in incomplete)
+        raise HTTPException(status_code=400, detail=f"前のステップが未完了です: {names}")
+
     if not _user_can_act_on_step(user, step):
         raise HTTPException(status_code=403, detail="このステップを承認する権限がありません")
 

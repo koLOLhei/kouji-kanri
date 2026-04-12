@@ -65,6 +65,7 @@ from models.retirement_mutual_aid import RetirementMutualAidRecord
 from models.ccus import CcusRecord
 from models.recycling import RecyclingNotice
 from models.green_file import GreenFile
+from models.invite_token import InviteToken
 
 __all__ = [
     "Tenant", "User", "Project", "Phase", "PhaseRequirement",
