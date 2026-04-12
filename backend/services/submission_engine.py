@@ -309,8 +309,112 @@ def generate_document(
         from weasyprint import HTML
         pdf_bytes = HTML(string=html_content).write_pdf()
         return pdf_bytes, "application/pdf", ".pdf"
-    except ImportError:
-        return html_content.encode("utf-8"), "text/html", ".html"
+    except (ImportError, Exception) as exc:
+        # WeasyPrint unavailable (system deps missing) or rendering error.
+        # Return a self-contained, print-ready HTML page the user can
+        # open in a browser and use File→Print→Save as PDF.
+        import logging
+        logging.getLogger(__name__).warning("[pdf] WeasyPrint unavailable (%s) — returning HTML fallback", exc)
+        print_html = _wrap_printable_html(html_content)
+        return print_html.encode("utf-8"), "text/html; charset=utf-8", ".html"
+
+
+def _wrap_printable_html(inner_html: str) -> str:
+    """Wrap rendered template HTML in a self-contained print-ready document.
+
+    If the inner HTML already starts with <!DOCTYPE, return it as-is (the
+    template itself is a full document).  Otherwise wrap it so the browser
+    can render it directly and the user can print-to-PDF.
+    """
+    stripped = inner_html.lstrip()
+    if stripped.lower().startswith("<!doctype") or stripped.lower().startswith("<html"):
+        # Full document — inject print instruction banner if not present
+        banner = (
+            '<div style="background:#fef3c7;border:1px solid #f59e0b;padding:12px 20px;'
+            'margin:0 0 16px 0;font-family:sans-serif;font-size:14px;border-radius:4px;">'
+            '&#x1F4BE; このページをPDFとして保存するには: ブラウザメニュー → <strong>印刷</strong> → '
+            '保存先を <strong>「PDFに保存」</strong> に選択してください。</div>'
+        )
+        return stripped.replace("<body>", f"<body>{banner}", 1) if "<body>" in stripped else stripped
+    return f"""<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工事書類</title>
+<style>
+  /* ── Reset ── */
+  *, *::before, *::after {{ box-sizing: border-box; }}
+  body {{
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
+    font-size: 11pt;
+    color: #111;
+    margin: 0;
+    padding: 0;
+    background: #f8fafc;
+  }}
+  /* ── Print instruction banner (screen only) ── */
+  .print-banner {{
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    padding: 12px 20px;
+    font-size: 13px;
+    text-align: center;
+    border-radius: 4px;
+    margin: 16px auto;
+    max-width: 860px;
+  }}
+  @media print {{
+    .print-banner {{ display: none; }}
+    body {{ background: white; }}
+    .page-wrap {{ box-shadow: none; margin: 0; padding: 0; max-width: 100%; }}
+  }}
+  /* ── Document wrapper ── */
+  .page-wrap {{
+    max-width: 860px;
+    margin: 24px auto;
+    background: white;
+    padding: 48px 56px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    border-radius: 4px;
+  }}
+  /* ── Typography ── */
+  h1 {{ font-size: 18pt; margin: 0 0 16px; border-bottom: 2px solid #1e40af; padding-bottom: 8px; }}
+  h2 {{ font-size: 13pt; margin: 24px 0 8px; border-left: 4px solid #1e40af; padding-left: 8px; }}
+  h3 {{ font-size: 11pt; margin: 16px 0 4px; }}
+  table {{
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+    font-size: 10pt;
+  }}
+  th, td {{
+    border: 1px solid #cbd5e1;
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+  }}
+  th {{ background: #f1f5f9; font-weight: 600; }}
+  img {{ max-width: 100%; height: auto; }}
+  .label {{ font-weight: 600; color: #374151; }}
+  .value {{ color: #111; }}
+  dl {{ display: grid; grid-template-columns: 140px 1fr; gap: 4px 12px; margin: 8px 0; }}
+  dt {{ font-weight: 600; color: #374151; }}
+  dd {{ margin: 0; }}
+  footer {{ margin-top: 48px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 9pt; color: #6b7280; }}
+</style>
+</head>
+<body>
+<div class="print-banner">
+  &#x1F4BE; このページをPDFとして保存するには:
+  ブラウザメニュー &rarr; <strong>印刷</strong> &rarr;
+  保存先を <strong>「PDFに保存」</strong> に選択してください。
+</div>
+<div class="page-wrap">
+{inner_html}
+</div>
+</body>
+</html>"""
 
 
 def check_phase_completeness(db: Session, phase_id: str) -> dict:
@@ -411,15 +515,21 @@ def generate_submission_package(
     try:
         from weasyprint import HTML
         pdf_bytes = HTML(string=html_content).write_pdf()
-    except ImportError:
-        pdf_bytes = html_content.encode("utf-8")
+        file_ext = ".pdf"
+        file_mime = "application/pdf"
+    except (ImportError, Exception) as exc:
+        import logging
+        logging.getLogger(__name__).warning("[pdf] WeasyPrint unavailable (%s) — storing HTML fallback", exc)
+        pdf_bytes = _wrap_printable_html(html_content).encode("utf-8")
+        file_ext = ".html"
+        file_mime = "text/html"
 
     # S3にアップロード
     key = generate_upload_key(
         tenant_id, project.id, "submissions",
-        f"{submission_type}_{phase.phase_code or phase.id}.pdf"
+        f"{submission_type}_{phase.phase_code or phase.id}{file_ext}"
     )
-    upload_file(pdf_bytes, key, "application/pdf")
+    upload_file(pdf_bytes, key, file_mime)
 
     # DB保存
     submission = Submission(

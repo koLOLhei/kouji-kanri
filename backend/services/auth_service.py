@@ -38,8 +38,16 @@ def verify_password(plain: str, stored: str) -> bool:
 
 
 def create_access_token(data: dict) -> str:
+    # C20: Role-based session timeout.
+    # Admin/super-admin accounts have elevated privileges; shorter expiry limits
+    # the blast radius of a compromised token.
+    role = data.get("role", "worker")
+    if role in ("super_admin", "admin"):
+        expire_minutes = 120   # 2 hours for admin roles
+    else:
+        expire_minutes = settings.access_token_expire_minutes  # 8 hours for workers
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
 

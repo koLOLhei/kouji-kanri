@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState, ReactNode } from "react";
 import { Providers } from "@/components/providers";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
@@ -10,28 +10,45 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { OnboardingGuide } from "@/components/onboarding-guide";
 import { useAuth } from "@/lib/auth";
 import { registerServiceWorker } from "@/lib/offline";
-import { ReactNode } from "react";
 
-const PUBLIC_PATHS = ["/login", "/lp", "/guide", "/scan", "/client"];
+const PUBLIC_PATHS = ["/login", "/lp", "/guide", "/scan", "/client", "/forgot-password", "/reset-password"];
 
-function isPublicPath(pathname: string): boolean {
+function isPublicPath(pathname: string | null): boolean {
+  if (!pathname) return false;
   return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + "/"));
 }
 
 function AuthGate({ children }: { children: ReactNode }) {
   const { token, loading } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
-  // Register service worker once on mount
   useEffect(() => {
+    setMounted(true);
     registerServiceWorker();
   }, []);
 
-  // Public pages render immediately — no loading spinner, no auth check
+  useEffect(() => {
+    if (!mounted || loading) return;
+
+    // Unauthenticated on a private path: redirect to LP
+    if (!token && !isPublicPath(pathname)) {
+      router.push("/lp");
+    }
+  }, [token, loading, pathname, mounted, router]);
+
+  // Prevent hydration mismatch by not rendering anything auth-dependent until mounted
+  if (!mounted) {
+    return null;
+  }
+
+  // Public pages render immediately (post-mount)
   if (isPublicPath(pathname)) {
     return <>{children}</>;
   }
 
+  // Show loading spinner while determining auth state for private pages
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -40,11 +57,8 @@ function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  // Unauthenticated: redirect to LP (not login)
+  // Final check for private pages: if still no token, suppress render until redirect happens
   if (!token) {
-    if (typeof window !== "undefined") {
-      window.location.href = "/lp";
-    }
     return null;
   }
 
@@ -57,7 +71,8 @@ function AuthGate({ children }: { children: ReactNode }) {
       </div>
       <div className="flex-1 flex flex-col min-w-0 bg-gray-50 pb-16 md:pb-0">
         <Breadcrumbs />
-        <main className="flex-1">{children}</main>
+        {/* D33: id="main-content" anchors the skip-link in layout.tsx */}
+        <main id="main-content" className="flex-1">{children}</main>
       </div>
       <MobileNav />
     </div>

@@ -156,6 +156,7 @@ export function Sidebar() {
 
   return (
     <aside
+      aria-label="サイドバーナビゲーション"
       className={cn(
         "bg-slate-900 text-white flex flex-col min-h-screen transition-all duration-300 relative",
         collapsed ? "w-[68px]" : "w-64"
@@ -164,6 +165,8 @@ export function Sidebar() {
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
+        aria-label={collapsed ? "サイドバーを展開" : "サイドバーを折りたたむ"}
+        aria-expanded={!collapsed}
         className="absolute -right-3 top-7 z-10 w-6 h-6 bg-slate-700 hover:bg-slate-600 border-2 border-slate-900 rounded-full flex items-center justify-center transition-colors"
       >
         {collapsed ? (
@@ -205,7 +208,7 @@ export function Sidebar() {
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
+      <nav role="navigation" aria-label="メインナビゲーション" className="flex-1 px-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
         {renderSection("メイン", mainItems)}
         {renderSection("組織管理", orgItems)}
 
@@ -290,6 +293,7 @@ export function Sidebar() {
             <button
               onClick={logout}
               title="ログアウト"
+              aria-label="ログアウト"
               className="text-slate-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-slate-800"
             >
               <LogOut className="w-4 h-4" />

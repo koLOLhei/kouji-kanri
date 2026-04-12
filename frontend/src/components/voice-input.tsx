@@ -51,6 +51,10 @@ interface VoiceInputProps {
   disabled?: boolean;
 }
 
+// D32: Auto-stop timeout — stop recording after 30 s of silence to prevent
+// users from leaving the microphone open inadvertently.
+const VOICE_TIMEOUT_MS = 30_000;
+
 export function VoiceInput({
   onResult,
   mode = "append",
@@ -59,20 +63,32 @@ export function VoiceInput({
 }: VoiceInputProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [interim, setInterim] = useState("");
-  const [supported, setSupported] = useState(true);
+  // D32: Check support before rendering the button at all
+  const [supported, setSupported] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const finalTextRef = useRef("");
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!getSpeechRecognition()) {
-      setSupported(false);
-    }
+    // D32: Only set supported=true after confirming the API is available
+    setSupported(!!getSpeechRecognition());
+  }, []);
+
+  // D32: Clear auto-stop timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, []);
 
   const startRecording = useCallback(() => {
     const SpeechRec = getSpeechRecognition();
-    if (!SpeechRec) return;
+    // D32: Guard — should not happen if button is hidden, but be defensive
+    if (!SpeechRec) {
+      setError("このブラウザは音声入力をサポートしていません");
+      return;
+    }
 
     setError(null);
     finalTextRef.current = "";
@@ -101,18 +117,35 @@ export function VoiceInput({
       setInterim(interimTranscript);
     };
 
+    // D32: Detailed error messages for each Web Speech API failure mode
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error === "no-speech") {
-        setError("音声が検出されませんでした");
-      } else if (event.error === "not-allowed") {
-        setError("マイクへのアクセスが拒否されました");
-      } else {
-        setError(`エラー: ${event.error}`);
+      if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+      switch (event.error) {
+        case "no-speech":
+          setError("音声が検出されませんでした。もう一度お試しください。");
+          break;
+        case "not-allowed":
+        case "service-not-allowed":
+          setError("マイクへのアクセスが拒否されました。ブラウザの設定を確認してください。");
+          break;
+        case "network":
+          setError("ネットワークエラーが発生しました。接続を確認してください。");
+          break;
+        case "audio-capture":
+          setError("マイクが見つかりません。マイクが接続されているか確認してください。");
+          break;
+        case "aborted":
+          // User or timeout aborted — not an error worth surfacing
+          setError(null);
+          break;
+        default:
+          setError(`音声入力エラー: ${event.error}`);
       }
       setIsRecording(false);
     };
 
     recognition.onend = () => {
+      if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
       setIsRecording(false);
       setInterim("");
       if (finalTextRef.current) {
@@ -124,9 +157,18 @@ export function VoiceInput({
     recognitionRef.current = recognition;
     recognition.start();
     setIsRecording(true);
+
+    // D32: Auto-stop after VOICE_TIMEOUT_MS of silence
+    timeoutRef.current = setTimeout(() => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        setError("30秒経過したため録音を自動停止しました。");
+      }
+    }, VOICE_TIMEOUT_MS);
   }, [onResult]);
 
   const stopRecording = useCallback(() => {
+    if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
     recognitionRef.current?.stop();
   }, []);
 

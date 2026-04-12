@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
-import { Building2, User, Shield, Bell, BellOff, Sun, Globe } from "lucide-react";
+import { Building2, User, Shield, Bell, BellOff, Sun, Globe, Moon } from "lucide-react";
 import {
   requestNotificationPermission,
   useNotificationPermission,
@@ -13,6 +13,7 @@ import {
 import { OutdoorModeToggle } from "@/components/outdoor-mode-toggle";
 import { cn } from "@/lib/utils";
 import { useLocale, LOCALE_LABELS, type Locale } from "@/lib/i18n";
+import { useTheme } from "@/lib/theme";
 
 function Toggle({
   checked,
@@ -53,6 +54,7 @@ export default function SettingsPage() {
   );
   const [requestingPermission, setRequestingPermission] = useState(false);
   const [locale, setLocale] = useLocale();
+  const [theme, setTheme] = useTheme();
 
   useEffect(() => {
     saveNotificationSettings(settings);
@@ -219,11 +221,27 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Outdoor mode */}
+        {/* Display settings */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Sun className="w-5 h-5" /> 表示設定
           </h2>
+          {/* D22: Dark mode toggle */}
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                <Moon className="w-4 h-4" /> ダークモード
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                画面を暗色テーマに切り替えます
+              </p>
+            </div>
+            <Toggle
+              checked={theme === "dark"}
+              onChange={(v) => setTheme(v ? "dark" : "light")}
+            />
+          </div>
+          <hr className="border-gray-100 my-2" />
           <div className="flex items-center justify-between py-2">
             <div>
               <p className="text-sm font-medium text-gray-800">屋外モード</p>

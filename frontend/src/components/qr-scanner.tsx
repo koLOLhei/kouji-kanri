@@ -33,6 +33,9 @@ export function QRScanner({ onScan, onError, className }: QRScannerProps) {
   const [manualInput, setManualInput] = useState("");
   const [showManual, setShowManual] = useState(false);
 
+  // D31: Detect BarcodeDetector support (Chrome/Edge only — not Safari)
+  const hasBarcodeDetector = typeof window !== "undefined" && !!window.BarcodeDetector;
+
   const stopCamera = useCallback(() => {
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
@@ -51,11 +54,26 @@ export function QRScanner({ onScan, onError, className }: QRScannerProps) {
     setStatus("starting");
     setErrorMsg("");
 
-    // Check BarcodeDetector support
+    // D31: Safari fallback — BarcodeDetector is Chrome/Edge only.
+    // On Safari, show the manual input prominently and camera preview without detection.
     if (!window.BarcodeDetector) {
-      setErrorMsg("このブラウザはカメラQRスキャンに対応していません");
+      setErrorMsg("このブラウザはカメラQRスキャン（自動認識）に対応していません。手動でコードを入力してください。");
       setStatus("error");
       setShowManual(true);
+      // Still try to open camera so user can photograph the QR and read it manually
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          setStatus("scanning"); // show viewfinder even without auto-detect
+        }
+      } catch {
+        // Camera access denied on Safari too — manual input is the only option
+      }
       return;
     }
 
@@ -155,6 +173,14 @@ export function QRScanner({ onScan, onError, className }: QRScannerProps) {
       )}
 
       {/* Controls */}
+      {/* D31: Safari hint shown before start */}
+      {!hasBarcodeDetector && status === "idle" && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 max-w-xs text-center">
+          このブラウザ（Safari等）では自動QR認識は動作しません。<br />
+          カメラを起動してコードを確認し、<strong>手動入力</strong>してください。
+        </div>
+      )}
+
       {status !== "scanning" && (
         <button
           type="button"
@@ -162,7 +188,7 @@ export function QRScanner({ onScan, onError, className }: QRScannerProps) {
           className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2"
         >
           <span>📷</span>
-          <span>QRスキャン開始</span>
+          <span>{hasBarcodeDetector ? "QRスキャン開始" : "カメラを起動"}</span>
         </button>
       )}
       {status === "scanning" && (

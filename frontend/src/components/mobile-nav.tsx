@@ -66,6 +66,7 @@ export function MobileNav() {
               <h3 className="text-lg font-bold text-gray-900">メニュー</h3>
               <button
                 onClick={() => setMenuOpen(false)}
+                aria-label="メニューを閉じる"
                 className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
               >
                 <X className="w-4 h-4 text-gray-600" />
@@ -106,7 +107,7 @@ export function MobileNav() {
       )}
 
       {/* Bottom navigation bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+      <nav role="navigation" aria-label="モバイルナビゲーション" className="md:hidden fixed bottom-0 left-0 right-0 z-50">
         <div className="bg-white/95 backdrop-blur-lg border-t border-gray-200 pb-safe">
           <div className="flex items-end justify-around px-2 pt-1">
             {navItems.map((item) => {
@@ -121,10 +122,11 @@ export function MobileNav() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-label="写真撮影"
                     className="flex flex-col items-center -mt-4"
                   >
                     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-300/50 flex items-center justify-center mb-0.5 active:scale-95 transition-transform">
-                      <Camera className="w-6 h-6 text-white" />
+                      <Camera className="w-6 h-6 text-white" aria-hidden="true" />
                     </div>
                     <span className="text-[10px] font-bold text-blue-600">{item.label}</span>
                   </Link>
@@ -137,9 +139,11 @@ export function MobileNav() {
                   <button
                     key="menu"
                     onClick={() => setMenuOpen(true)}
+                    aria-label="メニューを開く"
+                    aria-expanded={menuOpen}
                     className="flex flex-col items-center py-2 px-3 text-gray-400"
                   >
-                    <Menu className="w-5 h-5 mb-0.5" />
+                    <Menu className="w-5 h-5 mb-0.5" aria-hidden="true" />
                     <span className="text-[10px]">{item.label}</span>
                   </button>
                 );

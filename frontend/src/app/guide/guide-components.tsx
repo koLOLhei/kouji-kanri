@@ -10,11 +10,11 @@ export function GuideNavbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         <Link href="/lp" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xs font-bold">工</span>
+          <div className="w-8 h-8 bg-[#1a4d3e] rounded-lg flex items-center justify-center">
+            <span className="text-[#b8973a] text-xs font-bold">K</span>
           </div>
           <span className="text-base font-bold text-gray-900">
-            工事管理<span className="text-blue-600">SaaS</span>
+            KAMO <span className="text-[#1a4d3e]">construction</span>
           </span>
         </Link>
         <div className="flex items-center gap-4">
@@ -24,12 +24,14 @@ export function GuideNavbar() {
           >
             ガイド一覧
           </Link>
-          <Link
-            href="/login"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+          <a
+            href="https://kamo.soara-mu.jp/contact"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-[#1a4d3e] hover:bg-[#2d6a5a] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
           >
-            無料で始める
-          </Link>
+            お問い合わせ
+          </a>
         </div>
       </div>
     </nav>
@@ -108,21 +110,24 @@ export function TableOfContents({
   );
 }
 
-export function CtaBanner({ text }: { text?: string }) {
+export function CtaBanner({ text, href }: { text?: string; href?: string }) {
+  const ctaHref = href ?? "https://kamo.soara-mu.jp/contact";
+  const isExternal = ctaHref.startsWith("http");
   return (
     <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 sm:p-8 text-center my-10">
       <p className="text-white font-bold text-xl mb-2">
-        {text ?? "書類作成の手間を大幅削減しませんか？"}
+        {text ?? "工事の「見える化」について、まずはご相談ください。"}
       </p>
       <p className="text-blue-200 text-sm mb-5">
-        工事管理SaaSなら、この記事で紹介した作業をすべてアプリで完結できます。無料プランで今すぐ試せます。
+        KAMO constructionは施工管理システムで工事の全工程を透明化。管理組合・施主様に安心をお届けします。
       </p>
-      <Link
-        href="/login"
+      <a
+        href={ctaHref}
+        {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
         className="inline-block bg-white text-blue-700 font-bold px-7 py-3 rounded-xl hover:bg-blue-50 transition-colors"
       >
-        無料で始める →
-      </Link>
+        KAMOに無料相談する →
+      </a>
     </div>
   );
 }
@@ -130,12 +135,12 @@ export function CtaBanner({ text }: { text?: string }) {
 export function AuthorBox() {
   return (
     <div className="border border-gray-200 rounded-xl p-5 flex gap-4 items-start my-10">
-      <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center flex-shrink-0">
-        <span className="text-white text-xl font-bold">工</span>
+      <div className="w-14 h-14 bg-[#1a4d3e] rounded-full flex items-center justify-center flex-shrink-0">
+        <span className="text-[#b8973a] text-xl font-bold">K</span>
       </div>
       <div>
         <p className="font-bold text-gray-900 text-sm mb-1">
-          工事管理SaaS 編集部
+          KAMO construction 編集部
         </p>
         <p className="text-xs text-gray-500 leading-relaxed">
           公共建築工事の施工管理・DX化を専門とするライター・エンジニアチームが執筆しています。
@@ -176,11 +181,11 @@ export function GuideFooter() {
   return (
     <footer className="bg-gray-900 text-gray-400 py-10 mt-16">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
-        <Link href="/lp" className="text-white font-bold text-lg hover:text-blue-400 transition-colors">
-          工事管理SaaS
+        <Link href="/lp" className="text-white font-bold text-lg hover:text-[#b8973a] transition-colors">
+          KAMO construction
         </Link>
         <p className="text-sm mt-2 mb-6">
-          公共建築工事の施工管理をデジタルで革新するクラウドサービス
+          工事の見える化で、安心を届ける。施工管理システムで透明性を実現。
         </p>
         <div className="flex flex-wrap justify-center gap-4 text-sm">
           <Link href="/lp" className="hover:text-white transition-colors">
@@ -192,9 +197,14 @@ export function GuideFooter() {
           <Link href="/login" className="hover:text-white transition-colors">
             ログイン
           </Link>
-          <Link href="/login" className="hover:text-white transition-colors">
-            無料で始める
-          </Link>
+          <a
+            href="https://kamo.soara-mu.jp/contact"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-white transition-colors"
+          >
+            お問い合わせ
+          </a>
           <a
             href="https://kamo.soara-mu.jp"
             target="_blank"
@@ -205,7 +215,7 @@ export function GuideFooter() {
           </a>
         </div>
         <p className="text-xs mt-6">
-          &copy; 2026 工事管理SaaS. All rights reserved.
+          &copy; 2026 KAMO construction. All rights reserved.
         </p>
       </div>
     </footer>

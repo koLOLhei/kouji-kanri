@@ -37,7 +37,7 @@ export const metadata: Metadata = {
       "独自の施工管理システムで工事の全工程をリアルタイムに共有。マンション管理組合様・戸建て住宅オーナー様に、かつてない透明性と安心をお届けします。",
     images: [
       {
-        url: "https://kouji.soara-mu.jp/og-image.png",
+        url: "https://kouji.soara-mu.jp/opengraph-image",
         width: 1200,
         height: 630,
         alt: "KAMO construction - 工事の見える化で安心を届ける",
@@ -92,7 +92,7 @@ const softwareApplicationJsonLd = {
     "施工前後写真比較",
     "工程進捗リアルタイム確認",
   ],
-  screenshot: "https://kouji.soara-mu.jp/og-image.png",
+  screenshot: "https://kouji.soara-mu.jp/opengraph-image",
 };
 
 const organizationJsonLd = {
@@ -100,7 +100,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: "KAMO construction",
   url: "https://kamo.soara-mu.jp",
-  logo: "https://kouji.soara-mu.jp/og-image.png",
+  logo: "https://kouji.soara-mu.jp/opengraph-image",
   description:
     "創業1994年。建設業許可8業種を持つ総合建設会社。独自の施工管理システムで施主様・管理組合様に安心と透明性をお届けします。",
   foundingDate: "1994",
@@ -142,6 +142,13 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full">
+        {/* D33: Skip-to-content link for keyboard/screen reader users */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:bg-white focus:text-slate-900 focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg focus:font-semibold focus:text-sm focus:outline focus:outline-2 focus:outline-blue-500"
+        >
+          メインコンテンツへスキップ
+        </a>
         <AppShell>{children}</AppShell>
       </body>
     </html>

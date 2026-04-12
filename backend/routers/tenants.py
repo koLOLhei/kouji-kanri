@@ -1,5 +1,8 @@
 """Tenant management router (super_admin / admin)."""
 
+import hashlib
+import secrets
+import time
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -367,3 +370,97 @@ def get_stats(
         "plan_breakdown": plan_breakdown,
         "monthly_revenue": monthly_revenue,
     }
+
+
+# ── D30: User invitation ──────────────────────────────────────────────────────
+# Invite tokens are stored in-memory. In production, persist to DB with expiry.
+_invite_tokens: dict[str, tuple[str, str, float]] = {}  # hashed -> (tenant_id, role, expiry)
+_INVITE_TOKEN_TTL = 86400  # 24 hours
+
+
+class InviteRequest(BaseModel):
+    role: str = "worker"
+
+
+@router.post("/{tenant_id}/invite")
+def invite_user(
+    tenant_id: str,
+    req: InviteRequest,
+    user: User = Depends(require_role("admin", "super_admin")),
+    db: Session = Depends(get_db),
+):
+    """
+    D30: Generate a one-time invite link for a new user to join a tenant.
+    The raw token is returned and also logged; in production it would be emailed.
+    """
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="テナントが見つかりません")
+
+    # Validate role value
+    allowed_roles = {"admin", "project_manager", "worker", "inspector"}
+    if req.role not in allowed_roles:
+        raise HTTPException(status_code=400, detail=f"無効なロールです。許可値: {', '.join(allowed_roles)}")
+
+    raw_token = secrets.token_urlsafe(32)
+    hashed = hashlib.sha256(raw_token.encode()).hexdigest()
+    expiry = time.monotonic() + _INVITE_TOKEN_TTL
+    _invite_tokens[hashed] = (tenant_id, req.role, expiry)
+
+    # TODO: send via email. For now, return the token so it can be shared manually.
+    print(
+        f"[invite] token for tenant {tenant.name} (role={req.role}): {raw_token}",
+        flush=True,
+    )
+    return {
+        "invite_token": raw_token,
+        "expires_in_seconds": _INVITE_TOKEN_TTL,
+        "message": "招待リンクを生成しました。新しいユーザーにトークンを共有してください。",
+    }
+
+
+class AcceptInviteRequest(BaseModel):
+    token: str
+    email: str
+    name: str
+    password: str
+
+
+@router.post("/accept-invite", response_model=TenantUserResponse)
+def accept_invite(req: AcceptInviteRequest, db: Session = Depends(get_db)):
+    """D30: A new user accepts an invite token and registers their account."""
+    # Purge expired tokens
+    now = time.monotonic()
+    expired = [k for k, (_, _, exp) in _invite_tokens.items() if now > exp]
+    for k in expired:
+        del _invite_tokens[k]
+
+    hashed = hashlib.sha256(req.token.encode()).hexdigest()
+    entry = _invite_tokens.get(hashed)
+    if not entry or now > entry[2]:
+        raise HTTPException(status_code=400, detail="無効または期限切れの招待トークンです")
+
+    tenant_id, role, _ = entry
+
+    # Check user limit
+    check_user_limit(db, tenant_id)
+
+    existing = db.query(User).filter(User.email == req.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="このメールアドレスは既に登録されています")
+
+    if len(req.password) < 8:
+        raise HTTPException(status_code=400, detail="パスワードは8文字以上にしてください")
+
+    new_user = User(
+        tenant_id=tenant_id,
+        email=req.email,
+        password_hash=hash_password(req.password),
+        name=req.name,
+        role=role,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    del _invite_tokens[hashed]
+    return TenantUserResponse.model_validate(new_user)

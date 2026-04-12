@@ -8,6 +8,28 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Q
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+# C17: Magic bytes for allowed file types.
+# The extension alone is not trustworthy — a malicious user can rename a script to .jpg.
+# Verify the actual binary signature before processing.
+_ALLOWED_MAGIC: dict[bytes, str] = {
+    b'\xff\xd8\xff': 'image/jpeg',
+    b'\x89PNG': 'image/png',
+    b'GIF8': 'image/gif',
+    b'RIFF': 'image/webp',   # RIFF????WEBP — first 4 bytes are sufficient for initial guard
+    b'%PDF': 'application/pdf',
+}
+# Maximum byte prefix we need to read to identify any allowed type
+_MAGIC_CHECK_LEN = max(len(m) for m in _ALLOWED_MAGIC)
+
+
+def _validate_file_magic(file_data: bytes) -> bool:
+    """Return True if `file_data` begins with a known-safe magic byte sequence."""
+    header = file_data[:_MAGIC_CHECK_LEN]
+    for magic in _ALLOWED_MAGIC:
+        if header[:len(magic)] == magic:
+            return True
+    return False
+
 from database import get_db
 from models.project import Project
 from models.photo import Photo
@@ -107,6 +129,13 @@ async def upload_photo(
 
     # ファイル読込 (async - UploadFile requires await)
     file_data = await file.read()
+
+    # C17: Validate file magic bytes before any processing
+    if not _validate_file_magic(file_data):
+        raise HTTPException(
+            status_code=400,
+            detail="サポートされていないファイル形式です。JPEG・PNG・GIF・WebP・PDFのみ許可されています",
+        )
 
     # EXIF抽出・サムネイル作成・アップロードはブロッキングI/O → スレッドプールで実行
     def _process_and_upload():
