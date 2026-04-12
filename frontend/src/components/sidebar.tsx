@@ -67,7 +67,8 @@ export function Sidebar() {
       return res.count;
     },
     enabled: !!token,
-    refetchInterval: 30000,
+    staleTime: 60000,
+    refetchInterval: 60000,
   });
 
   const isActive = (href: string) =>

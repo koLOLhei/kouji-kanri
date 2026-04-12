@@ -12,6 +12,12 @@ import { useAuth } from "@/lib/auth";
 import { registerServiceWorker } from "@/lib/offline";
 import { ReactNode } from "react";
 
+const PUBLIC_PATHS = ["/login", "/lp", "/guide", "/scan", "/client"];
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + "/"));
+}
+
 function AuthGate({ children }: { children: ReactNode }) {
   const { token, loading } = useAuth();
   const pathname = usePathname();
@@ -21,21 +27,17 @@ function AuthGate({ children }: { children: ReactNode }) {
     registerServiceWorker();
   }, []);
 
+  // Public pages render immediately — no loading spinner, no auth check
+  if (isPublicPath(pathname)) {
+    return <>{children}</>;
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
       </div>
     );
-  }
-
-  // Public pages (no auth required)
-  if (
-    pathname === "/login" ||
-    pathname === "/lp" ||
-    pathname.startsWith("/guide")
-  ) {
-    return <>{children}</>;
   }
 
   // Unauthenticated: redirect to LP (not login)

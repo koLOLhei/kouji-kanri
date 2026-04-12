@@ -114,10 +114,12 @@ export default function RootLayout({
   return (
     <html lang="ja" className={`${geist.variable} h-full antialiased`}>
       <head>
-        {/* Content-Security-Policy: mitigate XSS risk from localStorage JWT storage */}
+        {/* Content-Security-Policy: mitigate XSS risk from localStorage JWT storage.
+            'unsafe-inline' for scripts is required by Next.js for inline script tags.
+            staticmap.openstreetmap.de is needed for the photo map component. */}
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://kouji-kanri-api.onrender.com http://127.0.0.1:8001;"
+          content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://kouji-kanri-api.onrender.com http://127.0.0.1:8001 https://*.onrender.com; font-src 'self' https://fonts.gstatic.com;"
         />
         <script
           type="application/ld+json"

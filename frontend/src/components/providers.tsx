@@ -9,7 +9,14 @@ export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
-        defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+        defaultOptions: {
+          queries: {
+            staleTime: 5 * 60 * 1000,      // 5分間はキャッシュを使う（refetch不要）
+            gcTime: 10 * 60 * 1000,         // 10分間キャッシュを保持
+            retry: 1,
+            refetchOnWindowFocus: false,     // タブ切替でrefetchしない
+          },
+        },
       })
   );
 
