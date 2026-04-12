@@ -51,7 +51,12 @@ from services.storage_service import ensure_bucket
 
 
 def _run_migrations(engine):
-    """Add missing columns to existing tables (safe to run repeatedly)."""
+    """Add missing columns to existing tables (safe to run repeatedly, idempotent).
+
+    Uses a PostgreSQL advisory lock (pg_advisory_lock) to prevent race
+    conditions when multiple workers start simultaneously.
+    Each column is handled independently so one failure does not abort others.
+    """
     from sqlalchemy import text, inspect
     insp = inspect(engine)
     migrations = [
@@ -71,13 +76,26 @@ def _run_migrations(engine):
         ("audit_logs", "new_values", "JSONB"),
     ]
     with engine.connect() as conn:
-        for table, col, col_type in migrations:
-            if table in insp.get_table_names():
-                existing = [c["name"] for c in insp.get_columns(table)]
-                if col not in existing:
-                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
-                    print(f"[migrate] Added {table}.{col}", flush=True)
-        conn.commit()
+        # Advisory lock prevents race conditions in multi-worker deployments.
+        # Released automatically when the connection closes.
+        conn.execute(text("SELECT pg_advisory_lock(12345)"))
+        try:
+            for table, col, col_type in migrations:
+                if table in insp.get_table_names():
+                    existing = [c["name"] for c in insp.get_columns(table)]
+                    if col not in existing:
+                        try:
+                            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+                            conn.commit()
+                            print(f"[migrate] Added {table}.{col}", flush=True)
+                        except Exception as e:
+                            conn.rollback()
+                            print(f"[migrate] Skipped {table}.{col}: {e}", flush=True)
+                    else:
+                        print(f"[migrate] {table}.{col} already exists, skipping", flush=True)
+        finally:
+            conn.execute(text("SELECT pg_advisory_unlock(12345)"))
+            conn.commit()
 
 
 @asynccontextmanager
@@ -228,10 +246,13 @@ def health():
 @app.get("/api/files/{path:path}")
 def serve_file(path: str):
     """Serve locally stored files (dev mode without S3)."""
+    from fastapi import HTTPException
     from fastapi.responses import FileResponse
     from services.storage_service import get_local_file
+    # Reject obviously dangerous path components before hitting the filesystem
+    if ".." in path or path.startswith("/"):
+        raise HTTPException(status_code=400, detail="Invalid file path")
     filepath = get_local_file(path)
     if not filepath:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(filepath)

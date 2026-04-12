@@ -1,5 +1,6 @@
 """プラットフォーム機能: パスワードリセット、ログイン履歴、汎用ファイル、招待"""
 
+import asyncio
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
@@ -121,7 +122,8 @@ async def upload_file_attachment(
     verify_project_access(project_id, user, db)
     data = await file.read()
     key = generate_upload_key(user.tenant_id, project_id, "files", file.filename or "file")
-    upload_file(data, key, file.content_type or "application/octet-stream")
+    # upload_file はブロッキングI/O → スレッドプールで実行
+    await asyncio.to_thread(upload_file, data, key, file.content_type or "application/octet-stream")
     attachment = FileAttachment(
         tenant_id=user.tenant_id, project_id=project_id,
         entity_type=entity_type, entity_id=entity_id,

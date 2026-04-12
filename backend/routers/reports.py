@@ -1,5 +1,6 @@
 """Report (報告書) router."""
 
+import asyncio
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
@@ -62,8 +63,9 @@ async def upload_report(
         raise HTTPException(status_code=404, detail="案件が見つかりません")
 
     file_data = await file.read()
+    # upload_file はブロッキングI/O → スレッドプールで実行
     file_key = generate_upload_key(user.tenant_id, project_id, "reports", file.filename or "report.pdf")
-    upload_file(file_data, file_key, file.content_type or "application/pdf")
+    await asyncio.to_thread(upload_file, file_data, file_key, file.content_type or "application/pdf")
 
     report = Report(
         project_id=project_id,

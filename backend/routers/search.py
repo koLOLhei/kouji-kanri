@@ -127,7 +127,11 @@ def global_search(
     if not allowed_types or "phase" in allowed_types:
         phases = (
             db.query(Phase)
-            .filter(Phase.name.ilike(like_pattern))
+            .join(Project, Phase.project_id == Project.id)
+            .filter(
+                Project.tenant_id == tenant_id,
+                Phase.name.ilike(like_pattern),
+            )
             .limit(MAX_RESULTS)
             .all()
         )
@@ -146,7 +150,11 @@ def global_search(
     if not allowed_types or "daily_report" in allowed_types:
         reports = (
             db.query(DailyReport)
-            .filter(DailyReport.work_description.ilike(like_pattern))
+            .join(Project, DailyReport.project_id == Project.id)
+            .filter(
+                Project.tenant_id == tenant_id,
+                DailyReport.work_description.ilike(like_pattern),
+            )
             .limit(MAX_RESULTS)
             .all()
         )
@@ -165,7 +173,11 @@ def global_search(
     if not allowed_types or "inspection" in allowed_types:
         inspections = (
             db.query(Inspection)
-            .filter(Inspection.title.ilike(like_pattern))
+            .join(Project, Inspection.project_id == Project.id)
+            .filter(
+                Project.tenant_id == tenant_id,
+                Inspection.title.ilike(like_pattern),
+            )
             .limit(MAX_RESULTS)
             .all()
         )
@@ -184,7 +196,11 @@ def global_search(
     if not allowed_types or "corrective_action" in allowed_types:
         actions = (
             db.query(CorrectiveAction)
-            .filter(CorrectiveAction.title.ilike(like_pattern))
+            .join(Project, CorrectiveAction.project_id == Project.id)
+            .filter(
+                Project.tenant_id == tenant_id,
+                CorrectiveAction.title.ilike(like_pattern),
+            )
             .limit(MAX_RESULTS)
             .all()
         )
@@ -198,6 +214,7 @@ def global_search(
                 "project_id": a.project_id,
                 "_score": _score(a.title, keyword),
             })
+
 
     # Sort by score (exact match first), then limit
     results.sort(key=lambda x: x["_score"], reverse=True)

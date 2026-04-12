@@ -1,5 +1,6 @@
 """Safety management (安全管理) router - KY, patrols, incidents, trainings, orientations."""
 
+import asyncio
 from datetime import date, datetime, timedelta
 from collections import defaultdict
 
@@ -348,14 +349,18 @@ async def quick_incident_report(
 
     if file:
         file_data = await file.read()
-        # Extract GPS from EXIF if available
-        exif = extract_exif(file_data)
+
+        # extract_exif + upload_file はブロッキングI/O → スレッドプールで実行
+        def _process_incident_file():
+            exif = extract_exif(file_data)
+            file_key = generate_upload_key(user.tenant_id, project_id, "incidents", file.filename or "incident.jpg")
+            upload_file(file_data, file_key, file.content_type or "image/jpeg")
+            return exif, file_key
+
+        exif, file_key = await asyncio.to_thread(_process_incident_file)
+
         if exif.get("gps_lat") and exif.get("gps_lng"):
             location = f"{exif['gps_lat']:.6f}, {exif['gps_lng']:.6f}"
-
-        # Upload photo
-        file_key = generate_upload_key(user.tenant_id, project_id, "incidents", file.filename or "incident.jpg")
-        upload_file(file_data, file_key, file.content_type or "image/jpeg")
         photo_key = file_key
 
     incident = IncidentReport(

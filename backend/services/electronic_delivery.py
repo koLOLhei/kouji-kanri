@@ -395,6 +395,8 @@ def preview_delivery(project_id: str, db: Session) -> dict:
 # ZIP Package Builder
 # ---------------------------------------------------------------------------
 
+MAX_DELIVERY_PHOTOS = 200
+
 def build_delivery_package(project_id: str, db: Session) -> bytes:
     """
     Build a complete electronic delivery ZIP package.
@@ -407,11 +409,19 @@ def build_delivery_package(project_id: str, db: Session) -> bytes:
         DRAWINGF/<drawing files>
         OTHRS/
     """
+    from fastapi import HTTPException
     from services.storage_service import read_file as storage_read
 
     project: Project | None = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
         raise ValueError(f"プロジェクトが見つかりません: {project_id}")
+
+    photo_count = db.query(Photo).filter(Photo.project_id == project_id).count()
+    if photo_count > MAX_DELIVERY_PHOTOS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"写真が{MAX_DELIVERY_PHOTOS}枚を超えています。範囲を絞ってください。",
+        )
 
     buf = io.BytesIO()
 

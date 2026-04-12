@@ -14,9 +14,13 @@ class Settings(BaseSettings):
     s3_bucket: str = "kouji-kanri"
     s3_region: str = "us-east-1"
 
+    resend_api_key: str = ""
+    smtp_from: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 settings = Settings()

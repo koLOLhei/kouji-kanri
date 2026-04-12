@@ -138,6 +138,11 @@ export default function RootLayout({
   return (
     <html lang="ja" className={`${geist.variable} h-full antialiased`}>
       <head>
+        {/* Content-Security-Policy: mitigate XSS risk from localStorage JWT storage */}
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://kouji-kanri-api.onrender.com http://127.0.0.1:8001;"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

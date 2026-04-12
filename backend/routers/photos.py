@@ -1,5 +1,6 @@
 """Photo (工事写真) router."""
 
+import asyncio
 import io
 import zipfile
 
@@ -20,6 +21,8 @@ from services.project_access import verify_project_access
 
 router = APIRouter(prefix="/api/projects/{project_id}/photos", tags=["photos"])
 
+MAX_BULK_PHOTOS = 200
+
 
 @router.get("/download-zip")
 def download_photos_zip(
@@ -29,9 +32,17 @@ def download_photos_zip(
 ):
     """プロジェクトの全写真をZIPでダウンロードする。"""
     verify_project_access(project_id, user, db)
-    photos = db.query(Photo).filter(Photo.project_id == project_id).all()
-    if not photos:
+
+    photo_count = db.query(Photo).filter(Photo.project_id == project_id).count()
+    if photo_count == 0:
         raise HTTPException(status_code=404, detail="写真が見つかりません")
+    if photo_count > MAX_BULK_PHOTOS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"写真が{MAX_BULK_PHOTOS}枚を超えています。範囲を絞ってください。",
+        )
+
+    photos = db.query(Photo).filter(Photo.project_id == project_id).all()
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -92,21 +103,21 @@ async def upload_photo(
     if not project:
         raise HTTPException(status_code=404, detail="案件が見つかりません")
 
-    # ファイル読込
+    # ファイル読込 (async - UploadFile requires await)
     file_data = await file.read()
 
-    # EXIF抽出
-    exif = extract_exif(file_data)
+    # EXIF抽出・サムネイル作成・アップロードはブロッキングI/O → スレッドプールで実行
+    def _process_and_upload():
+        exif = extract_exif(file_data)
+        thumbnail_data = create_thumbnail(file_data)
+        file_key = generate_upload_key(user.tenant_id, project_id, "photos", file.filename or "photo.jpg")
+        upload_file(file_data, file_key, file.content_type or "image/jpeg")
+        thumb_key = file_key.replace("/photos/", "/thumbnails/")
+        upload_file(thumbnail_data, thumb_key, "image/jpeg")
+        checksum = compute_checksum(file_data)
+        return exif, file_key, thumb_key, checksum
 
-    # サムネイル作成
-    thumbnail_data = create_thumbnail(file_data)
-
-    # S3アップロード
-    file_key = generate_upload_key(user.tenant_id, project_id, "photos", file.filename or "photo.jpg")
-    upload_file(file_data, file_key, file.content_type or "image/jpeg")
-
-    thumb_key = file_key.replace("/photos/", "/thumbnails/")
-    upload_file(thumbnail_data, thumb_key, "image/jpeg")
+    exif, file_key, thumb_key, checksum = await asyncio.to_thread(_process_and_upload)
 
     # DB保存
     photo = Photo(
@@ -125,7 +136,7 @@ async def upload_photo(
         gps_lng=exif.get("gps_lng"),
         caption=caption,
         uploaded_by=user.id,
-        checksum=compute_checksum(file_data),
+        checksum=checksum,
     )
     db.add(photo)
     db.commit()
@@ -133,7 +144,7 @@ async def upload_photo(
 
     # 自動書類生成チェック
     if phase_id:
-        auto_generate_if_ready(db, phase_id, user.tenant_id)
+        await asyncio.to_thread(auto_generate_if_ready, db, phase_id, user.tenant_id)
 
     resp = PhotoResponse.model_validate(photo)
     resp.url = generate_presigned_url(photo.file_key)

@@ -46,6 +46,14 @@ def ensure_bucket():
         STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _safe_local_path(key: str) -> Path | None:
+    """Resolve a storage key to a local path, blocking path traversal attempts."""
+    filepath = (STORAGE_DIR / key).resolve()
+    if not str(filepath).startswith(str(STORAGE_DIR.resolve())):
+        return None  # Path traversal attempt blocked
+    return filepath
+
+
 def upload_file(file_data: bytes, key: str, content_type: str = "application/octet-stream") -> str:
     """Upload file and return the key."""
     if _use_s3:
@@ -61,7 +69,9 @@ def upload_file(file_data: bytes, key: str, content_type: str = "application/oct
         )
         client.upload_fileobj(BytesIO(file_data), settings.s3_bucket, key, ExtraArgs={"ContentType": content_type})
     else:
-        filepath = STORAGE_DIR / key
+        filepath = _safe_local_path(key)
+        if filepath is None:
+            raise ValueError(f"Invalid storage key (path traversal blocked): {key}")
         filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(file_data)
     return key
@@ -88,7 +98,9 @@ def generate_presigned_url(key: str, expires_in: int = 3600) -> str:
 
 def get_local_file(key: str) -> Path | None:
     """Get local file path (for local storage mode)."""
-    filepath = STORAGE_DIR / key
+    filepath = _safe_local_path(key)
+    if filepath is None:
+        return None  # Path traversal attempt blocked
     return filepath if filepath.exists() else None
 
 
@@ -106,8 +118,8 @@ def delete_file(key: str):
         )
         client.delete_object(Bucket=settings.s3_bucket, Key=key)
     else:
-        filepath = STORAGE_DIR / key
-        if filepath.exists():
+        filepath = _safe_local_path(key)
+        if filepath is not None and filepath.exists():
             filepath.unlink()
 
 
@@ -140,8 +152,8 @@ def verify_file_checksum(key: str, expected_checksum: str) -> bool:
         client.download_fileobj(settings.s3_bucket, key, buf)
         data = buf.getvalue()
     else:
-        filepath = STORAGE_DIR / key
-        if not filepath.exists():
+        filepath = _safe_local_path(key)
+        if filepath is None or not filepath.exists():
             return False
         data = filepath.read_bytes()
     actual = compute_checksum(data)
@@ -168,7 +180,7 @@ def read_file(key: str) -> bytes | None:
         except Exception:
             return None
     else:
-        filepath = STORAGE_DIR / key
-        if not filepath.exists():
+        filepath = _safe_local_path(key)
+        if filepath is None or not filepath.exists():
             return None
         return filepath.read_bytes()
