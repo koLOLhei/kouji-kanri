@@ -29,6 +29,6 @@ services:
       - key: S3_BUCKET
         value: ""
       - key: RESEND_API_KEY
-        value: "re_Sgq4xnPp_3pX4bwcQupXGFtRYG8FYysEv"
+        sync: false
       - key: SMTP_FROM
-        value: "noreply@soara-mu.com"
+        sync: false
