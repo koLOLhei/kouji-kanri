@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/lib/auth";
 
 /* ------------------------------------------------------------------ */
@@ -106,10 +107,9 @@ function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#faf7f2]/90 backdrop-blur-xl border-b border-[#1a4d3e]/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/lp" className="flex flex-col leading-none">
-          <span className="text-xl font-bold tracking-widest text-[#1a4d3e]">KAMO</span>
-          <span className="text-[10px] font-medium tracking-[0.2em] text-[#2d6a5a] uppercase">construction</span>
+        {/* Logo — same sizing as kamo.soara-mu.jp header */}
+        <Link href="/lp" className="flex items-center">
+          <Image src="/logo.png" alt="KAMO construction" width={280} height={280} className="h-14 w-auto" priority />
         </Link>
 
         {/* Nav links */}
@@ -190,10 +190,13 @@ export default function LandingPage() {
 
         <div className="relative max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 py-32">
           <div className="max-w-3xl">
-            {/* Eyebrow */}
-            <p className="text-[#b8973a] text-xs font-semibold tracking-[0.35em] uppercase mb-8">
-              KAMO construction — 施工管理の透明化
-            </p>
+            {/* Logo + Eyebrow */}
+            <div className="mb-8">
+              <Image src="/logo.png" alt="KAMO construction" width={280} height={280} className="h-20 w-auto brightness-0 invert mb-4" />
+              <p className="text-[#b8973a] text-xs font-semibold tracking-[0.35em] uppercase">
+                施工管理の透明化
+              </p>
+            </div>
 
             {/* Main headline */}
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] mb-8 tracking-tight">
@@ -529,8 +532,7 @@ export default function LandingPage() {
             {/* Brand */}
             <div>
               <div className="mb-5">
-                <p className="text-xl font-bold tracking-widest text-white">KAMO</p>
-                <p className="text-[10px] font-medium tracking-[0.2em] text-[#b8973a] uppercase">construction</p>
+                <Image src="/logo.png" alt="KAMO construction" width={280} height={280} className="h-16 w-auto brightness-0 invert" />
               </div>
               <p className="text-sm leading-relaxed">
                 創業1994年。建設業許可8業種を持つ総合建設会社。

@@ -66,6 +66,13 @@ export const metadata: Metadata = {
   },
   verification: {},
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico", sizes: "256x256" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 const softwareApplicationJsonLd = {
