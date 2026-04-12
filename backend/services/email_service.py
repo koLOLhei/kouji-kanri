@@ -39,6 +39,7 @@ def send_email(to: list[str], subject: str, html_body: str,
             headers={
                 "Authorization": f"Bearer {RESEND_API_KEY}",
                 "Content-Type": "application/json",
+                "User-Agent": "kouji-kanri/1.0",
             },
             method="POST",
         )
