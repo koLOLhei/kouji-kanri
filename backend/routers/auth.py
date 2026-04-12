@@ -89,8 +89,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="メールアドレスまたはパスワードが正しくありません")
 
     # A5: Re-hash legacy SHA256 passwords with bcrypt on first successful login
-    from services.auth_service import pwd_context
-    if pwd_context.identify(user.password_hash) != "bcrypt":
+    if not user.password_hash.startswith(("$2b$", "$2a$")):
         user.password_hash = hash_password(req.password)
         print(f"[auth] Upgraded password hash to bcrypt for user {user.id}", flush=True)
 

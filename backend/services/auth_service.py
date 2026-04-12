@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 
 import hashlib
 
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -19,28 +19,32 @@ security = HTTPBearer()
 
 ALGORITHM = "HS256"
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    """Hash password using bcrypt."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, stored: str) -> bool:
-    # Attempt bcrypt verification first
-    if pwd_context.identify(stored) == "bcrypt":
-        return pwd_context.verify(plain, stored)
-    # Legacy SHA256 fallback for existing users (format: salt$hash)
-    if "$" in stored:
-        salt, hashed = stored.split("$", 1)
-        return hashlib.sha256((salt + plain).encode()).hexdigest() == hashed
+    """Verify password against stored hash (bcrypt or legacy SHA256)."""
+    # Bcrypt hashes start with $2b$ or $2a$
+    if stored.startswith(("$2b$", "$2a$")):
+        try:
+            return bcrypt.checkpw(plain.encode("utf-8"), stored.encode("utf-8"))
+        except Exception:
+            return False
+    # Legacy SHA256 fallback (format: salt:hash or salt$hash)
+    for sep in (":", "$"):
+        if sep in stored:
+            parts = stored.split(sep, 1)
+            if len(parts) == 2:
+                salt, hashed = parts
+                return hashlib.sha256((salt + plain).encode()).hexdigest() == hashed
     return False
 
 
 def create_access_token(data: dict) -> str:
     # C20: Role-based session timeout.
-    # Admin/super-admin accounts have elevated privileges; shorter expiry limits
-    # the blast radius of a compromised token.
     role = data.get("role", "worker")
     if role in ("super_admin", "admin"):
         expire_minutes = 120   # 2 hours for admin roles
