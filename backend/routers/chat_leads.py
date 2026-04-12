@@ -94,10 +94,10 @@ def receive_chat_lead(req: ChatLeadRequest, db: Session = Depends(get_db)):
       </div>
     </div>
     """
-    send_email(
+    email_result = send_email(
         to=["contact@soara-mu.com"],
         subject=f"【KAMO】新規お問い合わせ: {meta.get('service_type', '工事相談')} - {req.contact_name}様",
         html_body=email_body,
     )
 
-    return {"status": "ok", "lead_id": lead.id}
+    return {"status": "ok", "lead_id": lead.id, "email_status": email_result.get("status", "unknown")}
