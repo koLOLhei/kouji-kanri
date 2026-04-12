@@ -77,13 +77,27 @@ def _calc_tax(subtotal: int, tax_rate: float) -> tuple[int, int]:
 
 
 def _generate_number(prefix: str, tenant_id: str, model, number_col, db: Session) -> str:
-    year = datetime.now(timezone.utc).year
+    """Generate sequential number that never collides, even after deletions.
+
+    Uses MAX of existing numbers instead of COUNT to avoid gaps causing duplicates.
+    """
+    from services.timezone_utils import now_jst
+    year = now_jst().year
     pattern = f"{prefix}-{year}-"
-    count = db.query(func.count(model.id)).filter(
+    # Get the highest existing number suffix for this year
+    max_number = db.query(func.max(number_col)).filter(
         model.tenant_id == tenant_id,
         number_col.like(f"{pattern}%"),
-    ).scalar() or 0
-    return f"{pattern}{count + 1:03d}"
+    ).scalar()
+    if max_number:
+        # Extract the numeric suffix (e.g., "INV-2026-042" → 42)
+        try:
+            last_num = int(max_number.split("-")[-1])
+        except (ValueError, IndexError):
+            last_num = 0
+    else:
+        last_num = 0
+    return f"{pattern}{last_num + 1:03d}"
 
 
 # ---------- Invoice Endpoints ----------
@@ -140,6 +154,7 @@ def get_invoice(
     record = db.query(Invoice).filter(
         Invoice.id == invoice_id,
         Invoice.project_id == project_id,
+        Invoice.tenant_id == user.tenant_id,
     ).first()
     if not record:
         raise HTTPException(status_code=404, detail="請求書が見つかりません")
@@ -158,6 +173,7 @@ def update_invoice(
     record = db.query(Invoice).filter(
         Invoice.id == invoice_id,
         Invoice.project_id == project_id,
+        Invoice.tenant_id == user.tenant_id,
     ).first()
     if not record:
         raise HTTPException(status_code=404, detail="請求書が見つかりません")

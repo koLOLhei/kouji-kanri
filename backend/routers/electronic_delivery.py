@@ -124,7 +124,7 @@ def download_photo_xml(
     """
     _get_project_or_404(project_id, user, db)
     try:
-        xml_content = generate_photo_xml(project_id, db)
+        xml_content = generate_photo_xml(project_id, db, tenant_id=user.tenant_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -151,7 +151,7 @@ def download_index_xml(
     """
     _get_project_or_404(project_id, user, db)
     try:
-        xml_content = generate_index_xml(project_id, db)
+        xml_content = generate_index_xml(project_id, db, tenant_id=user.tenant_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -177,7 +177,7 @@ def download_meet_xml(
     """
     _get_project_or_404(project_id, user, db)
     try:
-        xml_content = generate_meet_xml(project_id, db)
+        xml_content = generate_meet_xml(project_id, db, tenant_id=user.tenant_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -211,7 +211,7 @@ def generate_delivery_package(
     """
     project = _get_project_or_404(project_id, user, db)
     try:
-        zip_bytes = build_delivery_package(project_id, db)
+        zip_bytes = build_delivery_package(project_id, db, tenant_id=user.tenant_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

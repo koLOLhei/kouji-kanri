@@ -321,16 +321,31 @@ def delete_api_key(
 def export_ical(
     project_id: str,
     token: str | None = None,
-    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """点検スケジュールをiCal形式でエクスポート（認証必須）"""
+    """点検スケジュールをiCal形式でエクスポート。
 
-    # プロジェクトのテナント所有権を検証
+    外部カレンダーアプリ（Google Calendar/Outlook等）はAuthorizationヘッダーを
+    送れないため、クエリパラメータ ``?token=JWT`` での認証もサポートする。
+    """
+    from services.auth_service import decode_token as _decode
     from models.project import Project
+
+    if not token:
+        raise HTTPException(status_code=401, detail="tokenパラメータが必要です（例: ?token=YOUR_JWT）")
+
+    try:
+        payload = _decode(token)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="無効なトークンです")
+
+    tenant_id = payload.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="無効なトークンです")
+
     project = db.query(Project).filter(
         Project.id == project_id,
-        Project.tenant_id == user.tenant_id,
+        Project.tenant_id == tenant_id,
     ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")

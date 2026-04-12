@@ -75,13 +75,16 @@ def _serial(index: int) -> str:
 # PHOTO.XML
 # ---------------------------------------------------------------------------
 
-def generate_photo_xml(project_id: str, db: Session) -> str:
+def generate_photo_xml(project_id: str, db: Session, tenant_id: str | None = None) -> str:
     """
     Generate PHOTO.XML conforming to デジタル写真管理情報基準 令和7年3月.
 
     Returns the XML string (UTF-8 encoded declaration included).
     """
-    project: Project | None = db.query(Project).filter(Project.id == project_id).first()
+    q = db.query(Project).filter(Project.id == project_id)
+    if tenant_id:
+        q = q.filter(Project.tenant_id == tenant_id)
+    project: Project | None = q.first()
     if project is None:
         raise ValueError(f"プロジェクトが見つかりません: {project_id}")
 
@@ -139,11 +142,14 @@ def generate_photo_xml(project_id: str, db: Session) -> str:
 # MEET.XML
 # ---------------------------------------------------------------------------
 
-def generate_meet_xml(project_id: str, db: Session) -> str:
+def generate_meet_xml(project_id: str, db: Session, tenant_id: str | None = None) -> str:
     """
     Generate MEET.XML for meeting minutes.
     """
-    project: Project | None = db.query(Project).filter(Project.id == project_id).first()
+    q = db.query(Project).filter(Project.id == project_id)
+    if tenant_id:
+        q = q.filter(Project.tenant_id == tenant_id)
+    project: Project | None = q.first()
     if project is None:
         raise ValueError(f"プロジェクトが見つかりません: {project_id}")
 
@@ -185,11 +191,14 @@ def generate_meet_xml(project_id: str, db: Session) -> str:
 # INDEX_C.XML
 # ---------------------------------------------------------------------------
 
-def generate_index_xml(project_id: str, db: Session) -> str:
+def generate_index_xml(project_id: str, db: Session, tenant_id: str | None = None) -> str:
     """
     Generate INDEX_C.XML conforming to 工事完成図書の電子納品等要領 令和7年3月.
     """
-    project: Project | None = db.query(Project).filter(Project.id == project_id).first()
+    q = db.query(Project).filter(Project.id == project_id)
+    if tenant_id:
+        q = q.filter(Project.tenant_id == tenant_id)
+    project: Project | None = q.first()
     if project is None:
         raise ValueError(f"プロジェクトが見つかりません: {project_id}")
 
@@ -402,9 +411,10 @@ def preview_delivery(project_id: str, db: Session) -> dict:
 # ZIP Package Builder
 # ---------------------------------------------------------------------------
 
-MAX_DELIVERY_PHOTOS = 200
+MAX_DELIVERY_PHOTOS = 100  # Keep low to avoid OOM on free-tier (512MB RAM)
+MAX_ZIP_SIZE_BYTES = 200 * 1024 * 1024  # 200MB hard limit
 
-def build_delivery_package(project_id: str, db: Session) -> bytes:
+def build_delivery_package(project_id: str, db: Session, tenant_id: str | None = None) -> bytes:
     """
     Build a complete electronic delivery ZIP package.
 
@@ -419,7 +429,10 @@ def build_delivery_package(project_id: str, db: Session) -> bytes:
     from fastapi import HTTPException
     from services.storage_service import read_file as storage_read
 
-    project: Project | None = db.query(Project).filter(Project.id == project_id).first()
+    q = db.query(Project).filter(Project.id == project_id)
+    if tenant_id:
+        q = q.filter(Project.tenant_id == tenant_id)
+    project: Project | None = q.first()
     if project is None:
         raise ValueError(f"プロジェクトが見つかりません: {project_id}")
 
@@ -465,6 +478,12 @@ def build_delivery_package(project_id: str, db: Session) -> bytes:
                 photo_data = storage_read(file_key)
                 if photo_data:
                     zf.writestr(f"PHOTO/PIC/{cals_filename}", photo_data)
+                    # OOM guard: check accumulated ZIP size
+                    if buf.tell() > MAX_ZIP_SIZE_BYTES:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"ZIPサイズが{MAX_ZIP_SIZE_BYTES // (1024*1024)}MBを超えました。写真の範囲を絞ってください。",
+                        )
                     added += 1
             logger.info(
                 "電子納品パッケージ: 写真 %d/%d 枚処理済み (project_id=%s)",
