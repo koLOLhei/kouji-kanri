@@ -42,6 +42,7 @@ from routers import (
     contact_form,
     chat_leads,
     user_tasks, announcements,
+    construction_loans, painting,
 )
 from middleware.rate_limit import RateLimitMiddleware
 from services.seed import seed_initial_data
@@ -215,6 +216,8 @@ app.include_router(platform.router)
 app.include_router(business_flows.router)
 app.include_router(chat_leads.router)
 app.include_router(contact_form.router)
+app.include_router(construction_loans.router)
+app.include_router(painting.router)
 
 
 @app.get("/api/health")

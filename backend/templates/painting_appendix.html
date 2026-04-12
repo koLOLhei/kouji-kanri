@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 20mm 15mm; }
+body { font-family: "Hiragino Mincho Pro", "MS Mincho", serif; font-size: 10pt; color: #333; line-height: 1.6; }
+h1 { text-align: center; font-size: 16pt; margin-bottom: 20px; }
+h2 { font-size: 12pt; margin-top: 15px; border-bottom: 1px solid #999; padding-bottom: 3px; }
+table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+th, td { border: 1px solid #666; padding: 5px 8px; font-size: 9.5pt; }
+th { background: #f0f0f0; text-align: left; }
+.total-row { font-weight: bold; background: #f9f9f9; }
+</style></head><body>
+
+<h1>別紙：工事内容明細書</h1>
+
+<h2>1. 建物情報</h2>
+<table>
+<tr><th>建物種別</th><td>{{ building_type | default('戸建て住宅') }}</td></tr>
+<tr><th>構造</th><td>{{ structure | default('-') }}</td></tr>
+<tr><th>階数</th><td>{{ floors | default('-') }}階</td></tr>
+<tr><th>築年数</th><td>{{ building_age | default('-') }}年</td></tr>
+</table>
+
+<h2>2. 計測データ</h2>
+<table>
+<tr><th>外壁面積</th><td>{{ wall_area_m2 | default('-') }} ㎡</td></tr>
+<tr><th>窓面積（控除）</th><td>{{ window_area_m2 | default('-') }} ㎡</td></tr>
+<tr><th>実塗装面積</th><td>{{ net_painting_area_m2 | default('-') }} ㎡</td></tr>
+<tr><th>コーキング長さ</th><td>{{ caulking_length_m | default('-') }} m</td></tr>
+<tr><th>屋根面積</th><td>{{ roof_area_m2 | default('-') }} ㎡</td></tr>
+</table>
+
+<h2>3. 現状の劣化状況</h2>
+<table>
+{% if condition %}
+<tr><th>ひび割れ</th><td>{{ '有' if condition.cracks else '無' }}</td></tr>
+<tr><th>剥がれ</th><td>{{ '有' if condition.peeling else '無' }}</td></tr>
+<tr><th>色褪せ</th><td>{{ '有' if condition.fading else '無' }}</td></tr>
+<tr><th>カビ</th><td>{{ '有' if condition.mold else '無' }}</td></tr>
+<tr><th>錆</th><td>{{ '有' if condition.rust else '無' }}</td></tr>
+<tr><th>漏水</th><td>{{ '有' if condition.water_damage else '無' }}</td></tr>
+{% if condition.notes %}
+<tr><th>備考</th><td>{{ condition.notes }}</td></tr>
+{% endif %}
+{% endif %}
+</table>
+
+<h2>4. 工事内容・使用材料</h2>
+<table>
+<tr><th>No.</th><th>工事項目</th><th>面積/数量</th><th>塗料/材料</th><th>メーカー</th><th>金額(税抜)</th></tr>
+{% for item in items %}
+<tr>
+<td>{{ loop.index }}</td>
+<td>{{ item.name }}</td>
+<td>{{ item.area_m2 | default('-') }} ㎡</td>
+<td>{{ item.paint_type | default('-') }} {{ item.product_name | default('') }}</td>
+<td>{{ item.manufacturer | default('-') }}</td>
+<td style="text-align:right">¥{{ "{:,}".format(item.amount) }}</td>
+</tr>
+{% endfor %}
+{% if caulking_items %}
+{% for c in caulking_items %}
+<tr>
+<td>{{ items|length + loop.index }}</td>
+<td>コーキング（{{ c.type | default('打替え') }}）</td>
+<td>{{ c.length_m }} m</td>
+<td>-</td>
+<td>-</td>
+<td style="text-align:right">¥{{ "{:,}".format(c.amount) }}</td>
+</tr>
+{% endfor %}
+{% endif %}
+<tr><td></td><td>{{ scaffold_type_label | default('足場') }}</td><td colspan="3">{{ scaffold_vendor | default('-') }}</td><td style="text-align:right">¥{{ "{:,}".format(scaffold_cost | default(0)) }}</td></tr>
+<tr class="total-row"><td colspan="5" style="text-align:right">小計</td><td style="text-align:right">¥{{ "{:,}".format(subtotal) }}</td></tr>
+<tr class="total-row"><td colspan="5" style="text-align:right">消費税(10%)</td><td style="text-align:right">¥{{ "{:,}".format(tax_amount) }}</td></tr>
+<tr class="total-row"><td colspan="5" style="text-align:right">合計</td><td style="text-align:right">¥{{ "{:,}".format(total) }}</td></tr>
+</table>
+
+<h2>5. 工程</h2>
+<table>
+<tr><th>No.</th><th>工程</th><th>予定期間</th></tr>
+{% for step in schedule %}
+<tr><td>{{ step.step_number }}</td><td>{{ step.step_name }}</td><td>{{ step.planned_start | default('-') }} ～ {{ step.planned_end | default('-') }}</td></tr>
+{% endfor %}
+</table>
+
+<h2>6. 保証</h2>
+<table>
+<tr><th>保証対象</th><th>保証期間</th></tr>
+<tr><td>外壁塗装</td><td>{{ warranty_years | default(5) }}年</td></tr>
+<tr><td>クリアコート</td><td>10年</td></tr>
+<tr><td>コーキング</td><td>{{ caulking_warranty | default(5) }}年</td></tr>
+</table>
+
+<h2>7. お客様のご要望</h2>
+<p>{{ client_requests | default('特になし') }}</p>
+
+<p style="margin-top: 20px; text-align: right;">以上</p>
+
+</body></html>
