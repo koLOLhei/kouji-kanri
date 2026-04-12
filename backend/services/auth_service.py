@@ -63,6 +63,10 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
         raise HTTPException(status_code=401, detail="ユーザーが見つかりません")
+    # Verify token_version to support role-change/deactivation revocation
+    token_tv = payload.get("token_version", 0)
+    if token_tv != user.token_version:
+        raise HTTPException(status_code=401, detail="セッションが無効です。再ログインしてください")
     return user
 
 

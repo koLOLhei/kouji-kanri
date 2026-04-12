@@ -1,4 +1,17 @@
-"""プラットフォーム機能: パスワードリセット、ログイン履歴、汎用ファイル、招待"""
+"""プラットフォーム機能: パスワードリセット、ログイン履歴、汎用ファイル、招待
+
+責務の区分:
+  ─── 認証補助 (/api/auth/...)  ───────────────────────────────────────────────
+  password-reset/request, password-reset/confirm, login-history
+  ※ パスワードリセットはメール送信 (dev_mode では print のみ)
+
+  ─── プロジェクトファイル (/api/projects/.../files) ──────────────────────────
+  汎用添付ファイル: 図面以外の補助書類・議事録添付など
+
+  ─── テナントユーザー管理 (/api/invitations, /api/users) ────────────────────
+  招待作成・一覧は admin 以上が必要 (require_role("admin"))
+  ユーザー一覧はテナント内全員が参照可能
+"""
 
 import asyncio
 from datetime import datetime, timezone, timedelta

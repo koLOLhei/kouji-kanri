@@ -74,6 +74,7 @@ def _run_migrations(engine):
         ("submissions", "current_version", "INTEGER"),
         ("audit_logs", "old_values", "JSONB"),
         ("audit_logs", "new_values", "JSONB"),
+        ("users", "token_version", "INTEGER DEFAULT 0 NOT NULL"),
     ]
     with engine.connect() as conn:
         # Advisory lock prevents race conditions in multi-worker deployments.

@@ -27,7 +27,7 @@ class Photo(Base):
     gps_lat: Mapped[float | None] = mapped_column(Float)
     gps_lng: Mapped[float | None] = mapped_column(Float)
     caption: Mapped[str | None] = mapped_column(Text)
-    tags: Mapped[dict] = mapped_column(JSON, default=list)
+    tags: Mapped[list] = mapped_column(JSON, nullable=True, default=list)  # Always a list of strings
     uploaded_by: Mapped[str | None] = mapped_column(String(36))
     checksum: Mapped[str | None] = mapped_column(String(64))  # SHA-256 hex digest
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

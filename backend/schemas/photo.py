@@ -1,7 +1,7 @@
 """Photo schemas."""
 
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class PhotoResponse(BaseModel):
@@ -46,3 +46,19 @@ class PhotoUpdate(BaseModel):
     work_detail: str | None = None
     photo_category: str | None = None
     photo_number: int | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v: list | None) -> list | None:
+        if v is None:
+            return v
+        if not isinstance(v, list):
+            raise ValueError("tags must be a list of strings")
+        if len(v) > 50:
+            raise ValueError("Maximum 50 tags allowed")
+        for tag in v:
+            if not isinstance(tag, str):
+                raise ValueError("Each tag must be a string")
+            if len(tag) > 100:
+                raise ValueError("Each tag must be 100 characters or less")
+        return v

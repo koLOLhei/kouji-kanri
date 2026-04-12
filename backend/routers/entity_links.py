@@ -44,25 +44,31 @@ _ENTITY_MODELS = {
 }
 
 
-def _resolve_name(db: Session, entity_type: str, entity_id: str) -> str | None:
-    """Resolve an entity's display name by type and id."""
+def _resolve_name(db: Session, entity_type: str, entity_id: str, tenant_id: str) -> str | None:
+    """Resolve an entity's display name by type and id, scoped to the tenant."""
     entry = _ENTITY_MODELS.get(entity_type)
     if not entry:
         return None
     model_cls, name_attr = entry
-    row = db.query(model_cls).filter(model_cls.id == entity_id).first()
+    filters = [model_cls.id == entity_id]
+    if hasattr(model_cls, "tenant_id"):
+        filters.append(model_cls.tenant_id == tenant_id)
+    row = db.query(model_cls).filter(*filters).first()
     if not row:
         return None
     return getattr(row, name_attr, None)
 
 
-def _entity_exists(db: Session, entity_type: str, entity_id: str) -> bool:
-    """Check that an entity exists."""
+def _entity_exists(db: Session, entity_type: str, entity_id: str, tenant_id: str) -> bool:
+    """Check that an entity exists within the tenant."""
     entry = _ENTITY_MODELS.get(entity_type)
     if not entry:
         return False
     model_cls, _ = entry
-    return db.query(model_cls).filter(model_cls.id == entity_id).first() is not None
+    filters = [model_cls.id == entity_id]
+    if hasattr(model_cls, "tenant_id"):
+        filters.append(model_cls.tenant_id == tenant_id)
+    return db.query(model_cls).filter(*filters).first() is not None
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -99,7 +105,7 @@ def query_links(
             other_type = lnk.from_type
             other_id = lnk.from_id
 
-        other_name = _resolve_name(db, other_type, other_id)
+        other_name = _resolve_name(db, other_type, other_id, user.tenant_id)
 
         results.append({
             "id": lnk.id,
@@ -121,9 +127,9 @@ def create_link(
     db: Session = Depends(get_db),
 ):
     """Create a link between two entities."""
-    if not _entity_exists(db, req.from_type, req.from_id):
+    if not _entity_exists(db, req.from_type, req.from_id, user.tenant_id):
         raise HTTPException(status_code=404, detail=f"{req.from_type} (id={req.from_id}) が見つかりません")
-    if not _entity_exists(db, req.to_type, req.to_id):
+    if not _entity_exists(db, req.to_type, req.to_id, user.tenant_id):
         raise HTTPException(status_code=404, detail=f"{req.to_type} (id={req.to_id}) が見つかりません")
 
     link = EntityLink(
@@ -172,7 +178,7 @@ def get_entity_graph(
     """Get full graph (2 levels deep) for an entity."""
     tid = user.tenant_id
 
-    center_name = _resolve_name(db, entity_type, entity_id)
+    center_name = _resolve_name(db, entity_type, entity_id, tid)
     if center_name is None:
         raise HTTPException(status_code=404, detail="エンティティが見つかりません")
 
@@ -200,7 +206,7 @@ def get_entity_graph(
 
     for lnk in level1_links:
         other_type, other_id = _other_side(lnk, entity_type, entity_id)
-        other_name = _resolve_name(db, other_type, other_id)
+        other_name = _resolve_name(db, other_type, other_id, tid)
 
         # Level 2: children of this linked entity
         level2_links = _get_direct_links(other_type, other_id)
@@ -210,7 +216,7 @@ def get_entity_graph(
             # Skip link back to center
             if child_type == entity_type and child_id == entity_id:
                 continue
-            child_name = _resolve_name(db, child_type, child_id)
+            child_name = _resolve_name(db, child_type, child_id, tid)
             children.append({
                 "type": child_type,
                 "id": child_id,

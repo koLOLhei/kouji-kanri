@@ -41,29 +41,25 @@ def get_onboarding_status(
             "next_step_url": "/projects",
         }
 
-    # プロジェクト
-    project_ids = [
-        pid for (pid,) in db.query(Project.id).filter(Project.tenant_id == tid).all()
-    ]
-    has_first_project = len(project_ids) > 0
+    # プロジェクト (subqueryで全件取得を避ける)
+    project_subq = db.query(Project.id).filter(Project.tenant_id == tid).subquery()
+    has_first_project = db.query(Project).filter(Project.tenant_id == tid).limit(1).count() > 0
 
     # 工程
-    has_phases = False
-    if project_ids:
-        phase_count = db.query(Phase).filter(Phase.project_id.in_(project_ids)).count()
-        has_phases = phase_count > 0
+    phase_count = db.query(Phase).filter(Phase.project_id.in_(project_subq)).limit(1).count()
+    has_phases = phase_count > 0
 
     # 写真
-    has_photo = False
-    if project_ids:
-        photo_count = db.query(Photo).filter(Photo.project_id.in_(project_ids)).count()
-        has_photo = photo_count > 0
+    photo_count = db.query(Photo).filter(Photo.project_id.in_(project_subq)).limit(1).count()
+    has_photo = photo_count > 0
 
     # 日報
-    has_daily_report = False
-    if project_ids:
-        dr_count = db.query(DailyReport).filter(DailyReport.project_id.in_(project_ids)).count()
-        has_daily_report = dr_count > 0
+    dr_count = db.query(DailyReport).filter(DailyReport.project_id.in_(project_subq)).limit(1).count()
+    has_daily_report = dr_count > 0
+
+    # 次のステップ用に最初のプロジェクトIDが必要な場合のみ取得
+    first_project = db.query(Project.id).filter(Project.tenant_id == tid).limit(1).first()
+    first_pid = first_project[0] if first_project else None
 
     # 進捗計算
     steps = [has_company_info, has_first_project, has_phases, has_photo, has_daily_report]
@@ -75,15 +71,12 @@ def get_onboarding_status(
         next_step = "create_project"
         next_step_url = "/projects/new"
     elif not has_phases:
-        first_pid = project_ids[0]
         next_step = "init_phases"
         next_step_url = f"/projects/{first_pid}"
     elif not has_photo:
-        first_pid = project_ids[0]
         next_step = "upload_photo"
         next_step_url = f"/projects/{first_pid}"
     elif not has_daily_report:
-        first_pid = project_ids[0]
         next_step = "create_daily_report"
         next_step_url = f"/projects/{first_pid}/daily-reports"
     else:

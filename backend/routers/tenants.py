@@ -296,6 +296,9 @@ def update_tenant_user(
 
     target.email = req.email
     target.name = req.name
+    if target.role != req.role:
+        # Role change invalidates existing tokens
+        target.token_version = (target.token_version or 0) + 1
     target.role = req.role
     if req.password:
         target.password_hash = hash_password(req.password)
@@ -314,6 +317,8 @@ def deactivate_tenant_user(
     if not target:
         raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
     target.is_active = False
+    # Deactivation invalidates existing tokens
+    target.token_version = (target.token_version or 0) + 1
     db.commit()
     return {"status": "ok"}
 
