@@ -706,10 +706,19 @@ def get_progress_payment_summary(
     items = pp.items_json or []
     item_count = len(items)
 
+    def _safe_float(val, default=0.0) -> float:
+        """不正な値やNoneを安全にfloatに変換。入力ミスでAPIが落ちない。"""
+        if val is None:
+            return default
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return default
+
     # Aggregate from items_json if totals are not directly stored
-    computed_contract = sum(float(i.get("contract_amount", 0) or 0) for i in items)
-    computed_cumulative = sum(float(i.get("cumulative_amount", 0) or 0) for i in items)
-    computed_this_period = sum(float(i.get("this_period_amount", 0) or 0) for i in items)
+    computed_contract = sum(_safe_float(i.get("contract_amount")) for i in items)
+    computed_cumulative = sum(_safe_float(i.get("cumulative_amount")) for i in items)
+    computed_this_period = sum(_safe_float(i.get("this_period_amount")) for i in items)
 
     total_contract = pp.total_contract_amount if pp.total_contract_amount is not None else computed_contract
     total_cumulative = pp.total_cumulative_amount if pp.total_cumulative_amount is not None else computed_cumulative
@@ -722,10 +731,10 @@ def get_progress_payment_summary(
     # Build per-item progress summary
     item_summaries = []
     for i in items:
-        contract_amt = float(i.get("contract_amount", 0) or 0)
-        cumul_amt = float(i.get("cumulative_amount", 0) or 0)
-        this_amt = float(i.get("this_period_amount", 0) or 0)
-        rate = float(i.get("progress_rate", 0) or 0)
+        contract_amt = _safe_float(i.get("contract_amount"))
+        cumul_amt = _safe_float(i.get("cumulative_amount"))
+        this_amt = _safe_float(i.get("this_period_amount"))
+        rate = _safe_float(i.get("progress_rate"))
         if rate == 0 and contract_amt > 0:
             rate = (cumul_amt / contract_amt) * 100
         item_summaries.append({

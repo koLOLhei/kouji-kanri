@@ -146,7 +146,7 @@ def create_ky_activity(
     db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    ky = KYActivity(project_id=project_id, created_by=user.id, **req.model_dump())
+    ky = KYActivity(project_id=project_id, created_by=user.id, tenant_id=user.tenant_id, **req.model_dump())
     db.add(ky)
     db.commit()
     db.refresh(ky)
@@ -216,7 +216,7 @@ def create_patrol(
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    patrol = SafetyPatrol(project_id=project_id, created_by=user.id, **req.model_dump())
+    patrol = SafetyPatrol(project_id=project_id, created_by=user.id, tenant_id=user.tenant_id, **req.model_dump())
     db.add(patrol)
     db.commit()
     db.refresh(patrol)
@@ -286,7 +286,7 @@ def create_incident(
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    incident = IncidentReport(project_id=project_id, reporter_id=user.id, **req.model_dump())
+    incident = IncidentReport(project_id=project_id, reporter_id=user.id, tenant_id=user.tenant_id, **req.model_dump())
     db.add(incident)
     db.commit()
     db.refresh(incident)
@@ -371,20 +371,26 @@ async def quick_incident_report(
             location = f"{exif['gps_lat']:.6f}, {exif['gps_lng']:.6f}"
         photo_key = file_key
 
-    incident = IncidentReport(
-        project_id=project_id,
-        reporter_id=user.id,
-        incident_date=today_jst(),
-        incident_type="near_miss",
-        severity=severity,
-        location=location,
-        description=description,
-        photo_ids=[photo_key] if photo_key else None,
-        status="reported",
-    )
-    db.add(incident)
-    db.commit()
-    db.refresh(incident)
+    # DB操作もブロッキングI/O → スレッドプールで実行
+    def _save_incident():
+        inc = IncidentReport(
+            project_id=project_id,
+            reporter_id=user.id,
+            tenant_id=user.tenant_id,
+            incident_date=today_jst(),
+            incident_type="near_miss",
+            severity=severity,
+            location=location,
+            description=description,
+            photo_ids=[photo_key] if photo_key else None,
+            status="reported",
+        )
+        db.add(inc)
+        db.commit()
+        db.refresh(inc)
+        return inc
+
+    incident = await asyncio.to_thread(_save_incident)
     return incident
 
 
@@ -411,42 +417,42 @@ def safety_trends(
             y -= 1
         month_labels.append((y, m))
 
+    # 全期間の開始・終了を算出
+    first_y, first_m = month_labels[0]
+    range_start = date(first_y, first_m, 1)
+    last_y, last_m = month_labels[-1]
+    range_end = date(last_y + 1, 1, 1) if last_m == 12 else date(last_y, last_m + 1, 1)
+
+    # 4テーブルを各1クエリで集計（合計4クエリ、月数に依存しない）
+    from sqlalchemy import extract as sql_extract
+
+    def _monthly_counts(model, date_col):
+        rows = (
+            db.query(
+                sql_extract("year", date_col).label("y"),
+                sql_extract("month", date_col).label("m"),
+                func.count(model.id),
+            )
+            .filter(model.project_id == project_id, date_col >= range_start, date_col < range_end)
+            .group_by("y", "m")
+            .all()
+        )
+        return {(int(r[0]), int(r[1])): r[2] for r in rows}
+
+    ky_map = _monthly_counts(KYActivity, KYActivity.activity_date)
+    patrol_map = _monthly_counts(SafetyPatrol, SafetyPatrol.patrol_date)
+    incident_map = _monthly_counts(IncidentReport, IncidentReport.incident_date)
+    training_map = _monthly_counts(SafetyTraining, SafetyTraining.training_date)
+
     result = []
     for y, m in month_labels:
         label = f"{y}-{m:02d}"
-        start = date(y, m, 1)
-        end = date(y + 1, 1, 1) if m == 12 else date(y, m + 1, 1)
-
-        ky_count = db.query(func.count(KYActivity.id)).filter(
-            KYActivity.project_id == project_id,
-            KYActivity.activity_date >= start,
-            KYActivity.activity_date < end,
-        ).scalar() or 0
-
-        patrol_count = db.query(func.count(SafetyPatrol.id)).filter(
-            SafetyPatrol.project_id == project_id,
-            SafetyPatrol.patrol_date >= start,
-            SafetyPatrol.patrol_date < end,
-        ).scalar() or 0
-
-        incident_count = db.query(func.count(IncidentReport.id)).filter(
-            IncidentReport.project_id == project_id,
-            IncidentReport.incident_date >= start,
-            IncidentReport.incident_date < end,
-        ).scalar() or 0
-
-        training_count = db.query(func.count(SafetyTraining.id)).filter(
-            SafetyTraining.project_id == project_id,
-            SafetyTraining.training_date >= start,
-            SafetyTraining.training_date < end,
-        ).scalar() or 0
-
         result.append({
             "month": label,
-            "ky_count": int(ky_count),
-            "patrol_count": int(patrol_count),
-            "incident_count": int(incident_count),
-            "training_count": int(training_count),
+            "ky_count": ky_map.get((y, m), 0),
+            "patrol_count": patrol_map.get((y, m), 0),
+            "incident_count": incident_map.get((y, m), 0),
+            "training_count": training_map.get((y, m), 0),
         })
 
     return result
@@ -508,7 +514,7 @@ def create_training(
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    training = SafetyTraining(project_id=project_id, created_by=user.id, **req.model_dump())
+    training = SafetyTraining(project_id=project_id, created_by=user.id, tenant_id=user.tenant_id, **req.model_dump())
     db.add(training)
     db.commit()
     db.refresh(training)
@@ -566,9 +572,18 @@ def list_orientations(
     db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    return db.query(WorkerOrientation).filter(
+    rows = db.query(WorkerOrientation).filter(
         WorkerOrientation.project_id == project_id
     ).order_by(WorkerOrientation.orientation_date.desc()).all()
+    # 一覧ではセンシティブな個人情報（血液型・保険・緊急連絡先）を除外
+    SENSITIVE_FIELDS = {"blood_type_confirmed", "insurance_verified", "emergency_contact_verified"}
+    safe_rows = []
+    for row in rows:
+        d = {c.name: getattr(row, c.name) for c in row.__table__.columns}
+        for f in SENSITIVE_FIELDS:
+            d.pop(f, None)
+        safe_rows.append(d)
+    return safe_rows
 
 
 @router.post("/worker-orientations")
@@ -595,6 +610,7 @@ def get_orientation(
     project_id: str, orientation_id: str,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    """個人情報を含むため、管理者ロール以上のみフル閲覧可能。"""
     verify_project_access(project_id, user, db)
     o = db.query(WorkerOrientation).filter(
         WorkerOrientation.id == orientation_id,
@@ -602,6 +618,12 @@ def get_orientation(
     ).first()
     if not o:
         raise HTTPException(status_code=404, detail="入場者教育記録が見つかりません")
+    # 一般ユーザーはセンシティブフィールドを非表示
+    if user.role not in ("admin", "super_admin", "site_manager", "safety_manager"):
+        d = {c.name: getattr(o, c.name) for c in o.__table__.columns}
+        for f in ("blood_type_confirmed", "insurance_verified", "emergency_contact_verified"):
+            d.pop(f, None)
+        return d
     return o
 
 
