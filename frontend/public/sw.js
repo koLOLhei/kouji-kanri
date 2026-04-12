@@ -6,17 +6,15 @@
    "オフライン" banner notification to clients
    ============================================================ */
 
-const CACHE_NAME = "kouji-kanri-v1";
+const CACHE_NAME = "kouji-kanri-v3";
 const OFFLINE_QUEUE_DB = "offline-queue";
 const OFFLINE_QUEUE_STORE = "requests";
 
+// Only cache truly static assets — NOT HTML pages
 const STATIC_ASSETS = [
-  "/",
-  "/today",
-  "/capture",
-  "/projects",
   "/manifest.json",
   "/favicon.ico",
+  "/logo.png",
 ];
 
 /* ---- Install: cache static shell ---- */
@@ -122,7 +120,14 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static assets: cache-first
+  // HTML pages (navigation requests): ALWAYS network-first
+  // This ensures fresh content is always served
+  if (request.mode === "navigate" || request.headers.get("accept")?.includes("text/html")) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Only truly static assets (JS/CSS/images/fonts): cache-first
   event.respondWith(cacheFirst(request));
 });
 
