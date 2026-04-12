@@ -39,6 +39,7 @@ from routers import (
     cron_tasks, data_export, onboarding, project_members,
     estimates, invoices, government_filings, handover,
     platform, business_flows,
+    chat_leads,
     user_tasks, announcements,
 )
 from middleware.rate_limit import RateLimitMiddleware
@@ -112,6 +113,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
+        "https://kouji.soara-mu.jp",
+        "https://kamo.soara-mu.jp",
         os.environ.get("FRONTEND_URL", ""),
     ],
     allow_credentials=True,
@@ -209,6 +212,7 @@ app.include_router(user_tasks.router)
 app.include_router(announcements.router)
 app.include_router(platform.router)
 app.include_router(business_flows.router)
+app.include_router(chat_leads.router)
 
 
 @app.get("/api/health")
