@@ -39,6 +39,7 @@ from routers import (
     cron_tasks, data_export, onboarding, project_members,
     estimates, invoices, government_filings, handover,
     platform, business_flows,
+    contact_form,
     chat_leads,
     user_tasks, announcements,
 )
@@ -213,6 +214,7 @@ app.include_router(announcements.router)
 app.include_router(platform.router)
 app.include_router(business_flows.router)
 app.include_router(chat_leads.router)
+app.include_router(contact_form.router)
 
 
 @app.get("/api/health")
