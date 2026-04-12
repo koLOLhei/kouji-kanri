@@ -14,10 +14,10 @@ import { useAuth } from "@/lib/auth";
 /* ------------------------------------------------------------------ */
 
 const HERO_STATS = [
-  { value: "98%", label: "書類作成時間の削減" },
-  { value: "30+", label: "自動生成する帳票数" },
-  { value: "290", label: "APIエンドポイント" },
-  { value: "¥0〜", label: "月額費用" },
+  { value: "100%", label: "進捗の透明性を保証" },
+  { value: "24h", label: "スマホでいつでも確認" },
+  { value: "0", label: "工事中の不安をゼロに" },
+  { value: "98%", label: "満足度の高い報告体制" },
 ];
 
 const PAIN_POINTS = [
@@ -40,20 +40,20 @@ const PAIN_POINTS = [
 
 const FEATURES = [
   {
-    icon: Camera,
-    title: "写真管理",
-    subtitle: "撮るだけで整理完了",
-    description: "スマホで撮影するだけ。GPS・日時を自動記録し、電子黒板付きで工種・区分別に自動分類。PHOTO.XML対応で電子納品もワンクリック。",
-    color: "from-orange-500 to-amber-500",
-    highlights: ["電子黒板オーバーレイ", "EXIF自動抽出", "一括アップロード", "PHOTO.XML生成"],
+    icon: Shield,
+    title: "施主様専用ポータル",
+    subtitle: "「見えない」不安を解消",
+    description: "マンション管理組合様や戸建オーナー様に、専用の進捗確認画面を提供。今、どの工程が、どんな品質で進んでいるのか。スマホ一つでいつでも確認できます。",
+    color: "from-blue-600 to-indigo-600",
+    highlights: ["リアルタイム進捗共有", "写真付きデイリー報告", "検査結果の透明化", "チャットでのクイック相談"],
   },
   {
-    icon: FileText,
-    title: "書類自動生成",
-    subtitle: "30種類以上の帳票を自動作成",
-    description: "工事打合簿、施工計画書、品質管理表、施工体制台帳…。データを入力するだけで、国交省指定様式の書類がPDFで出力されます。",
-    color: "from-blue-500 to-indigo-500",
-    highlights: ["国交省指定様式準拠", "工事打合簿", "施工体制台帳", "出来高報告書"],
+    icon: Camera,
+    title: "確かな施工の証拠",
+    subtitle: "隠れる部分こそ丁寧に",
+    description: "壁の内部や基礎など、完成後は見えなくなる部分こそ写真を徹底記録。高品質な施工の証拠を、デジタル台帳として一生保管いただけます。",
+    color: "from-amber-500 to-orange-500",
+    highlights: ["全工程のデジタル記録", "GPS・日時付きの信頼性", "美しく整理された写真集", "修繕履歴としての活用"],
   },
   {
     icon: Shield,
@@ -286,16 +286,16 @@ export default function LandingPage() {
               公共建築工事標準仕様書 令和7年版対応
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-tight">
-              現場の
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">書類地獄</span>
-              から
+              工事の
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">「見えない」不安</span>
+              を
               <br className="hidden sm:block" />
-              解放します。
+              ゼロにします。
             </h1>
             <p className="mt-6 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
-              写真を撮るだけで自動整理。データを入力するだけで書類が完成。
+              マンション管理組合・戸建オーナー様におくる、
               <br className="hidden sm:block" />
-              公共工事の施工管理を、圧倒的にシンプルに。
+              圧倒的な透明性と安心を約束する「見える化」施工管理。
             </p>
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
               <Link

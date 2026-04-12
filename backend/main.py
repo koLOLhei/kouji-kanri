@@ -63,6 +63,11 @@ def _run_migrations(engine):
         ("audit_logs", "old_values", "JSONB"),
         ("audit_logs", "new_values", "JSONB"),
         ("users", "token_version", "INTEGER DEFAULT 0 NOT NULL"),
+        # Cost approval columns
+        ("cost_actuals", "approval_required", "BOOLEAN DEFAULT FALSE"),
+        ("cost_actuals", "approved", "BOOLEAN DEFAULT FALSE"),
+        ("cost_actuals", "approved_by", "VARCHAR(36)"),
+        ("cost_actuals", "approved_at", "TIMESTAMP"),
     ]
     with engine.connect() as conn:
         # Advisory lock prevents race conditions in multi-worker deployments.
