@@ -10,45 +10,45 @@ const geist = Geist({
 
 export const metadata: Metadata = {
   title: {
-    default: "施主・管理組合のための工事進捗共有アプリ | 安心・透明な施工管理 SaaS",
-    template: "%s | 工事見える化 SaaS",
+    default: "工事の見える化で安心を届ける | KAMO construction",
+    template: "%s | KAMO construction",
   },
   description:
-    "マンション管理組合や戸建オーナー様への工事報告を劇的に透明化。写真付きのリアルタイム進捗共有で、施主様の不安を解消し、工事品質への信頼を築きます。大規模修繕から住宅リフォームまで対応。",
+    "KAMO constructionは、独自の施工管理システムで工事の全工程をリアルタイムに共有。マンション管理組合・戸建て住宅オーナーに、透明性と安心をお届けします。大規模修繕・外壁塗装・リフォームに対応。創業1994年・建設業許可8業種。",
   keywords: [
-    "マンション管理組合 工事報告",
-    "大規模修繕 進捗共有",
-    "戸建リフォーム 写真報告",
+    "マンション管理組合 大規模修繕",
+    "工事進捗 リアルタイム共有",
+    "外壁塗装 写真報告",
+    "戸建て リフォーム 安心",
+    "施工管理 透明性",
     "工事見える化",
-    "施工管理アプリ 施主共有",
-    "安心の工事報告",
-    "信頼される建設会社 DX",
-    "外壁塗装 報告書",
-    "マンション理事会 報告",
-    "工事進捗管理 無料",
+    "KAMO construction",
+    "マンション理事会 工事報告",
+    "建設会社 信頼",
+    "大規模修繕 管理組合",
   ],
   openGraph: {
     type: "website",
     locale: "ja_JP",
     url: "https://kouji.soara-mu.jp",
-    siteName: "工事管理SaaS",
-    title: "工事管理SaaS | 現場の書類地獄から解放する施工管理アプリ",
+    siteName: "KAMO construction",
+    title: "工事の見える化で安心を届ける | KAMO construction",
     description:
-      "写真を撮るだけで自動整理。データ入力で書類が完成。公共工事に必要な30種類以上の帳票を自動生成。中小建設会社・職人のための施工管理クラウド。",
+      "独自の施工管理システムで工事の全工程をリアルタイムに共有。マンション管理組合様・戸建て住宅オーナー様に、かつてない透明性と安心をお届けします。",
     images: [
       {
         url: "https://kouji.soara-mu.jp/og-image.png",
         width: 1200,
         height: 630,
-        alt: "工事管理SaaS - 公共工事の施工管理アプリ",
+        alt: "KAMO construction - 工事の見える化で安心を届ける",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "工事管理SaaS | 公共工事の施工管理アプリ",
+    title: "工事の見える化で安心を届ける | KAMO construction",
     description:
-      "写真管理・書類自動生成・電子納品。中小建設会社のための無料施工管理アプリ。",
+      "リアルタイム工事写真共有・報告書自動生成。マンション管理組合・戸建てオーナーのための施工管理システム。",
   },
   robots: {
     index: true,
@@ -71,61 +71,39 @@ export const metadata: Metadata = {
 const softwareApplicationJsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "工事管理SaaS",
+  name: "KAMO construction 施工管理システム",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web, iOS, Android",
   url: "https://kouji.soara-mu.jp",
   description:
-    "公共工事の施工管理を圧倒的に効率化する施工管理クラウドアプリ。写真管理、工事日報、電子納品、書類自動生成まで。",
-  offers: [
-    {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "JPY",
-      name: "フリープラン",
-    },
-    {
-      "@type": "Offer",
-      price: "29800",
-      priceCurrency: "JPY",
-      name: "スタンダードプラン",
-    },
-    {
-      "@type": "Offer",
-      price: "98000",
-      priceCurrency: "JPY",
-      name: "エンタープライズプラン",
-    },
-  ],
+    "マンション管理組合・戸建て住宅オーナー向けの工事見える化システム。リアルタイム写真共有・報告書自動生成・安全管理の透明化。",
   featureList: [
-    "工事写真管理・電子黒板",
-    "書類自動生成（30種類以上）",
-    "電子納品CALS/EC対応",
-    "工事日報管理",
-    "安全管理・KY活動",
-    "品質・出来形管理",
-    "工程管理・ガントチャート",
+    "リアルタイム工事写真共有",
+    "報告書の自動生成",
+    "安全管理のデジタル化",
+    "品質管理の可視化",
+    "施工前後写真比較",
+    "工程進捗リアルタイム確認",
   ],
   screenshot: "https://kouji.soara-mu.jp/og-image.png",
-  aggregateRating: {
-    "@type": "AggregateRating",
-    ratingValue: "4.8",
-    reviewCount: "127",
-  },
 };
 
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "工事管理SaaS",
-  url: "https://kouji.soara-mu.jp",
+  name: "KAMO construction",
+  url: "https://kamo.soara-mu.jp",
   logo: "https://kouji.soara-mu.jp/og-image.png",
-  description: "公共建築工事の施工管理をデジタルで革新するクラウドサービス",
+  description:
+    "創業1994年。建設業許可8業種を持つ総合建設会社。独自の施工管理システムで施主様・管理組合様に安心と透明性をお届けします。",
+  foundingDate: "1994",
   contactPoint: {
     "@type": "ContactPoint",
     contactType: "customer support",
+    url: "https://kamo.soara-mu.jp/contact",
     availableLanguage: "Japanese",
   },
+  sameAs: ["https://kamo.soara-mu.jp"],
 };
 
 export default function RootLayout({

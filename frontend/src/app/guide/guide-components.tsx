@@ -195,6 +195,14 @@ export function GuideFooter() {
           <Link href="/login" className="hover:text-white transition-colors">
             無料で始める
           </Link>
+          <a
+            href="https://kamo.soara-mu.jp"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-white transition-colors"
+          >
+            KAMO construction（会社サイト）
+          </a>
         </div>
         <p className="text-xs mt-6">
           &copy; 2026 工事管理SaaS. All rights reserved.
