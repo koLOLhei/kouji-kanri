@@ -66,4 +66,37 @@ def receive_chat_lead(req: ChatLeadRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(lead)
 
+    # メール通知 → contact@soara-mu.com
+    from services.email_service import send_email
+    meta = req.metadata or {}
+    email_body = f"""
+    <div style="font-family: sans-serif; max-width: 600px;">
+      <div style="background: #1a1a1a; color: white; padding: 20px;">
+        <h2 style="margin: 0;">【KAMO】新規お問い合わせ</h2>
+        <p style="margin: 5px 0 0; opacity: 0.7;">kamo.soara-mu.jp チャットボットより</p>
+      </div>
+      <div style="padding: 20px; border: 1px solid #eee;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold; width: 120px;">お名前</td><td style="padding: 8px; border-bottom: 1px solid #eee;">{req.contact_name}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">電話番号</td><td style="padding: 8px; border-bottom: 1px solid #eee;">{req.contact_phone}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">メール</td><td style="padding: 8px; border-bottom: 1px solid #eee;">{req.contact_email or '未入力'}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">ご相談内容</td><td style="padding: 8px; border-bottom: 1px solid #eee;">{meta.get('service_type', '')}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">建物種類</td><td style="padding: 8px; border-bottom: 1px solid #eee;">{meta.get('building_type', '')}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">エリア</td><td style="padding: 8px; border-bottom: 1px solid #eee;">{meta.get('city', '')}{meta.get('ward', '')}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">時期</td><td style="padding: 8px; border-bottom: 1px solid #eee;">{meta.get('timing', '')}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">予算</td><td style="padding: 8px; border-bottom: 1px solid #eee;">{meta.get('budget', '')}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold;">緊急度</td><td style="padding: 8px;">{req.priority}</td></tr>
+        </table>
+      </div>
+      <div style="padding: 15px; background: #f5f5f5; text-align: center; font-size: 12px; color: #888;">
+        工事管理システムでも確認できます
+      </div>
+    </div>
+    """
+    send_email(
+        to=["contact@soara-mu.com"],
+        subject=f"【KAMO】新規お問い合わせ: {meta.get('service_type', '工事相談')} - {req.contact_name}様",
+        html_body=email_body,
+    )
+
     return {"status": "ok", "lead_id": lead.id}
