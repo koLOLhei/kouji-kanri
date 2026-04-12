@@ -100,4 +100,4 @@ def receive_chat_lead(req: ChatLeadRequest, db: Session = Depends(get_db)):
         html_body=email_body,
     )
 
-    return {"status": "ok", "lead_id": lead.id, "email_status": email_result.get("status", "unknown")}
+    return {"status": "ok", "lead_id": lead.id, "email_status": email_result.get("status", "unknown"), "email_error": email_result.get("error", "")}
