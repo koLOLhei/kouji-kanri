@@ -14,6 +14,7 @@ from models.staffing import StaffAssignment
 from models.performance_rating import ScheduleDelay
 from models.user import User
 from services.auth_service import get_current_user
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/company", tags=["company-dashboard"])
 
@@ -114,7 +115,7 @@ def staff_overview(
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     """案件別人員配置状況"""
-    today = date.today()
+    today = today_jst()
 
     assignments = db.query(StaffAssignment).filter(
         StaffAssignment.tenant_id == user.tenant_id,

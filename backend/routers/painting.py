@@ -18,6 +18,7 @@ from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
 from services.email_service import send_email
+from services.timezone_utils import today_jst
 
 router = APIRouter(tags=["painting"])
 
@@ -701,9 +702,9 @@ def complete_schedule_step(
         raise HTTPException(status_code=404, detail="工程が見つかりません")
     verify_project_access(step.project_id, user, db)
     step.status = "completed"
-    step.actual_end = date.today()
+    step.actual_end = today_jst()
     if not step.actual_start:
-        step.actual_start = date.today()
+        step.actual_start = today_jst()
     if req:
         updates = req.model_dump(exclude_unset=True)
         for k, v in updates.items():

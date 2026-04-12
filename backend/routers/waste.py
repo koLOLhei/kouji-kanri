@@ -1,9 +1,7 @@
 """Waste manifest (産廃マニフェスト) router."""
 
-from datetime import date
-
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -12,6 +10,7 @@ from models.waste import WasteManifest
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/projects/{project_id}/waste-manifests", tags=["waste-manifests"])
 
@@ -26,11 +25,14 @@ _STATUS_FLOW = {
 
 # ---------- Schemas ----------
 
+from datetime import date
+
+
 class WasteManifestCreate(BaseModel):
     manifest_number: str
     waste_type: str
     waste_category: str  # general_industrial / special_industrial
-    quantity: float | None = None
+    quantity: float | None = Field(default=None, ge=0)
     unit: str | None = None
     collector_name: str | None = None
     collector_license: str | None = None
@@ -48,7 +50,7 @@ class WasteManifestUpdate(BaseModel):
     manifest_number: str | None = None
     waste_type: str | None = None
     waste_category: str | None = None
-    quantity: float | None = None
+    quantity: float | None = Field(default=None, ge=0)
     unit: str | None = None
     collector_name: str | None = None
     collector_license: str | None = None
@@ -63,6 +65,8 @@ class WasteManifestUpdate(BaseModel):
 
 class StatusUpdate(BaseModel):
     status: str  # next status in the flow
+    force_revert: bool = False  # Admin-only: allow reverting status
+    reason: str | None = None  # Required when force_revert=True
 
 
 # ---------- Endpoints ----------
@@ -169,32 +173,47 @@ def update_manifest_status(
     db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    """Update manifest status following the flow: issued -> collected -> disposed -> final_disposed -> completed."""
+    """Update manifest status following the flow: issued -> collected -> disposed -> final_disposed -> completed.
+
+    Admins can pass force_revert=True with a reason to revert the status to any valid value.
+    """
     manifest = db.query(WasteManifest).filter(
         WasteManifest.id == manifest_id, WasteManifest.project_id == project_id
     ).first()
     if not manifest:
         raise HTTPException(status_code=404, detail="マニフェストが見つかりません")
 
-    expected_next = _STATUS_FLOW.get(manifest.status)
-    if expected_next is None:
-        raise HTTPException(status_code=400, detail="既に最終ステータスです")
-    if req.status != expected_next:
-        raise HTTPException(
-            status_code=400,
-            detail=f"ステータスは '{expected_next}' に更新してください（現在: {manifest.status}）",
-        )
+    if req.force_revert:
+        # Admin-only: allow reverting to any status
+        if user.role not in ("admin", "super_admin"):
+            raise HTTPException(status_code=403, detail="ステータスの強制変更は管理者のみ可能です")
+        if not req.reason:
+            raise HTTPException(status_code=400, detail="強制変更には理由（reason）の入力が必要です")
+        manifest.status = req.status
+        # Record revert reason in notes (revert_reason column requires migration)
+        prefix = f"[強制変更理由] {req.reason}"
+        manifest.notes = f"{prefix}\n{manifest.notes}" if manifest.notes else prefix
+    else:
+        # Normal one-way flow
+        expected_next = _STATUS_FLOW.get(manifest.status)
+        if expected_next is None:
+            raise HTTPException(status_code=400, detail="既に最終ステータスです")
+        if req.status != expected_next:
+            raise HTTPException(
+                status_code=400,
+                detail=f"ステータスは '{expected_next}' に更新してください（現在: {manifest.status}）",
+            )
 
-    manifest.status = req.status
+        manifest.status = req.status
 
-    # Auto-fill date fields based on status transition
-    today = date.today()
-    if req.status == "collected" and not manifest.collected_date:
-        manifest.collected_date = today
-    elif req.status == "disposed" and not manifest.disposed_date:
-        manifest.disposed_date = today
-    elif req.status == "final_disposed" and not manifest.final_disposed_date:
-        manifest.final_disposed_date = today
+        # Auto-fill date fields based on status transition
+        today = today_jst()
+        if req.status == "collected" and not manifest.collected_date:
+            manifest.collected_date = today
+        elif req.status == "disposed" and not manifest.disposed_date:
+            manifest.disposed_date = today
+        elif req.status == "final_disposed" and not manifest.final_disposed_date:
+            manifest.final_disposed_date = today
 
     db.commit()
     db.refresh(manifest)

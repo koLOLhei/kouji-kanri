@@ -12,6 +12,7 @@ from models.instruction import SubcontractorInstruction
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/projects/{project_id}/instructions", tags=["instructions"])
 
@@ -82,7 +83,7 @@ def create_instruction(
         project_id=project_id,
         instruction_number=instruction_number,
         issued_by=user.id,
-        issued_date=date.today(),
+        issued_date=today_jst(),
         **body.model_dump(),
     )
     db.add(record)

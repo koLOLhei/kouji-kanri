@@ -166,6 +166,20 @@ def create_contract(
     db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
+    # Verify subcontractor belongs to same tenant
+    sub = db.query(Subcontractor).filter(
+        Subcontractor.id == req.subcontractor_id, Subcontractor.tenant_id == user.tenant_id
+    ).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="協力業者が見つかりません")
+    # Verify parent_contract_id belongs to the same project (prevents cross-tenant tree injection)
+    if req.parent_contract_id:
+        parent = db.query(SubcontractorContract).filter(
+            SubcontractorContract.id == req.parent_contract_id,
+            SubcontractorContract.project_id == project_id,
+        ).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="親契約が見つかりません")
     contract = SubcontractorContract(project_id=project_id, **req.model_dump())
     db.add(contract)
     db.commit()

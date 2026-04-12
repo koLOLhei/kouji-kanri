@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
 
+from services.timezone_utils import today_jst
+
 from database import get_db
 from models.project import Project
 from models.phase import Phase, PhaseRequirement
@@ -92,7 +94,7 @@ def deadline_alerts(
     db: Session = Depends(get_db),
 ):
     """今後N日以内の期限アラートを自動生成。見逃しゼロ。"""
-    today = date.today()
+    today = today_jst()
     deadline = today + timedelta(days=days)
     alerts = []
 
@@ -239,7 +241,7 @@ def project_health(
         ).scalar()
 
         # 今日の日報有無
-        today = date.today()
+        today = today_jst()
         has_today_report = db.query(DailyReport).filter(
             DailyReport.project_id == proj.id,
             DailyReport.report_date == today,

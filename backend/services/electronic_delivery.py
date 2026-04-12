@@ -11,12 +11,16 @@ Generates:
 from __future__ import annotations
 
 import io
+import logging
 import os
 import zipfile
-from datetime import date, datetime
 from typing import TYPE_CHECKING
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
+
+from services.timezone_utils import today_jst
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy.orm import Session
 
@@ -27,6 +31,9 @@ from models.drawing import Drawing, DrawingRevision
 
 if TYPE_CHECKING:
     pass
+
+# Re-export date helpers for backward compat within this module
+from datetime import date, datetime
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +205,7 @@ def generate_index_xml(project_id: str, db: Session) -> str:
     ET.SubElement(basic, "工事番号").text = project.project_code or ""
     ET.SubElement(basic, "工事名称").text = project.name or ""
     ET.SubElement(basic, "工事分野").text = "建築"
-    ET.SubElement(basic, "作成日").text = date.today().strftime("%Y-%m-%d")
+    ET.SubElement(basic, "作成日").text = today_jst().strftime("%Y-%m-%d")
 
     # 工事件名等
     details = ET.SubElement(root, "工事件名等")
@@ -442,12 +449,35 @@ def build_delivery_package(project_id: str, db: Session) -> bytes:
             .order_by(Photo.photo_category, Photo.photo_number, Photo.created_at)
             .all()
         )
+        # Collect all (file_key, cals_filename) pairs first, then read in batches
+        photo_tasks = []
         for idx, photo in enumerate(photos, start=1):
             file_idx = photo.photo_number if photo.photo_number else idx
             cals_filename = _photo_filename(file_idx)
-            photo_data = storage_read(photo.file_key)
-            if photo_data:
-                zf.writestr(f"PHOTO/PIC/{cals_filename}", photo_data)
+            photo_tasks.append((photo.file_key, cals_filename))
+
+        total_photos = len(photo_tasks)
+        BATCH_SIZE = 20
+        added = 0
+        for batch_start in range(0, total_photos, BATCH_SIZE):
+            batch = photo_tasks[batch_start:batch_start + BATCH_SIZE]
+            for file_key, cals_filename in batch:
+                photo_data = storage_read(file_key)
+                if photo_data:
+                    zf.writestr(f"PHOTO/PIC/{cals_filename}", photo_data)
+                    added += 1
+            logger.info(
+                "電子納品パッケージ: 写真 %d/%d 枚処理済み (project_id=%s)",
+                min(batch_start + BATCH_SIZE, total_photos),
+                total_photos,
+                project_id,
+            )
+        logger.info(
+            "電子納品パッケージ: 写真ファイル追加完了 %d/%d 枚 (project_id=%s)",
+            added,
+            total_photos,
+            project_id,
+        )
 
         # ---- MEET.XML ----
         meet_xml = generate_meet_xml(project_id, db)

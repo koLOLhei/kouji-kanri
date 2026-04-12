@@ -25,14 +25,14 @@ class ContactFormRequest(BaseModel):
 def receive_contact_form(req: ContactFormRequest, db: Session = Depends(get_db)):
     """問い合わせフォームからの送信を保存+メール通知"""
 
-    from datetime import date
+    from services.timezone_utils import today_jst
 
     # CRMにリードとして保存
     lead = Lead(
         tenant_id=DEFAULT_TENANT_ID,
         source="contact_form",
         source_detail="kamo.soara-mu.jp",
-        acquired_date=date.today(),
+        acquired_date=today_jst(),
         company_name=req.name,
         contact_name=req.name,
         contact_phone=req.phone,

@@ -9,6 +9,7 @@ from models.drawing import Drawing, DrawingRevision
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.storage_service import delete_file
 
 router = APIRouter(prefix="/api/projects/{project_id}/drawings", tags=["drawings"])
 
@@ -132,6 +133,13 @@ def delete_drawing(
     ).first()
     if not drawing:
         raise HTTPException(status_code=404, detail="図面が見つかりません")
+    # Delete all revision files from storage before removing DB records
+    revisions = db.query(DrawingRevision).filter(DrawingRevision.drawing_id == drawing_id).all()
+    for rev in revisions:
+        if rev.file_key:
+            delete_file(rev.file_key)
+        if rev.thumbnail_key:
+            delete_file(rev.thumbnail_key)
     db.query(DrawingRevision).filter(DrawingRevision.drawing_id == drawing_id).delete()
     db.delete(drawing)
     db.commit()

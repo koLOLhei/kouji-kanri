@@ -4,8 +4,10 @@ import asyncio
 from datetime import date, datetime, timedelta
 from collections import defaultdict
 
+from services.timezone_utils import today_jst
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -84,7 +86,7 @@ class SafetyTrainingCreate(BaseModel):
     content: str | None = None
     instructor_name: str | None = None
     attendees: list | None = None
-    duration_minutes: int | None = None
+    duration_minutes: int | None = Field(default=None, ge=0)
     attachment_keys: list | None = None
 
 
@@ -92,7 +94,7 @@ class SafetyTrainingUpdate(BaseModel):
     content: str | None = None
     instructor_name: str | None = None
     attendees: list | None = None
-    duration_minutes: int | None = None
+    duration_minutes: int | None = Field(default=None, ge=0)
     attachment_keys: list | None = None
 
 
@@ -366,7 +368,7 @@ async def quick_incident_report(
     incident = IncidentReport(
         project_id=project_id,
         reporter_id=user.id,
-        incident_date=date.today(),
+        incident_date=today_jst(),
         incident_type="near_miss",
         severity=severity,
         location=location,
@@ -391,7 +393,7 @@ def safety_trends(
 ):
     verify_project_access(project_id, user, db)
     """Monthly counts of KY activities, patrols, incidents, trainings."""
-    today = date.today()
+    today = today_jst()
 
     # Build month list
     month_labels = []

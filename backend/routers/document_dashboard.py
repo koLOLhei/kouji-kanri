@@ -46,6 +46,80 @@ def document_dashboard(
         raise HTTPException(status_code=404, detail="案件が見つかりません")
 
     phases = db.query(Phase).filter(Phase.project_id == project_id).order_by(Phase.sort_order).all()
+    if not phases:
+        return {
+            "project_id": project_id,
+            "project_name": project.name,
+            "summary": {
+                "total_phases_with_requirements": 0,
+                "phases_ready_for_generation": 0,
+                "phases_incomplete": 0,
+                "total_requirements": 0,
+                "total_fulfilled": 0,
+                "completion_percent": 0,
+            },
+            "missing_items": [],
+            "phases": [],
+        }
+
+    phase_ids = [p.id for p in phases]
+
+    # Fetch all requirements for all phases in one query
+    all_reqs = db.query(PhaseRequirement).filter(
+        PhaseRequirement.phase_id.in_(phase_ids)
+    ).all()
+
+    req_ids = [r.id for r in all_reqs]
+
+    # Aggregate photo counts for all requirements in one query
+    photo_counts_rows = (
+        db.query(Photo.requirement_id, func.count(Photo.id).label("cnt"))
+        .filter(Photo.requirement_id.in_(req_ids))
+        .group_by(Photo.requirement_id)
+        .all()
+    ) if req_ids else []
+    photo_counts = {row.requirement_id: row.cnt for row in photo_counts_rows}
+
+    # Aggregate approved report counts for all requirements in one query
+    report_counts_rows = (
+        db.query(Report.requirement_id, func.count(Report.id).label("cnt"))
+        .filter(
+            Report.requirement_id.in_(req_ids),
+            Report.status == "approved",
+        )
+        .group_by(Report.requirement_id)
+        .all()
+    ) if req_ids else []
+    report_counts = {row.requirement_id: row.cnt for row in report_counts_rows}
+
+    # Fetch the latest submission per phase in one query using a subquery
+    from sqlalchemy import and_
+    latest_sub_subq = (
+        db.query(
+            Submission.phase_id,
+            func.max(Submission.created_at).label("max_created_at"),
+        )
+        .filter(Submission.phase_id.in_(phase_ids))
+        .group_by(Submission.phase_id)
+        .subquery()
+    )
+    latest_submissions_rows = (
+        db.query(Submission)
+        .join(
+            latest_sub_subq,
+            and_(
+                Submission.phase_id == latest_sub_subq.c.phase_id,
+                Submission.created_at == latest_sub_subq.c.max_created_at,
+            ),
+        )
+        .all()
+    )
+    latest_submissions = {s.phase_id: s for s in latest_submissions_rows}
+
+    # Group requirements by phase_id
+    reqs_by_phase: dict[str, list] = {}
+    for req in all_reqs:
+        reqs_by_phase.setdefault(req.phase_id, []).append(req)
 
     result = []
     total_requirements = 0
@@ -55,7 +129,7 @@ def document_dashboard(
     missing_items = []
 
     for phase in phases:
-        reqs = db.query(PhaseRequirement).filter_by(phase_id=phase.id).all()
+        reqs = reqs_by_phase.get(phase.id, [])
         if not reqs:
             continue
 
@@ -63,11 +137,9 @@ def document_dashboard(
         phase_met = 0
         for req in reqs:
             if req.requirement_type == "photo":
-                count = db.query(func.count(Photo.id)).filter_by(requirement_id=req.id).scalar()
+                count = photo_counts.get(req.id, 0)
             else:
-                count = db.query(func.count(Report.id)).filter_by(
-                    requirement_id=req.id, status="approved"
-                ).scalar()
+                count = report_counts.get(req.id, 0)
             fulfilled = count >= req.min_count
             if fulfilled:
                 phase_met += 1
@@ -96,10 +168,7 @@ def document_dashboard(
         mandatory_reqs = [r for r in phase_reqs if r["mandatory"]]
         all_mandatory_met = all(r["fulfilled"] for r in mandatory_reqs) if mandatory_reqs else False
 
-        # 既存の提出書類
-        existing_submission = db.query(Submission).filter_by(
-            phase_id=phase.id
-        ).order_by(Submission.created_at.desc()).first()
+        existing_submission = latest_submissions.get(phase.id)
 
         if all_mandatory_met:
             phases_ready += 1
@@ -161,9 +230,28 @@ def batch_generate(
     generated = []
     skipped = []
 
+    if not phases:
+        return {"generated_count": 0, "skipped_count": 0, "generated": [], "skipped": []}
+
+    phase_ids = [p.id for p in phases]
+
+    # Fetch phases that already have a ready/submitted submission in one query
+    already_submitted_phase_ids = {
+        s.phase_id for s in db.query(Submission.phase_id).filter(
+            Submission.phase_id.in_(phase_ids),
+            Submission.status.in_(["ready", "submitted"]),
+        ).all()
+    }
+
+    # Fetch phase_ids that have at least one requirement in one query
+    phases_with_reqs = {
+        r.phase_id for r in db.query(PhaseRequirement.phase_id).filter(
+            PhaseRequirement.phase_id.in_(phase_ids)
+        ).distinct().all()
+    }
+
     for phase in phases:
-        reqs = db.query(PhaseRequirement).filter_by(phase_id=phase.id).all()
-        if not reqs:
+        if phase.id not in phases_with_reqs:
             continue
 
         check = check_phase_completeness(db, phase.id)
@@ -172,11 +260,7 @@ def batch_generate(
             continue
 
         # 既にready/submittedがあればスキップ
-        existing = db.query(Submission).filter(
-            Submission.phase_id == phase.id,
-            Submission.status.in_(["ready", "submitted"]),
-        ).first()
-        if existing:
+        if phase.id in already_submitted_phase_ids:
             skipped.append({"phase_id": phase.id, "phase_name": phase.name, "reason": "生成済み"})
             continue
 
@@ -240,29 +324,63 @@ def missing_documents(
     verify_project_access(project_id, user, db)
     """不足書類だけを抽出して返す。「あと何が必要か」に特化。"""
     phases = db.query(Phase).filter(Phase.project_id == project_id).order_by(Phase.sort_order).all()
+    if not phases:
+        return {"total_missing": 0, "items": []}
+
+    phase_ids = [p.id for p in phases]
+    phase_map = {p.id: p for p in phases}
+
+    # Fetch all mandatory requirements in one query
+    all_reqs = db.query(PhaseRequirement).filter(
+        PhaseRequirement.phase_id.in_(phase_ids),
+        PhaseRequirement.is_mandatory == True,
+    ).all()
+
+    if not all_reqs:
+        return {"total_missing": 0, "items": []}
+
+    req_ids = [r.id for r in all_reqs]
+
+    # Aggregate photo counts in one query
+    photo_counts_rows = (
+        db.query(Photo.requirement_id, func.count(Photo.id).label("cnt"))
+        .filter(Photo.requirement_id.in_(req_ids))
+        .group_by(Photo.requirement_id)
+        .all()
+    )
+    photo_counts = {row.requirement_id: row.cnt for row in photo_counts_rows}
+
+    # Aggregate approved report counts in one query
+    report_counts_rows = (
+        db.query(Report.requirement_id, func.count(Report.id).label("cnt"))
+        .filter(
+            Report.requirement_id.in_(req_ids),
+            Report.status == "approved",
+        )
+        .group_by(Report.requirement_id)
+        .all()
+    )
+    report_counts = {row.requirement_id: row.cnt for row in report_counts_rows}
 
     missing = []
-    for phase in phases:
-        reqs = db.query(PhaseRequirement).filter_by(phase_id=phase.id, is_mandatory=True).all()
-        for req in reqs:
-            if req.requirement_type == "photo":
-                count = db.query(func.count(Photo.id)).filter_by(requirement_id=req.id).scalar()
-            else:
-                count = db.query(func.count(Report.id)).filter_by(
-                    requirement_id=req.id, status="approved"
-                ).scalar()
-            if count < req.min_count:
-                missing.append({
-                    "phase_id": phase.id,
-                    "phase_name": phase.name,
-                    "phase_code": phase.phase_code,
-                    "requirement_id": req.id,
-                    "requirement_name": req.name,
-                    "requirement_type": req.requirement_type,
-                    "current": count,
-                    "required": req.min_count,
-                    "remaining": req.min_count - count,
-                })
+    for req in all_reqs:
+        if req.requirement_type == "photo":
+            count = photo_counts.get(req.id, 0)
+        else:
+            count = report_counts.get(req.id, 0)
+        if count < req.min_count:
+            phase = phase_map[req.phase_id]
+            missing.append({
+                "phase_id": phase.id,
+                "phase_name": phase.name,
+                "phase_code": phase.phase_code,
+                "requirement_id": req.id,
+                "requirement_name": req.name,
+                "requirement_type": req.requirement_type,
+                "current": count,
+                "required": req.min_count,
+                "remaining": req.min_count - count,
+            })
 
     return {
         "total_missing": len(missing),

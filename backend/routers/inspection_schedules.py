@@ -11,6 +11,7 @@ from database import get_db
 from models.client_portal import InspectionScheduleTemplate
 from models.user import User
 from services.auth_service import get_current_user
+from services.timezone_utils import today_jst
 
 router = APIRouter(
     prefix="/api/facilities/{facility_id}/inspection-schedules",
@@ -237,7 +238,7 @@ def list_overdue(
     db: Session = Depends(get_db),
 ):
     """期限超過の点検スケジュール"""
-    today = date.today()
+    today = today_jst()
     schedules = db.query(InspectionScheduleTemplate).filter(
         InspectionScheduleTemplate.facility_id == facility_id,
         InspectionScheduleTemplate.is_active == True,
@@ -254,7 +255,7 @@ def list_upcoming(
     db: Session = Depends(get_db),
 ):
     """N日以内に期限が来る点検スケジュール"""
-    today = date.today()
+    today = today_jst()
     cutoff = today + relativedelta(days=days)
     schedules = db.query(InspectionScheduleTemplate).filter(
         InspectionScheduleTemplate.facility_id == facility_id,

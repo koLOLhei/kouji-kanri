@@ -12,6 +12,7 @@ from models.corrective_action import CorrectiveAction
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/projects/{project_id}/corrective-actions", tags=["corrective-actions"])
 
@@ -186,7 +187,7 @@ def close_corrective_action(
     if ca.status != "verified":
         raise HTTPException(status_code=400, detail="検証済みの是正処置のみクローズできます")
     ca.status = "closed"
-    ca.completed_date = date.today()
+    ca.completed_date = today_jst()
     db.commit()
     db.refresh(ca)
     return ca

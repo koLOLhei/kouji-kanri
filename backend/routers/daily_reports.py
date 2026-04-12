@@ -3,8 +3,8 @@
 from datetime import date, datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -22,10 +22,10 @@ class DailyReportCreate(BaseModel):
     report_date: date
     weather_morning: str | None = None
     weather_afternoon: str | None = None
-    temperature_max: float | None = None
-    temperature_min: float | None = None
+    temperature_max: float | None = None  # temperature: allow negative (winter)
+    temperature_min: float | None = None  # temperature: allow negative (winter)
     work_description: str | None = None
-    worker_count: int | None = None
+    worker_count: int | None = Field(default=None, ge=0)
     equipment_used: list | None = None
     special_notes: str | None = None
     safety_notes: str | None = None
@@ -34,10 +34,10 @@ class DailyReportCreate(BaseModel):
 class DailyReportUpdate(BaseModel):
     weather_morning: str | None = None
     weather_afternoon: str | None = None
-    temperature_max: float | None = None
-    temperature_min: float | None = None
+    temperature_max: float | None = None  # temperature: allow negative (winter)
+    temperature_min: float | None = None  # temperature: allow negative (winter)
     work_description: str | None = None
-    worker_count: int | None = None
+    worker_count: int | None = Field(default=None, ge=0)
     equipment_used: list | None = None
     special_notes: str | None = None
     safety_notes: str | None = None
@@ -52,6 +52,8 @@ def list_daily_reports(
     status: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -63,7 +65,7 @@ def list_daily_reports(
         q = q.filter(DailyReport.report_date >= date_from)
     if date_to:
         q = q.filter(DailyReport.report_date <= date_to)
-    return q.order_by(DailyReport.report_date.desc()).all()
+    return q.order_by(DailyReport.report_date.desc()).offset(offset).limit(limit).all()
 
 
 @router.post("")

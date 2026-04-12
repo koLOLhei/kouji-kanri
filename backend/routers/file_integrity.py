@@ -7,6 +7,7 @@ from database import get_db
 from models.photo import Photo
 from models.report import Report
 from models.submission import Submission
+from models.project import Project
 from models.user import User
 from services.auth_service import get_current_user
 from services.storage_service import compute_checksum, read_file, verify_file_checksum
@@ -23,34 +24,56 @@ def verify_file(
     """ファイルの整合性をSHA-256チェックサムで検証する。
 
     DBに保存されているチェックサムと実際のファイルのチェックサムを比較し、
-    改ざんや破損の有無を返します。
+    改ざんや破損の有無を返します。テナント所有のファイルのみ検証可能。
     """
     file_key = path  # path captured from URL
 
-    # Look up stored checksum in any model
+    # Look up stored checksum in any model - always join to Project for tenant isolation
     stored_checksum: str | None = None
     entity_type: str | None = None
     entity_id: str | None = None
+    found = False
 
-    photo = db.query(Photo).filter(Photo.file_key == file_key, Photo.project_id != None).first()
+    photo = (
+        db.query(Photo)
+        .join(Project, Project.id == Photo.project_id)
+        .filter(Photo.file_key == file_key, Project.tenant_id == user.tenant_id)
+        .first()
+    )
     if photo:
         stored_checksum = photo.checksum
         entity_type = "photo"
         entity_id = photo.id
+        found = True
 
-    if not photo:
-        report = db.query(Report).filter(Report.file_key == file_key).first()
+    if not found:
+        report = (
+            db.query(Report)
+            .join(Project, Project.id == Report.project_id)
+            .filter(Report.file_key == file_key, Project.tenant_id == user.tenant_id)
+            .first()
+        )
         if report:
             stored_checksum = report.checksum
             entity_type = "report"
             entity_id = report.id
+            found = True
 
-    if not entity_type:
-        submission = db.query(Submission).filter(Submission.file_key == file_key).first()
+    if not found:
+        submission = (
+            db.query(Submission)
+            .join(Project, Project.id == Submission.project_id)
+            .filter(Submission.file_key == file_key, Project.tenant_id == user.tenant_id)
+            .first()
+        )
         if submission:
             stored_checksum = submission.checksum
             entity_type = "submission"
             entity_id = submission.id
+            found = True
+
+    if not found:
+        raise HTTPException(status_code=404, detail="ファイルが見つかりません")
 
     # Read actual file
     data = read_file(file_key)

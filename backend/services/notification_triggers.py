@@ -8,6 +8,8 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
+from services.timezone_utils import today_jst
+
 from models.notification import Notification
 from models.user import User
 from models.project import Project
@@ -154,7 +156,7 @@ def check_upcoming_deadlines(db: Session, tenant_id: str):
     from models.concrete_curing import ConcretePlacement
     from models.worker import WorkerQualification
 
-    today = date.today()
+    today = today_jst()
     soon = today + timedelta(days=3)
     count = 0
 

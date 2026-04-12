@@ -4,7 +4,7 @@ import asyncio
 import io
 import zipfile
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -67,6 +67,8 @@ def download_photos_zip(
 def list_photos(
     project_id: str,
     phase_id: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -74,7 +76,7 @@ def list_photos(
     q = db.query(Photo).filter(Photo.project_id == project_id)
     if phase_id:
         q = q.filter(Photo.phase_id == phase_id)
-    photos = q.order_by(Photo.created_at.desc()).all()
+    photos = q.order_by(Photo.created_at.desc()).offset(offset).limit(limit).all()
 
     result = []
     for p in photos:

@@ -3,7 +3,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -21,21 +21,21 @@ router = APIRouter(prefix="/api/projects/{project_id}/costs", tags=["costs"])
 class BudgetCreate(BaseModel):
     category: str
     subcategory: str | None = None
-    budgeted_amount: int = 0
+    budgeted_amount: int = Field(default=0, ge=0)
     description: str | None = None
 
 
 class BudgetUpdate(BaseModel):
     category: str | None = None
     subcategory: str | None = None
-    budgeted_amount: int | None = None
+    budgeted_amount: int | None = Field(default=None, ge=0)
     description: str | None = None
 
 
 class ActualCreate(BaseModel):
     category: str
     subcategory: str | None = None
-    amount: int
+    amount: int = Field(..., ge=0)
     expense_date: date | None = None
     vendor_name: str | None = None
     description: str | None = None
@@ -45,7 +45,7 @@ class ActualCreate(BaseModel):
 class ActualUpdate(BaseModel):
     category: str | None = None
     subcategory: str | None = None
-    amount: int | None = None
+    amount: int | None = Field(default=None, ge=0)
     expense_date: date | None = None
     vendor_name: str | None = None
     description: str | None = None

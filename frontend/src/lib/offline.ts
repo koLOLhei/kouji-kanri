@@ -17,7 +17,7 @@ export function registerServiceWorker(): void {
       });
       console.log("[SW] Registered:", registration.scope);
 
-      // Check for updates
+      // When a new SW is waiting, tell it to skip waiting so it takes control immediately
       registration.addEventListener("updatefound", () => {
         const newWorker = registration.installing;
         if (!newWorker) return;
@@ -26,10 +26,17 @@ export function registerServiceWorker(): void {
             newWorker.state === "installed" &&
             navigator.serviceWorker.controller
           ) {
-            // New content available
-            console.log("[SW] New version available");
+            // New version available — activate it immediately
+            console.log("[SW] New version available, activating...");
+            newWorker.postMessage("SKIP_WAITING");
           }
         });
+      });
+
+      // Reload the page when the new SW takes control
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        console.log("[SW] Controller changed, reloading for new version");
+        window.location.reload();
       });
 
       // Register background sync when online
@@ -161,6 +168,25 @@ async function deleteQueueItem(id: number): Promise<void> {
    Sync Queue on Reconnect
    ============================================================ */
 
+/**
+ * Extract the base URL path without trailing ID segment.
+ * e.g. "http://127.0.0.1:8001/api/projects/123/photos/456" -> "/api/projects/123/photos"
+ */
+function getBaseUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Remove trailing UUID/ID segment (simple heuristic: last segment if it looks like an ID)
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    // If the last part looks like a UUID or numeric ID, strip it
+    if (parts.length > 1 && /^[0-9a-f-]{8,}$/i.test(parts[parts.length - 1])) {
+      parts.pop();
+    }
+    return "/" + parts.join("/");
+  } catch {
+    return url;
+  }
+}
+
 export async function syncOfflineQueue(): Promise<{
   synced: number;
   failed: number;
@@ -183,9 +209,23 @@ export async function syncOfflineQueue(): Promise<{
     });
   }
 
-  // Fallback: process queue directly
+  // Fallback: process queue sequentially in FIFO order (by timestamp)
   const queue = await getOfflineQueue();
-  for (const item of queue) {
+  // Sort ascending by timestamp to ensure FIFO
+  const ordered = [...queue].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Track base URLs where a POST failed, to block dependent PUT/DELETE
+  const blockedBaseUrls = new Set<string>();
+
+  for (const item of ordered) {
+    const baseUrl = getBaseUrl(item.url);
+
+    // If this item's base URL is blocked (a prior POST failed), skip it
+    if (blockedBaseUrls.has(baseUrl) && item.method !== "POST") {
+      results.failed++;
+      continue;
+    }
+
     try {
       const response = await fetch(item.url, {
         method: item.method,
@@ -197,9 +237,19 @@ export async function syncOfflineQueue(): Promise<{
         results.synced++;
       } else {
         results.failed++;
+        // A failed POST means subsequent requests to the same resource may be invalid
+        if (item.method === "POST") {
+          blockedBaseUrls.add(baseUrl);
+        }
       }
     } catch {
       results.failed++;
+      // Network error on POST — block subsequent dependent requests
+      if (item.method === "POST") {
+        blockedBaseUrls.add(baseUrl);
+      }
+      // Still offline — stop processing further to avoid wasting retries
+      break;
     }
   }
   return results;

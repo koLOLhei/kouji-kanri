@@ -3,7 +3,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -20,9 +20,9 @@ router = APIRouter(prefix="/api/projects/{project_id}/materials", tags=["materia
 class OrderItemCreate(BaseModel):
     material_name: str
     specification: str | None = None
-    quantity: float | None = None
+    quantity: float | None = Field(default=None, ge=0)
     unit: str | None = None
-    unit_price: int | None = None
+    unit_price: int | None = Field(default=None, ge=0)
     notes: str | None = None
 
 
@@ -31,7 +31,7 @@ class OrderCreate(BaseModel):
     supplier_name: str | None = None
     order_date: date | None = None
     expected_delivery: date | None = None
-    total_amount: int | None = None
+    total_amount: int | None = Field(default=None, ge=0)
     notes: str | None = None
     items: list[OrderItemCreate] = []
 
@@ -40,14 +40,14 @@ class OrderUpdate(BaseModel):
     supplier_name: str | None = None
     order_date: date | None = None
     expected_delivery: date | None = None
-    total_amount: int | None = None
+    total_amount: int | None = Field(default=None, ge=0)
     status: str | None = None
     notes: str | None = None
 
 
 class ReceiveRequest(BaseModel):
     item_id: str
-    delivered_quantity: float
+    delivered_quantity: float = Field(..., ge=0)
 
 
 class TestRecordCreate(BaseModel):

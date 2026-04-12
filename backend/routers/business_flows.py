@@ -16,6 +16,7 @@ from models.work_package import MonthlyProgress, DefectRecord
 from models.business_docs import Invoice
 from services.auth_service import get_current_user, require_role
 from services.project_access import verify_project_access
+from services.timezone_utils import today_jst
 
 router = APIRouter(tags=["business-flows"])
 
@@ -51,7 +52,7 @@ def create_invoice_from_progress(
 
     # 請求書番号採番
     count = db.query(func.count(Invoice.id)).filter(Invoice.tenant_id == user.tenant_id).scalar()
-    year = date.today().year
+    year = today_jst().year
 
     items = [{"description": f"{req.year_month} 出来高", "amount": total_progress}]
     tax_amount = int(total_progress * 0.10)
@@ -60,8 +61,8 @@ def create_invoice_from_progress(
         tenant_id=user.tenant_id,
         project_id=project_id,
         invoice_number=f"INV-{year}-{count + 1:03d}",
-        invoice_date=date.today(),
-        due_date=req.due_date or (date.today() + timedelta(days=30)),
+        invoice_date=today_jst(),
+        due_date=req.due_date or (today_jst() + timedelta(days=30)),
         customer_name=req.customer_name or project.client_name or "",
         period_from=date(int(req.year_month[:4]), int(req.year_month[5:7]), 1),
         items=items,
@@ -92,7 +93,7 @@ def warranty_reminders(
     db: Session = Depends(get_db),
 ):
     """瑕疵担保期間内の点検リマインドを返す"""
-    today = date.today()
+    today = today_jst()
     upcoming = today + timedelta(days=days_ahead)
 
     # 完了した案件で引渡日がある
@@ -206,7 +207,7 @@ def cross_project_daily_reports(
     """全案件の日報を横断で一覧（管理者向け）"""
     from models.daily_report import DailyReport
 
-    target_date = report_date or date.today()
+    target_date = report_date or today_jst()
 
     reports = db.query(DailyReport, Project.name).join(
         Project, DailyReport.project_id == Project.id

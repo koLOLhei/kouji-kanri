@@ -270,7 +270,8 @@ async function syncQueue() {
 
 /* ---- Message handling ---- */
 self.addEventListener("message", async (event) => {
-  if (event.data.type === "SKIP_WAITING") {
+  // Accept both plain string "SKIP_WAITING" and object { type: "SKIP_WAITING" }
+  if (event.data === "SKIP_WAITING" || event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
   if (event.data.type === "SYNC_NOW" || event.data === "retry-uploads") {

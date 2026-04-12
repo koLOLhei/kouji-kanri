@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from services.timezone_utils import today_jst
+
 from database import get_db
 from models.inspection import Inspection, InspectionChecklist
 from models.user import User
@@ -45,6 +47,10 @@ class InspectionUpdate(BaseModel):
     remarks: str | None = None
     status: str | None = None
     photo_ids: list | None = None
+
+
+class InspectionComplete(BaseModel):
+    actual_date: date | None = None  # Defaults to today_jst() if not provided
 
 
 class ChecklistItemUpdate(BaseModel):
@@ -169,10 +175,14 @@ def update_checklist_item(
 @router.put("/{inspection_id}/complete")
 def complete_inspection(
     project_id: str, inspection_id: str,
+    req: InspectionComplete | None = None,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    """Mark inspection as completed, checking all checklist items."""
+    """Mark inspection as completed, checking all checklist items.
+
+    Accepts an optional body with `actual_date`; defaults to today (JST) if not provided.
+    """
     insp = db.query(Inspection).filter(
         Inspection.id == inspection_id, Inspection.project_id == project_id
     ).first()
@@ -187,7 +197,11 @@ def complete_inspection(
     failed = [i for i in items if i.result == "fail"]
     insp.status = "completed"
     insp.result = "fail" if failed else "pass"
-    insp.actual_date = date.today()
+    # Use caller-supplied date if provided, otherwise default to today (JST)
+    if req and req.actual_date is not None:
+        insp.actual_date = req.actual_date
+    else:
+        insp.actual_date = today_jst()
     db.commit()
     db.refresh(insp)
     return insp

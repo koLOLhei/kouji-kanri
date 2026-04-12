@@ -260,9 +260,9 @@ def generate_document(
     template_type: str,
     context_data: dict[str, Any],
     db: Session,
-) -> bytes:
+) -> tuple[bytes, str, str]:
     """
-    テンプレート種別とコンテキストデータを受け取りHTML（またはPDF）バイト列を返す。
+    テンプレート種別とコンテキストデータを受け取り (bytes, content_type, extension) タプルを返す。
 
     Args:
         template_type: TEMPLATE_REGISTRY のキー
@@ -270,7 +270,13 @@ def generate_document(
         db: DBセッション（project / photos 等の補完に使用）
 
     Returns:
-        bytes: WeasyPrintが利用可能なら PDF バイト列、それ以外は HTML バイト列
+        tuple[bytes, str, str]:
+            - bytes: 生成されたファイルのバイト列 (PDF または HTML)
+            - str: MIME content-type ("application/pdf" or "text/html")
+            - str: ファイル拡張子 (".pdf" or ".html")
+
+    WeasyPrintが利用可能なら PDF を、インポートできない場合は UTF-8 HTML バイト列を返す。
+    呼び出し元は content_type / extension を使ってレスポンスを構築すること。
     """
     entry = TEMPLATE_REGISTRY.get(template_type)
     if not entry:
@@ -301,9 +307,10 @@ def generate_document(
 
     try:
         from weasyprint import HTML
-        return HTML(string=html_content).write_pdf()
+        pdf_bytes = HTML(string=html_content).write_pdf()
+        return pdf_bytes, "application/pdf", ".pdf"
     except ImportError:
-        return html_content.encode("utf-8")
+        return html_content.encode("utf-8"), "text/html", ".html"
 
 
 def check_phase_completeness(db: Session, phase_id: str) -> dict:

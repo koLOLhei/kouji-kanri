@@ -161,7 +161,7 @@ def generate_all_documents(
             context["change_description"] = req.change_description
 
         try:
-            file_bytes = generate_document(type_code, context, db)
+            file_bytes, content_type, ext = generate_document(type_code, context, db)
         except Exception as e:
             failed.append(FailedItem(type=type_code, reason=str(e)))
             continue
@@ -169,10 +169,10 @@ def generate_all_documents(
         # ストレージにアップロード
         file_key = generate_upload_key(
             user.tenant_id, project_id, "batch_docs",
-            f"{type_code}_{uuid.uuid4().hex[:8]}.pdf",
+            f"{type_code}_{uuid.uuid4().hex[:8]}{ext}",
         )
         try:
-            upload_file(file_bytes, file_key, "application/pdf")
+            upload_file(file_bytes, file_key, content_type)
         except Exception as e:
             failed.append(FailedItem(type=type_code, reason=f"アップロード失敗: {e}"))
             continue

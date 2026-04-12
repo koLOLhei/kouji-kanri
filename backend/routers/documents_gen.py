@@ -184,7 +184,7 @@ def generate_project_document(
     context["project_id"] = project_id
 
     try:
-        file_bytes = generate_document(req.template_type, context, db)
+        file_bytes, content_type, ext = generate_document(req.template_type, context, db)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -192,15 +192,13 @@ def generate_project_document(
 
     # ストレージへ保存
     doc_id = str(uuid.uuid4())
-    content_type = "application/pdf" if req.output_format == "pdf" else "text/html"
-    ext = "pdf" if req.output_format == "pdf" else "html"
 
     file_key = None
     download_url = None
     if req.save_to_storage:
         file_key = generate_upload_key(
             user.tenant_id, project_id, "generated_docs",
-            f"{req.template_type}_{doc_id[:8]}.{ext}",
+            f"{req.template_type}_{doc_id[:8]}{ext}",
         )
         try:
             upload_file(file_bytes, file_key, content_type)

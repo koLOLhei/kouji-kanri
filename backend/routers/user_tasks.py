@@ -10,6 +10,7 @@ from database import get_db
 from models.business_docs import UserTask
 from models.user import User
 from services.auth_service import get_current_user
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -81,7 +82,7 @@ def today_tasks(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    today = date.today()
+    today = today_jst()
     return db.query(UserTask).filter(
         UserTask.user_id == user.id,
         UserTask.due_date == today,
@@ -94,7 +95,7 @@ def overdue_tasks(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    today = date.today()
+    today = today_jst()
     return db.query(UserTask).filter(
         UserTask.user_id == user.id,
         UserTask.due_date < today,

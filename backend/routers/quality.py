@@ -4,7 +4,7 @@ from datetime import datetime, timezone, date
 from typing import Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -104,24 +104,24 @@ class StageConfirmationUpdate(BaseModel):
 class ProgressPaymentCreate(BaseModel):
     period_start: date
     period_end: date
-    period_number: int
+    period_number: int = Field(..., ge=1)
     items_json: Optional[list[dict[str, Any]]] = None
-    total_contract_amount: Optional[float] = None
-    total_cumulative_amount: Optional[float] = None
-    total_this_period: Optional[float] = None
-    progress_rate: Optional[float] = None
+    total_contract_amount: Optional[float] = Field(default=None, ge=0)
+    total_cumulative_amount: Optional[float] = Field(default=None, ge=0)
+    total_this_period: Optional[float] = Field(default=None, ge=0)
+    progress_rate: Optional[float] = Field(default=None, ge=0, le=100)
     status: str = "draft"
 
 
 class ProgressPaymentUpdate(BaseModel):
     period_start: Optional[date] = None
     period_end: Optional[date] = None
-    period_number: Optional[int] = None
+    period_number: Optional[int] = Field(default=None, ge=1)
     items_json: Optional[list[dict[str, Any]]] = None
-    total_contract_amount: Optional[float] = None
-    total_cumulative_amount: Optional[float] = None
-    total_this_period: Optional[float] = None
-    progress_rate: Optional[float] = None
+    total_contract_amount: Optional[float] = Field(default=None, ge=0)
+    total_cumulative_amount: Optional[float] = Field(default=None, ge=0)
+    total_this_period: Optional[float] = Field(default=None, ge=0)
+    progress_rate: Optional[float] = Field(default=None, ge=0, le=100)
     status: Optional[str] = None
     approved_by: Optional[str] = None
     approved_at: Optional[datetime] = None

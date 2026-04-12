@@ -11,6 +11,7 @@ from database import get_db
 from models.facility import Facility, FacilityZone, InfraElement, InfraInspectionLog, MaintenanceContract
 from models.user import User
 from services.auth_service import get_current_user, require_role
+from services.timezone_utils import today_jst
 
 router = APIRouter(tags=["facilities"])
 
@@ -185,7 +186,7 @@ def list_elements(
 def create_element(facility_id: str, req: InfraElementCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     el = InfraElement(
         facility_id=facility_id,
-        discovered_date=date.today() if not req.installation_date else None,
+        discovered_date=today_jst() if not req.installation_date else None,
         **req.model_dump(),
     )
     db.add(el)

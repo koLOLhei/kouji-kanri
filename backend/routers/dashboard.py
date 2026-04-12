@@ -17,6 +17,7 @@ from models.corrective_action import CorrectiveAction
 from models.worker import Attendance
 from models.user import User
 from services.auth_service import get_current_user
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -54,7 +55,7 @@ def dashboard_overview(
         avg_progress = round(sum(ph.progress_percent for ph in phases) / len(phases), 1)
 
     # Overdue projects (end_date < today, not completed)
-    today = date.today()
+    today = today_jst()
     overdue_projects = [
         p for p in projects
         if p.end_date and p.end_date < today and p.status not in ("completed",)
@@ -174,7 +175,7 @@ def dashboard_trends(
     projects = db.query(Project).filter(Project.tenant_id == user.tenant_id).all()
     project_ids = [p.id for p in projects]
 
-    today = date.today()
+    today = today_jst()
     month_labels = []
     for i in range(months - 1, -1, -1):
         m = today.month - i
@@ -322,7 +323,7 @@ def safety_overview(
     ]
 
     # Last 6 months trend
-    today = date.today()
+    today = today_jst()
     monthly = []
     for i in range(5, -1, -1):
         m = today.month - i

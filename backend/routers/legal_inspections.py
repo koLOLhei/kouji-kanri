@@ -11,6 +11,7 @@ from models.staffing import LegalInspection
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/projects/{project_id}/legal-inspections", tags=["legal-inspections"])
 
@@ -78,7 +79,7 @@ def upcoming_inspections(
 ):
     verify_project_access(project_id, user, db)
     """今後30日以内の未完了検査"""
-    today = date.today()
+    today = today_jst()
     threshold = today + timedelta(days=30)
 
     inspections = db.query(LegalInspection).filter(

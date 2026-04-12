@@ -3,7 +3,7 @@
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -27,8 +27,8 @@ class WorkPackageCreate(BaseModel):
     allocation: str = "undecided"  # in_house, outsource, mixed
     subcontractor_id: str | None = None
     manager_name: str | None = None
-    budget_amount: int = 0
-    contract_amount: int | None = None
+    budget_amount: int = Field(default=0, ge=0)
+    contract_amount: int | None = Field(default=None, ge=0)
     planned_start: date | None = None
     planned_end: date | None = None
     sort_order: int = 0
@@ -39,10 +39,10 @@ class WorkPackageUpdate(BaseModel):
     allocation: str | None = None
     subcontractor_id: str | None = None
     manager_name: str | None = None
-    budget_amount: int | None = None
-    contract_amount: int | None = None
-    actual_cost: int | None = None
-    progress_percent: int | None = None
+    budget_amount: int | None = Field(default=None, ge=0)
+    contract_amount: int | None = Field(default=None, ge=0)
+    actual_cost: int | None = Field(default=None, ge=0)
+    progress_percent: int | None = Field(default=None, ge=0, le=100)
     planned_start: date | None = None
     planned_end: date | None = None
     actual_start: date | None = None

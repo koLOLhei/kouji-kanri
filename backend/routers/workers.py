@@ -3,7 +3,7 @@
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from models.worker import Worker, WorkerQualification, Attendance
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api", tags=["workers"])
 
@@ -64,7 +65,7 @@ class AttendanceCreate(BaseModel):
     work_date: date
     check_in: datetime | None = None
     check_out: datetime | None = None
-    work_hours: float | None = None
+    work_hours: float | None = Field(default=None, ge=0)
     work_type: str = "regular"
     notes: str | None = None
 
@@ -72,7 +73,7 @@ class AttendanceCreate(BaseModel):
 class AttendanceUpdate(BaseModel):
     check_in: datetime | None = None
     check_out: datetime | None = None
-    work_hours: float | None = None
+    work_hours: float | None = Field(default=None, ge=0)
     work_type: str | None = None
     notes: str | None = None
 
@@ -111,7 +112,7 @@ def expiring_qualifications(
     db: Session = Depends(get_db),
 ):
     """List qualifications expiring within N days, enriched with worker name."""
-    today = date.today()
+    today = today_jst()
     cutoff = today + timedelta(days=days)
     rows = (
         db.query(WorkerQualification, Worker.name)
@@ -158,7 +159,7 @@ def worker_qualification_status(
         WorkerQualification.worker_id == worker_id
     ).order_by(WorkerQualification.expiry_date).all()
 
-    today = date.today()
+    today = today_jst()
     summary = []
     expired_count = 0
     expiring_soon_count = 0
@@ -260,6 +261,9 @@ def list_qualifications(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    worker = db.query(Worker).filter(Worker.id == worker_id, Worker.tenant_id == user.tenant_id).first()
+    if not worker:
+        raise HTTPException(status_code=404, detail="作業員が見つかりません")
     return db.query(WorkerQualification).filter(
         WorkerQualification.worker_id == worker_id
     ).order_by(WorkerQualification.expiry_date).all()
@@ -272,6 +276,9 @@ def create_qualification(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    worker = db.query(Worker).filter(Worker.id == worker_id, Worker.tenant_id == user.tenant_id).first()
+    if not worker:
+        raise HTTPException(status_code=404, detail="作業員が見つかりません")
     qual = WorkerQualification(worker_id=worker_id, **req.model_dump())
     db.add(qual)
     db.commit()
@@ -287,6 +294,9 @@ def update_qualification(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    worker = db.query(Worker).filter(Worker.id == worker_id, Worker.tenant_id == user.tenant_id).first()
+    if not worker:
+        raise HTTPException(status_code=404, detail="作業員が見つかりません")
     qual = db.query(WorkerQualification).filter(
         WorkerQualification.id == qual_id, WorkerQualification.worker_id == worker_id
     ).first()
@@ -306,6 +316,9 @@ def delete_qualification(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    worker = db.query(Worker).filter(Worker.id == worker_id, Worker.tenant_id == user.tenant_id).first()
+    if not worker:
+        raise HTTPException(status_code=404, detail="作業員が見つかりません")
     qual = db.query(WorkerQualification).filter(
         WorkerQualification.id == qual_id, WorkerQualification.worker_id == worker_id
     ).first()

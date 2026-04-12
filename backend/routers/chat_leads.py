@@ -14,6 +14,7 @@ from fastapi import Depends
 
 from database import get_db
 from models.crm import Lead
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 
@@ -52,7 +53,7 @@ def receive_chat_lead(req: ChatLeadRequest, db: Session = Depends(get_db)):
         tenant_id=tenant_id,
         source=req.source,
         source_detail=req.source_detail,
-        acquired_date=date.today(),
+        acquired_date=today_jst(),
         company_name=req.company_name or req.contact_name,
         contact_name=req.contact_name,
         contact_phone=req.contact_phone,

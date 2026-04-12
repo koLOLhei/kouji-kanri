@@ -24,6 +24,7 @@ from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
 from services.storage_service import generate_presigned_url
+from services.timezone_utils import today_jst
 
 admin_router = APIRouter(prefix="/api/projects/{project_id}/client-portal", tags=["client-portal"])
 public_router = APIRouter(prefix="/api/portal", tags=["client-portal-public"])
@@ -165,9 +166,9 @@ def send_notification_now(
     total_phases = db.query(func.count(Phase.id)).filter(Phase.project_id == project_id).scalar()
     completed = db.query(func.count(Phase.id)).filter(Phase.project_id == project_id, Phase.status == "completed").scalar()
     progress = round(completed / total_phases * 100) if total_phases > 0 else 0
-    today_photos = db.query(func.count(Photo.id)).filter(Photo.project_id == project_id, func.date(Photo.created_at) == date.today()).scalar()
+    today_photos = db.query(func.count(Photo.id)).filter(Photo.project_id == project_id, func.date(Photo.created_at) == today_jst()).scalar()
 
-    subject = f"【工事進捗】{project.name} - {date.today().strftime('%Y/%m/%d')} 進捗{progress}%"
+    subject = f"【工事進捗】{project.name} - {today_jst().strftime('%Y/%m/%d')} 進捗{progress}%"
 
     # メール実送信
     from services.email_service import send_progress_email

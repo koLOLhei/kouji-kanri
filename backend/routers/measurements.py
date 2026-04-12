@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from models.measurement import Measurement
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/projects/{project_id}/measurements", tags=["measurements"])
 
@@ -48,6 +49,8 @@ class MeasurementUpdate(BaseModel):
 def list_measurements(
     project_id: str,
     measurement_type: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -55,7 +58,7 @@ def list_measurements(
     q = db.query(Measurement).filter(Measurement.project_id == project_id)
     if measurement_type:
         q = q.filter(Measurement.measurement_type == measurement_type)
-    return q.order_by(Measurement.measured_date.desc()).all()
+    return q.order_by(Measurement.measured_date.desc()).offset(offset).limit(limit).all()
 
 
 @router.post("")
@@ -68,8 +71,7 @@ def create_measurement(
     verify_project_access(project_id, user, db)
     data = req.model_dump()
     if data.get("measured_date") is None:
-        from datetime import date as d
-        data["measured_date"] = d.today()
+        data["measured_date"] = today_jst()
     measurement = Measurement(
         project_id=project_id,
         **data,

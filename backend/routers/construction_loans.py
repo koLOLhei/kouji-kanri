@@ -13,6 +13,7 @@ from models.construction_loan import ConstructionLoan, LoanPayment
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/projects/{project_id}/loans", tags=["construction-loans"])
 
@@ -302,7 +303,7 @@ def loan_dashboard(
         .all()
     )
 
-    today = date.today()
+    today = today_jst()
     next_due = None
     overdue_count = 0
     for p in payments:

@@ -142,6 +142,11 @@ def create_equipment_check(
     db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
+    equip = db.query(Equipment).filter(
+        Equipment.id == req.equipment_id, Equipment.tenant_id == user.tenant_id
+    ).first()
+    if not equip:
+        raise HTTPException(status_code=404, detail="機材が見つかりません")
     check = EquipmentDailyCheck(
         project_id=project_id,
         **req.model_dump(),
@@ -177,6 +182,11 @@ def create_equipment_usage(
     db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
+    equip = db.query(Equipment).filter(
+        Equipment.id == req.equipment_id, Equipment.tenant_id == user.tenant_id
+    ).first()
+    if not equip:
+        raise HTTPException(status_code=404, detail="機材が見つかりません")
     usage = EquipmentUsage(
         project_id=project_id,
         **req.model_dump(),

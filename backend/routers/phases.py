@@ -1,6 +1,7 @@
 """Phase (工程) router."""
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -38,16 +39,53 @@ def list_phases(
         Phase.project_id == project_id
     ).order_by(Phase.sort_order).all()
 
+    if not phases:
+        return []
+
+    phase_ids = [p.id for p in phases]
+
+    # Fetch all requirements for these phases in one query
+    all_reqs = db.query(PhaseRequirement).filter(
+        PhaseRequirement.phase_id.in_(phase_ids)
+    ).all()
+
+    # Aggregate photo counts per requirement_id in one query
+    photo_counts_rows = (
+        db.query(Photo.requirement_id, func.count(Photo.id).label("cnt"))
+        .filter(
+            Photo.requirement_id.in_([r.id for r in all_reqs]),
+        )
+        .group_by(Photo.requirement_id)
+        .all()
+    )
+    photo_counts = {row.requirement_id: row.cnt for row in photo_counts_rows}
+
+    # Aggregate report counts per requirement_id in one query
+    report_counts_rows = (
+        db.query(Report.requirement_id, func.count(Report.id).label("cnt"))
+        .filter(
+            Report.requirement_id.in_([r.id for r in all_reqs]),
+        )
+        .group_by(Report.requirement_id)
+        .all()
+    )
+    report_counts = {row.requirement_id: row.cnt for row in report_counts_rows}
+
+    # Group requirements by phase_id
+    reqs_by_phase: dict[str, list[PhaseRequirement]] = {}
+    for req in all_reqs:
+        reqs_by_phase.setdefault(req.phase_id, []).append(req)
+
     result = []
     for p in phases:
         resp = PhaseResponse.model_validate(p)
-        reqs = db.query(PhaseRequirement).filter_by(phase_id=p.id).all()
+        reqs = reqs_by_phase.get(p.id, [])
         met = 0
         for req in reqs:
             if req.requirement_type == "photo":
-                count = db.query(Photo).filter_by(requirement_id=req.id).count()
+                count = photo_counts.get(req.id, 0)
             else:
-                count = db.query(Report).filter_by(requirement_id=req.id).count()
+                count = report_counts.get(req.id, 0)
             if count >= req.min_count:
                 met += 1
         resp.requirements_total = len(reqs)
@@ -172,13 +210,36 @@ def get_checklist(
     _verify_project(project_id, user, db)
     reqs = db.query(PhaseRequirement).filter_by(phase_id=phase_id).order_by(PhaseRequirement.sort_order).all()
 
+    if not reqs:
+        return []
+
+    req_ids = [r.id for r in reqs]
+
+    # Fetch all photo counts for these requirements in one query
+    photo_counts_rows = (
+        db.query(Photo.requirement_id, func.count(Photo.id).label("cnt"))
+        .filter(Photo.requirement_id.in_(req_ids))
+        .group_by(Photo.requirement_id)
+        .all()
+    )
+    photo_counts = {row.requirement_id: row.cnt for row in photo_counts_rows}
+
+    # Fetch all report counts for these requirements in one query
+    report_counts_rows = (
+        db.query(Report.requirement_id, func.count(Report.id).label("cnt"))
+        .filter(Report.requirement_id.in_(req_ids))
+        .group_by(Report.requirement_id)
+        .all()
+    )
+    report_counts = {row.requirement_id: row.cnt for row in report_counts_rows}
+
     result = []
     for req in reqs:
         resp = RequirementResponse.model_validate(req)
         if req.requirement_type == "photo":
-            resp.fulfilled_count = db.query(Photo).filter_by(requirement_id=req.id).count()
+            resp.fulfilled_count = photo_counts.get(req.id, 0)
         else:
-            resp.fulfilled_count = db.query(Report).filter_by(requirement_id=req.id).count()
+            resp.fulfilled_count = report_counts.get(req.id, 0)
         result.append(resp)
     return result
 

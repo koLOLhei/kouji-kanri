@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from services.timezone_utils import today_jst
+
 from database import get_db
 from models.crm import Brand, Customer, CustomerContact, Lead, Interaction, EntityLink
 from models.project import Project
@@ -469,7 +471,7 @@ def convert_lead(
     lead.status = "won"
     lead.converted_customer_id = customer.id
     lead.converted_project_id = project.id if project else None
-    lead.converted_date = date.today()
+    lead.converted_date = today_jst()
 
     db.commit()
     db.refresh(customer)
@@ -533,7 +535,7 @@ def upcoming_actions(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    cutoff = date.today() + timedelta(days=7)
+    cutoff = today_jst() + timedelta(days=7)
     interactions = (
         db.query(Interaction)
         .filter(
@@ -565,7 +567,7 @@ def crm_dashboard(
         .scalar() or 0
     )
 
-    month_start = date.today().replace(day=1)
+    month_start = today_jst().replace(day=1)
     leads_this_month = (
         db.query(func.count(Lead.id))
         .filter(Lead.tenant_id == tid, Lead.acquired_date >= month_start)
@@ -606,7 +608,7 @@ def crm_dashboard(
     customers_by_rank = {row[0]: row[1] for row in customers_by_rank_rows}
 
     # Upcoming actions count
-    cutoff = date.today() + timedelta(days=7)
+    cutoff = today_jst() + timedelta(days=7)
     upcoming_actions_count = (
         db.query(func.count(Interaction.id))
         .filter(

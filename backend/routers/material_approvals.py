@@ -12,6 +12,7 @@ from models.staffing import MaterialApproval, NeighborRecord, WeeklyRestDay
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["project-extras"])
 
@@ -60,7 +61,7 @@ def update_material_approval(project_id: str, ma_id: str, req: MaterialApprovalU
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(ma, k, v)
     if req.status == "approved":
-        ma.approved_date = date.today()
+        ma.approved_date = today_jst()
     db.commit()
     db.refresh(ma)
     return ma
@@ -100,7 +101,7 @@ def update_neighbor_record(project_id: str, nr_id: str, status: str | None = Non
     if status:
         nr.status = status
         if status == "resolved":
-            nr.resolved_date = date.today()
+            nr.resolved_date = today_jst()
     if response:
         nr.response = response
     db.commit()

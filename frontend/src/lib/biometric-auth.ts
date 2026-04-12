@@ -9,6 +9,21 @@ const BIOMETRIC_KEY = "biometric_registered";
 const BIOMETRIC_TOKEN_KEY = "biometric_token";
 
 /**
+ * Encode a JWT token before storing in localStorage.
+ * Prevents trivial localStorage.getItem('biometric_token') plaintext attacks.
+ */
+function encodeToken(token: string): string {
+  return btoa(token.split("").reverse().join(""));
+}
+
+/**
+ * Decode a previously encoded token from localStorage.
+ */
+function decodeToken(encoded: string): string {
+  return atob(encoded).split("").reverse().join("");
+}
+
+/**
  * Check if biometric authentication is available on this device.
  */
 export function canUseBiometric(): boolean {
@@ -71,7 +86,7 @@ export async function registerBiometric(
 
   const pkCredential = credential as PublicKeyCredential;
 
-  // Store credential ID and token
+  // Store credential ID and encoded token (prevents trivial plaintext access)
   localStorage.setItem(BIOMETRIC_KEY, "true");
   localStorage.setItem(
     BIOMETRIC_TOKEN_KEY,
@@ -81,7 +96,7 @@ export async function registerBiometric(
           ...new Uint8Array(pkCredential.rawId)
         )
       ),
-      token,
+      token: encodeToken(token),
       userId,
       registeredAt: Date.now(),
     })
@@ -101,6 +116,8 @@ export async function authenticateWithBiometric(): Promise<string | null> {
   let stored: { credentialId: string; token: string; userId: string };
   try {
     stored = JSON.parse(storedStr);
+    // Decode stored token (was encoded at registration time)
+    stored = { ...stored, token: decodeToken(stored.token) };
   } catch {
     return null;
   }
@@ -149,7 +166,7 @@ export function updateBiometricToken(token: string): void {
   if (!storedStr) return;
   try {
     const stored = JSON.parse(storedStr);
-    stored.token = token;
+    stored.token = encodeToken(token);
     localStorage.setItem(BIOMETRIC_TOKEN_KEY, JSON.stringify(stored));
   } catch {
     // ignore

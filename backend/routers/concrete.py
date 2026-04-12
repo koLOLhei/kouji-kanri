@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from models.concrete_curing import ConcretePlacement
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
+from services.timezone_utils import today_jst
 
 router = APIRouter(prefix="/api/projects/{project_id}/concrete", tags=["concrete"])
 
@@ -22,16 +23,16 @@ class ConcretePlacementCreate(BaseModel):
     placement_date: date
     location: str
     member_type: str
-    volume_m3: float | None = None
+    volume_m3: float | None = Field(default=None, ge=0)
     design_strength: str | None = None
-    slump: float | None = None
-    air_content: float | None = None
-    chloride: float | None = None
-    concrete_temp: float | None = None
-    ambient_temp: float | None = None
+    slump: float | None = Field(default=None, ge=0)
+    air_content: float | None = Field(default=None, ge=0)
+    chloride: float | None = Field(default=None, ge=0)
+    concrete_temp: float | None = None  # allow negative (winter)
+    ambient_temp: float | None = None  # allow negative (winter)
     curing_method: str | None = None
-    curing_days_required: int = 5
-    formwork_removal_days: int = 28
+    curing_days_required: int = Field(default=5, ge=0)
+    formwork_removal_days: int = Field(default=28, ge=0)
     weather: str | None = None
     notes: str | None = None
 
@@ -93,7 +94,7 @@ def placement_alerts(
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    today = date.today()
+    today = today_jst()
     threshold = today + timedelta(days=3)
 
     placements = db.query(ConcretePlacement).filter(
