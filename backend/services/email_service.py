@@ -48,8 +48,14 @@ def send_email(to: list[str], subject: str, html_body: str,
             return {"status": "sent", "id": result.get("id", "")}
 
     except URLError as e:
-        logger.error(f"[EMAIL] Resend API error: {e}")
-        return {"status": "failed", "error": str(e)}
+        detail = ""
+        if hasattr(e, 'read'):
+            try:
+                detail = e.read().decode('utf-8')
+            except Exception:
+                pass
+        logger.error(f"[EMAIL] Resend API error: {e} | detail: {detail}")
+        return {"status": "failed", "error": str(e), "detail": detail}
     except Exception as e:
         logger.error(f"[EMAIL] Failed: {e}")
         return {"status": "failed", "error": str(e)}
