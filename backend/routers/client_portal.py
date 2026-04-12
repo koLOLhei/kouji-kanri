@@ -1,11 +1,12 @@
 """顧客ポータル — 発注者・クライアントへの進捗共有
 
-2つのAPI群:
+3つのAPI群:
 1. 管理者用: ポータル設定、通知履歴 (認証必要)
 2. クライアント用: トークンベースで認証不要の閲覧API
+3. クライアント承認用: 出来高払い・設計変更の承認/却下 (認証必要)
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -20,6 +21,8 @@ from models.photo import Photo
 from models.daily_report import DailyReport
 from models.inspection import Inspection
 from models.submission import Submission
+from models.quality import ProgressPayment
+from models.design_change import DesignChange
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
@@ -28,6 +31,7 @@ from services.timezone_utils import today_jst
 
 admin_router = APIRouter(prefix="/api/projects/{project_id}/client-portal", tags=["client-portal"])
 public_router = APIRouter(prefix="/api/portal", tags=["client-portal-public"])
+approval_router = APIRouter(prefix="/api/client-portal", tags=["client-portal-approval"])
 
 
 # ─── Admin Schemas ───
@@ -366,3 +370,140 @@ def get_portal_timeline(token: str, db: Session = Depends(get_db)):
 
     events.sort(key=lambda e: e["date"], reverse=True)
     return events
+
+
+# ─── クライアント承認API (認証必要、viewer/client/admin ロール) ───
+
+class RejectReason(BaseModel):
+    reason: str
+
+
+def _row_to_dict(obj) -> dict:
+    return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+
+
+@approval_router.get("/progress-payments")
+def list_pending_payments(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """発注者確認待ちの出来高払いを一覧表示。viewer/client/admin が閲覧可能。"""
+    if user.role not in ("admin", "manager", "viewer", "client"):
+        raise HTTPException(status_code=403, detail="権限がありません")
+    payments = db.query(ProgressPayment).filter(
+        ProgressPayment.tenant_id == user.tenant_id,
+        ProgressPayment.status.in_(["submitted", "approved", "rejected"]),
+    ).order_by(ProgressPayment.created_at.desc()).all()
+    return [_row_to_dict(p) for p in payments]
+
+
+@approval_router.put("/progress-payments/{payment_id}/approve")
+def approve_payment(
+    payment_id: str,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """出来高払いを承認する。"""
+    if user.role not in ("admin", "manager", "viewer", "client"):
+        raise HTTPException(status_code=403, detail="権限がありません")
+    payment = db.query(ProgressPayment).filter(
+        ProgressPayment.id == payment_id,
+        ProgressPayment.tenant_id == user.tenant_id,
+    ).first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="出来高払いが見つかりません")
+    if payment.status not in ("submitted",):
+        raise HTTPException(status_code=400, detail=f"現在のステータス '{payment.status}' では承認できません")
+    payment.status = "approved"
+    payment.approved_by = user.name or user.email
+    payment.approved_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(payment)
+    return _row_to_dict(payment)
+
+
+@approval_router.put("/progress-payments/{payment_id}/reject")
+def reject_payment(
+    payment_id: str,
+    body: RejectReason,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """出来高払いを却下する。"""
+    if user.role not in ("admin", "manager", "viewer", "client"):
+        raise HTTPException(status_code=403, detail="権限がありません")
+    payment = db.query(ProgressPayment).filter(
+        ProgressPayment.id == payment_id,
+        ProgressPayment.tenant_id == user.tenant_id,
+    ).first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="出来高払いが見つかりません")
+    if payment.status not in ("submitted",):
+        raise HTTPException(status_code=400, detail=f"現在のステータス '{payment.status}' では却下できません")
+    payment.status = "rejected"
+    # Store rejection reason in approved_by field with prefix
+    payment.approved_by = f"[却下: {body.reason}] by {user.name or user.email}"
+    payment.approved_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(payment)
+    return _row_to_dict(payment)
+
+
+@approval_router.get("/design-changes")
+def list_pending_design_changes(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """発注者確認待ちの設計変更を一覧表示。"""
+    if user.role not in ("admin", "manager", "viewer", "client"):
+        raise HTTPException(status_code=403, detail="権限がありません")
+    changes = db.query(DesignChange).filter(
+        DesignChange.tenant_id == user.tenant_id,
+        DesignChange.status.in_(["submitted", "negotiating", "approved", "rejected"]),
+    ).order_by(DesignChange.created_at.desc()).all()
+    return [_row_to_dict(c) for c in changes]
+
+
+@approval_router.put("/design-changes/{change_id}/approve")
+def approve_design_change(
+    change_id: str,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """設計変更を承認する。"""
+    if user.role not in ("admin", "manager", "viewer", "client"):
+        raise HTTPException(status_code=403, detail="権限がありません")
+    change = db.query(DesignChange).filter(
+        DesignChange.id == change_id,
+        DesignChange.tenant_id == user.tenant_id,
+    ).first()
+    if not change:
+        raise HTTPException(status_code=404, detail="設計変更が見つかりません")
+    if change.status not in ("submitted", "negotiating"):
+        raise HTTPException(status_code=400, detail=f"現在のステータス '{change.status}' では承認できません")
+    change.status = "approved"
+    change.approved_by = user.name or user.email
+    change.approved_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(change)
+    return _row_to_dict(change)
+
+
+@approval_router.put("/design-changes/{change_id}/reject")
+def reject_design_change(
+    change_id: str,
+    body: RejectReason,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    """設計変更を却下する。"""
+    if user.role not in ("admin", "manager", "viewer", "client"):
+        raise HTTPException(status_code=403, detail="権限がありません")
+    change = db.query(DesignChange).filter(
+        DesignChange.id == change_id,
+        DesignChange.tenant_id == user.tenant_id,
+    ).first()
+    if not change:
+        raise HTTPException(status_code=404, detail="設計変更が見つかりません")
+    if change.status not in ("submitted", "negotiating"):
+        raise HTTPException(status_code=400, detail=f"現在のステータス '{change.status}' では却下できません")
+    change.status = "rejected"
+    change.approved_by = f"[却下: {body.reason}] by {user.name or user.email}"
+    change.approved_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(change)
+    return _row_to_dict(change)

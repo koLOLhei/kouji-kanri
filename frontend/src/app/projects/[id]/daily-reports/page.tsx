@@ -11,6 +11,7 @@ import {
   Copy, ClipboardList,
 } from "lucide-react";
 import { VoiceTextarea } from "@/components/voice-input";
+import ResourceConflictAlert from "@/components/resource-conflict-alert";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -428,6 +429,12 @@ export default function DailyReportsPage() {
               className="border border-gray-300 rounded-lg px-4 py-2.5 w-full max-w-xs text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               required
             />
+            {/* Resource conflict check for selected date */}
+            {form.report_date && (
+              <div className="mt-3">
+                <ResourceConflictAlert projectId={id} date={form.report_date} />
+              </div>
+            )}
           </div>
 
           {/* Weather */}

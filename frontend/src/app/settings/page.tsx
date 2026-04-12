@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
-import { Building2, User, Shield, Bell, BellOff, Sun } from "lucide-react";
+import { Building2, User, Shield, Bell, BellOff, Sun, Globe } from "lucide-react";
 import {
   requestNotificationPermission,
   useNotificationPermission,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/push-notifications";
 import { OutdoorModeToggle } from "@/components/outdoor-mode-toggle";
 import { cn } from "@/lib/utils";
+import { useLocale, LOCALE_LABELS, type Locale } from "@/lib/i18n";
 
 function Toggle({
   checked,
@@ -51,6 +52,7 @@ export default function SettingsPage() {
     getNotificationSettings()
   );
   const [requestingPermission, setRequestingPermission] = useState(false);
+  const [locale, setLocale] = useLocale();
 
   useEffect(() => {
     saveNotificationSettings(settings);
@@ -231,6 +233,33 @@ export default function SettingsPage() {
             </div>
             <OutdoorModeToggle showLabel={false} />
           </div>
+        </div>
+
+        {/* Language selector */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Globe className="w-5 h-5" /> 言語設定 / Language
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            {(Object.entries(LOCALE_LABELS) as [Locale, string][]).map(([code, label]) => (
+              <button
+                key={code}
+                onClick={() => setLocale(code)}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors",
+                  locale === code
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50"
+                )}
+              >
+                {label}
+                {locale === code && <span className="text-xs opacity-80">✓</span>}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-3">
+            表示言語を切り替えます。ページ再読み込みは不要です。
+          </p>
         </div>
 
         {/* System info */}

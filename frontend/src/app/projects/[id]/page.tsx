@@ -10,7 +10,7 @@ import {
   ArrowLeft, Camera, ChevronRight, ChevronDown,
   CheckCircle2, Circle, Clock, AlertCircle, Sparkles, Package,
   ClipboardList, Shield, Search, DollarSign, FileImage,
-  Handshake, AlertTriangle, Calendar, BookOpen, BarChart2, FileEdit,
+  Handshake, AlertTriangle, Calendar, BookOpen, BarChart2, FileEdit, ShieldCheck,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -143,6 +143,7 @@ const FEATURE_GROUPS = [
       { key: "handover",          label: "引渡品",    subtitle: "鍵・取説・保証書の管理",       icon: Package,      bg: "bg-blue-50",    ring: "ring-blue-200",    iconColor: "text-blue-600" },
       { key: "traceability",      label: "トレーサビリティ", subtitle: "材料の使用箇所追跡",    icon: Search,       bg: "bg-violet-50",  ring: "ring-violet-200",  iconColor: "text-violet-600" },
       { key: "members",           label: "メンバー",  subtitle: "プロジェクトメンバー管理",     icon: Shield,       bg: "bg-gray-50",    ring: "ring-gray-200",    iconColor: "text-gray-600" },
+      { key: "compliance",        label: "許認可管理", subtitle: "道路使用・建築確認・届出の管理", icon: ShieldCheck,  bg: "bg-green-50",   ring: "ring-green-200",   iconColor: "text-green-600" },
     ],
   },
 ] as const;

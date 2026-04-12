@@ -4,6 +4,17 @@
    IndexedDB Offline Queue Operations
    ============================================================ */
 
+export interface SyncConflictRecord {
+  entity_type: string;
+  entity_id: string;
+  local_data: Record<string, unknown>;
+  local_updated_at: string;
+  server_data: Record<string, unknown>;
+  server_updated_at: string;
+}
+
+const CONFLICTS_KEY = "sync_conflicts";
+
 const DB_NAME = "offline-queue";
 const STORE_NAME = "requests";
 
@@ -125,6 +136,45 @@ function getBaseUrl(url: string): string {
   }
 }
 
+/* ============================================================
+   Conflict Storage Helpers
+   ============================================================ */
+
+export function getStoredConflicts(): SyncConflictRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CONFLICTS_KEY);
+    return raw ? (JSON.parse(raw) as SyncConflictRecord[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addConflict(conflict: SyncConflictRecord): void {
+  if (typeof window === "undefined") return;
+  const existing = getStoredConflicts().filter(
+    (c) => !(c.entity_type === conflict.entity_type && c.entity_id === conflict.entity_id)
+  );
+  localStorage.setItem(CONFLICTS_KEY, JSON.stringify([...existing, conflict]));
+}
+
+export function clearConflicts(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(CONFLICTS_KEY);
+}
+
+export function removeConflict(entity_type: string, entity_id: string): void {
+  if (typeof window === "undefined") return;
+  const updated = getStoredConflicts().filter(
+    (c) => !(c.entity_type === entity_type && c.entity_id === entity_id)
+  );
+  localStorage.setItem(CONFLICTS_KEY, JSON.stringify(updated));
+}
+
+/* ============================================================
+   Sync Queue on Reconnect
+   ============================================================ */
+
 export async function syncOfflineQueue(): Promise<{
   synced: number;
   failed: number;
@@ -170,6 +220,36 @@ export async function syncOfflineQueue(): Promise<{
         headers: item.headers,
         body: item.body as string,
       });
+
+      if (response.status === 409) {
+        // Conflict — store for user resolution
+        try {
+          const conflictPayload = await response.json() as {
+            entity_type?: string;
+            entity_id?: string;
+            server_data?: Record<string, unknown>;
+            server_updated_at?: string;
+          };
+          const localBody = typeof item.body === "string"
+            ? (JSON.parse(item.body) as Record<string, unknown>)
+            : (item.body as Record<string, unknown>);
+          const entityType = conflictPayload.entity_type ?? "unknown";
+          const entityId = conflictPayload.entity_id ?? (localBody["id"] as string | undefined) ?? "";
+          addConflict({
+            entity_type: entityType,
+            entity_id: entityId,
+            local_data: localBody,
+            local_updated_at: (localBody["updated_at"] as string | undefined) ?? new Date(item.timestamp).toISOString(),
+            server_data: conflictPayload.server_data ?? {},
+            server_updated_at: conflictPayload.server_updated_at ?? "",
+          });
+        } catch {
+          // If we can't parse the 409 body, just count as failed
+        }
+        results.failed++;
+        continue;
+      }
+
       if (response.ok || response.status < 500) {
         if (item.id != null) await deleteQueueItem(item.id);
         results.synced++;

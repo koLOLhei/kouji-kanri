@@ -78,6 +78,7 @@ __all__ = [
     "ClientPortalConfig", "ClientNotificationLog", "InspectionScheduleTemplate",
     "Brand", "Customer", "CustomerContact", "Lead", "Interaction", "EntityLink",
     "ProjectMember",
+    "ComplianceItem",
 ]
 from models.business_docs import (
     Estimate, Invoice, PaymentNotice, ContractDocument,
@@ -87,3 +88,8 @@ from models.business_docs import (
 from models.platform import PasswordResetToken, LoginHistory, FileAttachment, UserInvitation
 from models.construction_loan import ConstructionLoan, LoanPayment
 from models.painting_project import PaintingSurvey, PaintingEstimate, PaintingContract, ContractTemplate, PaintingSchedule
+from models.signature import DigitalSignature
+from models.push_subscription import PushSubscription
+from models.compliance import ComplianceItem
+from models.punch_list import PunchListItem
+from models.esign import ElectronicSignature

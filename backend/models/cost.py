@@ -3,10 +3,13 @@
 import uuid
 from datetime import datetime, timezone, date
 
-from sqlalchemy import String, BigInteger, Date, DateTime, Text
+from sqlalchemy import String, BigInteger, Date, DateTime, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
+
+# Threshold in JPY above which an actual cost entry requires manager approval
+APPROVAL_THRESHOLD = 100_000
 
 
 class CostBudget(Base):
@@ -35,6 +38,11 @@ class CostActual(Base):
     description: Mapped[str | None] = mapped_column(Text)
     receipt_file_key: Mapped[str | None] = mapped_column(String(500))
     recorded_by: Mapped[str | None] = mapped_column(String(36))
+    # Approval workflow fields
+    approval_required: Mapped[bool] = mapped_column(Boolean, default=False)
+    approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    approved_by: Mapped[str | None] = mapped_column(String(36))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

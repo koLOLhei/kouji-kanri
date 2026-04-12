@@ -1,6 +1,7 @@
 """Cost management (原価管理) router."""
 
-from datetime import date
+from datetime import date, datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -8,7 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.cost import CostBudget, CostActual, CostForecast
+from models.cost import CostBudget, CostActual, CostForecast, APPROVAL_THRESHOLD
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
@@ -50,6 +51,10 @@ class ActualUpdate(BaseModel):
     vendor_name: str | None = None
     description: str | None = None
     receipt_file_key: str | None = None
+
+
+class ApproveActualRequest(BaseModel):
+    approved: bool = True
 
 
 class ForecastCreate(BaseModel):
@@ -150,7 +155,15 @@ def create_actual(
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    a = CostActual(project_id=project_id, recorded_by=user.id, **req.model_dump())
+    data = req.model_dump()
+    # Auto-flag high-value entries for approval
+    needs_approval = data.get("amount", 0) >= APPROVAL_THRESHOLD
+    a = CostActual(
+        project_id=project_id,
+        recorded_by=user.id,
+        approval_required=needs_approval,
+        **data,
+    )
     db.add(a)
     db.commit()
     db.refresh(a)
@@ -289,3 +302,56 @@ def cost_summary(
         "total_variance": total_budget - total_actual,
         "total_rate": round(total_actual / total_budget * 100, 1) if total_budget else 0,
     }
+
+
+# ---------- Approval Workflow ----------
+
+@router.get("/pending-approvals")
+def list_pending_approvals(
+    project_id: str,
+    user: User = Depends(get_current_user), db: Session = Depends(get_db),
+) -> Any:
+    """List all cost actuals that require approval and are not yet approved."""
+    verify_project_access(project_id, user, db)
+    items = (
+        db.query(CostActual)
+        .filter(
+            CostActual.project_id == project_id,
+            CostActual.approval_required == True,  # noqa: E712
+            CostActual.approved == False,  # noqa: E712
+        )
+        .order_by(CostActual.created_at.desc())
+        .all()
+    )
+    return {
+        "items": items,
+        "count": len(items),
+        "total_pending_amount": sum(i.amount for i in items),
+    }
+
+
+@router.post("/actuals/{actual_id}/approve")
+def approve_actual(
+    project_id: str,
+    actual_id: str,
+    req: ApproveActualRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Approve (or reject) a cost actual that requires approval."""
+    verify_project_access(project_id, user, db)
+    a = db.query(CostActual).filter(
+        CostActual.id == actual_id,
+        CostActual.project_id == project_id,
+    ).first()
+    if not a:
+        raise HTTPException(status_code=404, detail="実績が見つかりません")
+    if not a.approval_required:
+        raise HTTPException(status_code=400, detail="この実績は承認不要です")
+
+    a.approved = req.approved
+    a.approved_by = user.id
+    a.approved_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(a)
+    return a

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { useRef, useState, useMemo, useCallback } from "react";
+import { ChevronRight, ChevronDown, AlertTriangle, Move } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -32,10 +32,19 @@ export interface GanttMilestone {
 
 export type GanttZoom = "month" | "week" | "day";
 
+export interface DragMoveResult {
+  phase_id: string;
+  new_start_date: string;
+}
+
 interface GanttProps {
   phases: GanttPhase[];
   milestones: GanttMilestone[];
   zoom: GanttZoom;
+  /** Called with the phase id and new start ISO date when a bar drag ends */
+  onPhaseMove?: (result: DragMoveResult) => void;
+  /** IDs of phases highlighted as "will be affected by a cascade" */
+  affectedPhaseIds?: Set<string>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -92,7 +101,7 @@ function formatHeaderDate(d: Date, zoom: GanttZoom): string {
 
 interface Tick {
   label: string;
-  dayOffset: number; // from chartStart
+  dayOffset: number;
   isMonth?: boolean;
   isWeek?: boolean;
 }
@@ -100,15 +109,12 @@ interface Tick {
 function buildTicks(chartStart: Date, totalDays: number, zoom: GanttZoom): Tick[] {
   const ticks: Tick[] = [];
   if (zoom === "day") {
-    // One tick per day
     for (let i = 0; i < totalDays; i++) {
       const d = addDays(chartStart, i);
       ticks.push({ label: formatHeaderDate(d, zoom), dayOffset: i });
     }
   } else if (zoom === "week") {
-    // One tick per week (Monday)
     let cur = new Date(chartStart);
-    // Step back to nearest Monday
     while (cur.getDay() !== 1) cur = addDays(cur, 1);
     while (daysBetween(chartStart, cur) < totalDays) {
       const off = daysBetween(chartStart, cur);
@@ -118,7 +124,6 @@ function buildTicks(chartStart: Date, totalDays: number, zoom: GanttZoom): Tick[
       cur = addDays(cur, 7);
     }
   } else {
-    // One tick per month
     let cur = new Date(chartStart.getFullYear(), chartStart.getMonth(), 1);
     while (daysBetween(chartStart, cur) < totalDays) {
       const off = Math.max(0, daysBetween(chartStart, cur));
@@ -134,17 +139,36 @@ function buildTicks(chartStart: Date, totalDays: number, zoom: GanttZoom): Tick[
 }
 
 /* ------------------------------------------------------------------ */
+/*  Drag state type                                                    */
+/* ------------------------------------------------------------------ */
+
+interface DragState {
+  phaseId: string;
+  originalStartDays: number; // dayOffset from chartStart at drag start
+  currentDeltaDays: number;  // current delta in days
+  startClientX: number;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main Component                                                     */
 /* ------------------------------------------------------------------ */
 
-export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
+export default function GanttChart({
+  phases,
+  milestones,
+  zoom,
+  onPhaseMove,
+  affectedPhaseIds,
+}: GanttProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [dragState, setDragState] = useState<DragState | null>(null);
 
   const pxPerDay = PX_PER_DAY[zoom];
 
   /* ---- compute chart date range ---- */
-  const { chartStart, chartEnd, totalDays } = useMemo(() => {
+  const { chartStart, totalDays } = useMemo(() => {
     const allDates: Date[] = [];
     for (const p of phases) {
       if (p.planned_start) allDates.push(parseDate(p.planned_start));
@@ -177,23 +201,18 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
   const chartWidth = totalDays * pxPerDay;
   const ticks = useMemo(() => buildTicks(chartStart, totalDays, zoom), [chartStart, totalDays, zoom]);
 
-  /* ---- today marker ---- */
   const todayOffset = daysBetween(chartStart, new Date());
   const todayX = todayOffset * pxPerDay;
 
-  /* ---- filter visible phases (based on collapsed parents) ---- */
-  // Build id -> phase map & determine parent-child by level
+  /* ---- filter visible phases ---- */
   const visiblePhases: GanttPhase[] = useMemo(() => {
     const result: GanttPhase[] = [];
     const stack: { id: string; level: number }[] = [];
 
     for (const p of phases) {
-      // Pop stack if we are back at same or lower level
       while (stack.length > 0 && stack[stack.length - 1].level >= p.level) {
         stack.pop();
       }
-
-      // Check if any ancestor is collapsed
       const isHidden = stack.some((ancestor) => collapsed[ancestor.id]);
       if (!isHidden) {
         result.push(p);
@@ -214,7 +233,7 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
     return set;
   }, [phases]);
 
-  /* ---- compute bar positions ---- */
+  /* ---- bar position helpers ---- */
   function barX(dateStr: string | null | undefined): number {
     if (!dateStr) return 0;
     return daysBetween(chartStart, parseDate(dateStr)) * pxPerDay;
@@ -224,6 +243,12 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
     if (!startStr || !endStr) return MIN_BAR_WIDTH;
     const w = daysBetween(parseDate(startStr), parseDate(endStr)) * pxPerDay;
     return Math.max(w, MIN_BAR_WIDTH);
+  }
+
+  /* ---- drag position for a phase (delta applied if dragging) ---- */
+  function getDragDeltaDays(phaseId: string): number {
+    if (!dragState || dragState.phaseId !== phaseId) return 0;
+    return dragState.currentDeltaDays;
   }
 
   /* ---- dependency arrows ---- */
@@ -258,11 +283,59 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
 
   const svgHeight = HEADER_HEIGHT + visiblePhases.length * ROW_HEIGHT + 40;
 
+  /* ---- drag handlers ---- */
+  const handleBarMouseDown = useCallback(
+    (e: React.MouseEvent<SVGRectElement>, phaseId: string, startDateStr: string | null) => {
+      if (!onPhaseMove || !startDateStr) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const startDays = daysBetween(chartStart, parseDate(startDateStr));
+      setDragState({
+        phaseId,
+        originalStartDays: startDays,
+        currentDeltaDays: 0,
+        startClientX: e.clientX,
+      });
+    },
+    [onPhaseMove, chartStart]
+  );
+
+  const handleSvgMouseMove = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      if (!dragState) return;
+      const deltaPixels = e.clientX - dragState.startClientX;
+      const deltaDays = Math.round(deltaPixels / pxPerDay);
+      setDragState((prev) => (prev ? { ...prev, currentDeltaDays: deltaDays } : null));
+    },
+    [dragState, pxPerDay]
+  );
+
+  const handleSvgMouseUp = useCallback(
+    (e: React.MouseEvent<SVGSVGElement>) => {
+      if (!dragState || !onPhaseMove) {
+        setDragState(null);
+        return;
+      }
+      const totalDeltaDays = dragState.currentDeltaDays;
+      if (totalDeltaDays !== 0) {
+        const newStartDate = isoDate(
+          addDays(addDays(chartStart, dragState.originalStartDays), totalDeltaDays)
+        );
+        onPhaseMove({ phase_id: dragState.phaseId, new_start_date: newStartDate });
+      }
+      setDragState(null);
+    },
+    [dragState, onPhaseMove, chartStart]
+  );
+
+  const handleSvgMouseLeave = useCallback(() => {
+    setDragState(null);
+  }, []);
+
   return (
     <div className="flex border border-gray-200 rounded-lg overflow-hidden bg-white">
       {/* ---- Label panel ---- */}
       <div className="flex-shrink-0 bg-gray-50 border-r border-gray-200" style={{ width: LABEL_WIDTH }}>
-        {/* header spacer */}
         <div
           className="border-b border-gray-200 bg-gray-100 flex items-end px-3 pb-1"
           style={{ height: HEADER_HEIGHT }}
@@ -270,14 +343,22 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">工程名</span>
         </div>
 
-        {visiblePhases.map((p, i) => {
+        {visiblePhases.map((p) => {
           const isCollapsible = hasChildren.has(p.id);
           const isCollapsed = !!collapsed[p.id];
+          const isAffected = affectedPhaseIds?.has(p.id);
+          const isDragging = dragState?.phaseId === p.id;
 
           return (
             <div
               key={p.id}
-              className="flex items-center border-b border-gray-100 hover:bg-blue-50/40 transition-colors"
+              className={`flex items-center border-b border-gray-100 transition-colors ${
+                isDragging
+                  ? "bg-blue-100"
+                  : isAffected
+                  ? "bg-amber-50"
+                  : "hover:bg-blue-50/40"
+              }`}
               style={{ height: ROW_HEIGHT, paddingLeft: 8 + p.level * 16 }}
             >
               {isCollapsible ? (
@@ -285,9 +366,11 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
                   onClick={() => setCollapsed((prev) => ({ ...prev, [p.id]: !prev[p.id] }))}
                   className="mr-1 flex-shrink-0"
                 >
-                  {isCollapsed
-                    ? <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                    : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+                  {isCollapsed ? (
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                  )}
                 </button>
               ) : (
                 <span className="w-4.5 mr-1 flex-shrink-0" />
@@ -295,10 +378,10 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
               {p.is_critical && (
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5 flex-shrink-0" title="クリティカルパス" />
               )}
-              <span
-                className="text-xs truncate text-gray-700"
-                title={p.name}
-              >
+              {isAffected && !isDragging && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5 flex-shrink-0" title="連動シフト" />
+              )}
+              <span className="text-xs truncate text-gray-700" title={p.name}>
                 {p.name}
               </span>
             </div>
@@ -309,10 +392,14 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
       {/* ---- Chart panel (scrollable) ---- */}
       <div className="flex-1 overflow-x-auto" ref={scrollRef}>
         <svg
+          ref={svgRef}
           width={chartWidth}
           height={svgHeight}
-          className="block"
+          className={`block ${dragState ? "cursor-grabbing select-none" : ""}`}
           style={{ minWidth: chartWidth }}
+          onMouseMove={handleSvgMouseMove}
+          onMouseUp={handleSvgMouseUp}
+          onMouseLeave={handleSvgMouseLeave}
         >
           {/* ---- Grid background ---- */}
           {ticks.map((tick, i) => {
@@ -329,14 +416,20 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
           })}
 
           {/* ---- Row alternating background ---- */}
-          {visiblePhases.map((_, i) => (
+          {visiblePhases.map((p, i) => (
             <rect
               key={i}
               x={0}
               y={HEADER_HEIGHT + i * ROW_HEIGHT}
               width={chartWidth}
               height={ROW_HEIGHT}
-              fill={i % 2 === 0 ? "transparent" : "#f9fafb"}
+              fill={
+                affectedPhaseIds?.has(p.id)
+                  ? "rgba(251, 191, 36, 0.08)"
+                  : i % 2 === 0
+                  ? "transparent"
+                  : "#f9fafb"
+              }
             />
           ))}
 
@@ -344,7 +437,6 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
           <rect x={0} y={0} width={chartWidth} height={HEADER_HEIGHT} fill="#f3f4f6" />
           <line x1={0} y1={HEADER_HEIGHT} x2={chartWidth} y2={HEADER_HEIGHT} stroke="#e5e7eb" strokeWidth={1} />
 
-          {/* Ticks labels */}
           {ticks.map((tick, i) => {
             const x = tick.dayOffset * pxPerDay;
             return (
@@ -408,11 +500,36 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
             const hasPlanned = p.planned_start && p.planned_end;
             const hasActual = p.actual_start || p.actual_end;
 
-            const plannedX = hasPlanned ? barX(p.planned_start) : null;
+            const deltaDays = getDragDeltaDays(p.id);
+            const isDraggingThis = dragState?.phaseId === p.id;
+            const isAffected = affectedPhaseIds?.has(p.id);
+
+            const plannedX = hasPlanned
+              ? barX(p.planned_start) + deltaDays * pxPerDay
+              : null;
             const plannedW = hasPlanned ? barWidth(p.planned_start, p.planned_end) : null;
 
-            const barColor = p.is_critical ? "#ef4444" : p.level === 0 ? "#3b82f6" : "#6366f1";
-            const barColorLight = p.is_critical ? "#fecaca" : p.level === 0 ? "#bfdbfe" : "#c7d2fe";
+            const barColor = isDraggingThis
+              ? "#2563eb"
+              : isAffected
+              ? "#d97706"
+              : p.is_critical
+              ? "#ef4444"
+              : p.level === 0
+              ? "#3b82f6"
+              : "#6366f1";
+
+            const barColorLight = isDraggingThis
+              ? "#bfdbfe"
+              : isAffected
+              ? "#fef3c7"
+              : p.is_critical
+              ? "#fecaca"
+              : p.level === 0
+              ? "#bfdbfe"
+              : "#c7d2fe";
+
+            const canDrag = !!onPhaseMove && !!p.planned_start;
 
             return (
               <g key={p.id}>
@@ -427,7 +544,10 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
                       rx={3}
                       fill={barColorLight}
                       stroke={barColor}
-                      strokeWidth={1}
+                      strokeWidth={isDraggingThis ? 2 : 1}
+                      opacity={isDraggingThis ? 0.85 : 1}
+                      style={{ cursor: canDrag ? "grab" : "default" }}
+                      onMouseDown={(e) => handleBarMouseDown(e, p.id, p.planned_start)}
                     />
                     {/* Progress overlay */}
                     {p.progress_percent > 0 && (
@@ -439,6 +559,7 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
                         rx={3}
                         fill={p.is_critical ? "#f87171" : "#22c55e"}
                         opacity={0.6}
+                        style={{ pointerEvents: "none" }}
                       />
                     )}
                     {/* Progress text */}
@@ -451,8 +572,23 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
                         fill={barColor}
                         fontFamily="system-ui, sans-serif"
                         fontWeight="600"
+                        style={{ pointerEvents: "none" }}
                       >
                         {p.progress_percent}%
+                      </text>
+                    )}
+                    {/* Drag handle indicator */}
+                    {canDrag && plannedW > 20 && (
+                      <text
+                        x={plannedX + 4}
+                        y={barY + barH / 2 + 3}
+                        fontSize={8}
+                        fill={barColor}
+                        fontFamily="system-ui, sans-serif"
+                        opacity={0.5}
+                        style={{ pointerEvents: "none" }}
+                      >
+                        ⇄
                       </text>
                     )}
                   </>
@@ -470,6 +606,24 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
                     height={3}
                     rx={1}
                     fill="#22c55e"
+                    style={{ pointerEvents: "none" }}
+                  />
+                )}
+
+                {/* Drag ghost – show new position with dashed outline */}
+                {isDraggingThis && hasPlanned && plannedX !== null && plannedW !== null && (
+                  <rect
+                    x={barX(p.planned_start)}
+                    y={barY}
+                    width={plannedW}
+                    height={barH}
+                    rx={3}
+                    fill="transparent"
+                    stroke={barColor}
+                    strokeWidth={1}
+                    strokeDasharray="4,3"
+                    opacity={0.4}
+                    style={{ pointerEvents: "none" }}
                   />
                 )}
               </g>
@@ -496,23 +650,38 @@ export default function GanttChart({ phases, milestones, zoom }: GanttProps) {
               </g>
             );
           })}
+
+          {/* ---- Drag tooltip ---- */}
+          {dragState && dragState.currentDeltaDays !== 0 && (() => {
+            const phase = visiblePhases.find((p) => p.id === dragState.phaseId);
+            if (!phase?.planned_start) return null;
+            const newStart = addDays(parseDate(phase.planned_start), dragState.currentDeltaDays);
+            const rowIdx = visiblePhases.findIndex((p) => p.id === dragState.phaseId);
+            const tipX = barX(phase.planned_start) + dragState.currentDeltaDays * pxPerDay;
+            const tipY = HEADER_HEIGHT + rowIdx * ROW_HEIGHT - 4;
+            const label = `${newStart.getMonth() + 1}/${newStart.getDate()}`;
+            return (
+              <g>
+                <rect x={tipX} y={tipY - 14} width={42} height={16} rx={3} fill="#1e40af" opacity={0.9} />
+                <text x={tipX + 4} y={tipY - 2} fontSize={10} fill="white" fontFamily="system-ui, sans-serif">
+                  {label}
+                </text>
+              </g>
+            );
+          })()}
         </svg>
 
-        {/* Milestone labels below the chart area, rendered as HTML for better overflow handling */}
         <div className="relative" style={{ height: 0 }}>
           {milestones.map((m) => {
             if (!m.date) return null;
             const off = daysBetween(chartStart, parseDate(m.date));
             if (off < 0 || off > totalDays) return null;
-            const x = off * pxPerDay;
             return (
               <div
                 key={m.id}
                 className="absolute top-0 whitespace-nowrap text-[9px] text-amber-700 font-medium pointer-events-none"
-                style={{ left: x + 4, top: -(svgHeight - HEADER_HEIGHT + 14) }}
-              >
-                {/* tooltip via SVG title, label hidden to avoid clutter */}
-              </div>
+                style={{ left: off * pxPerDay + 4 }}
+              />
             );
           })}
         </div>

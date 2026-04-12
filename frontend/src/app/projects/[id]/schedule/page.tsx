@@ -8,13 +8,31 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, BarChart2, Calendar, Zap, AlertTriangle, Clock,
-  ZoomIn, ZoomOut, RefreshCw,
+  ZoomIn, ZoomOut, RefreshCw, Move, CheckCircle, X,
 } from "lucide-react";
-import GanttChart, { GanttPhase, GanttMilestone, GanttZoom } from "@/components/gantt-chart";
+import GanttChart, { GanttPhase, GanttMilestone, GanttZoom, DragMoveResult } from "@/components/gantt-chart";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
+
+interface AffectedPhase {
+  id: string;
+  name: string;
+  planned_start: string | null;
+  planned_end: string | null;
+}
+
+interface CascadeResult {
+  status: string;
+  affected_count: number;
+  affected_phases: AffectedPhase[];
+}
+
+interface PendingMove {
+  dragResult: DragMoveResult;
+  previewPhases: AffectedPhase[];
+}
 
 interface CriticalPhaseDetail {
   id: string;
@@ -62,6 +80,10 @@ export default function SchedulePage() {
   );
   const [showAutoForm, setShowAutoForm] = useState(false);
 
+  // Drag/cascade state
+  const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+  const [cascadeResult, setCascadeResult] = useState<CascadeResult | null>(null);
+
   /* ---- Data fetching ---- */
   const { data: ganttData, isLoading } = useQuery<GanttData>({
     queryKey: ["gantt", id],
@@ -94,6 +116,78 @@ export default function SchedulePage() {
       setShowAutoForm(false);
     },
   });
+
+  const movePhaseMutation = useMutation<CascadeResult, Error, DragMoveResult>({
+    mutationFn: (moveReq) =>
+      apiFetch(`/api/projects/${id}/schedule/phases/${moveReq.phase_id}/move`, {
+        token: token!,
+        method: "PUT",
+        body: JSON.stringify({ new_start_date: moveReq.new_start_date }),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["gantt", id] });
+      queryClient.invalidateQueries({ queryKey: ["critical-path", id] });
+      setCascadeResult(data);
+      setPendingMove(null);
+    },
+  });
+
+  /**
+   * Called when user finishes dragging a bar.
+   * We do a quick local preview of affected phases before confirming.
+   */
+  function handlePhaseMove(dragResult: DragMoveResult) {
+    // Compute preview: find phase + its transitive dependents from ganttData
+    const allPhases = ganttData?.phases ?? [];
+    const phaseMap = new Map(allPhases.map((p) => [p.id, p]));
+
+    // Build successor map
+    const successors = new Map<string, string[]>();
+    for (const p of allPhases) {
+      if (!successors.has(p.id)) successors.set(p.id, []);
+      for (const depId of p.depends_on) {
+        if (!successors.has(depId)) successors.set(depId, []);
+        successors.get(depId)!.push(p.id);
+      }
+    }
+
+    // BFS to find all dependents
+    const affected: AffectedPhase[] = [];
+    const changedPhase = phaseMap.get(dragResult.phase_id);
+    if (changedPhase) {
+      affected.push({
+        id: changedPhase.id,
+        name: changedPhase.name,
+        planned_start: dragResult.new_start_date,
+        planned_end: changedPhase.planned_end,
+      });
+    }
+
+    const visited = new Set([dragResult.phase_id]);
+    const queue = [...(successors.get(dragResult.phase_id) ?? [])];
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      if (visited.has(cur)) continue;
+      visited.add(cur);
+      const ph = phaseMap.get(cur);
+      if (ph) {
+        affected.push({ id: ph.id, name: ph.name, planned_start: ph.planned_start, planned_end: ph.planned_end });
+        queue.push(...(successors.get(cur) ?? []));
+      }
+    }
+
+    setPendingMove({ dragResult, previewPhases: affected });
+    setCascadeResult(null);
+  }
+
+  function confirmMove() {
+    if (!pendingMove) return;
+    movePhaseMutation.mutate(pendingMove.dragResult);
+  }
+
+  function cancelMove() {
+    setPendingMove(null);
+  }
 
   /* ---- Zoom helpers ---- */
   const ZOOM_ORDER: GanttZoom[] = ["month", "week", "day"];
@@ -367,7 +461,114 @@ export default function SchedulePage() {
               </Link>
             </div>
           ) : (
-            <GanttChart phases={phases} milestones={milestones} zoom={zoom} />
+            <>
+              <GanttChart
+                phases={phases}
+                milestones={milestones}
+                zoom={zoom}
+                onPhaseMove={handlePhaseMove}
+                affectedPhaseIds={
+                  pendingMove
+                    ? new Set(pendingMove.previewPhases.map((p) => p.id))
+                    : undefined
+                }
+              />
+
+              {/* ---- Drag confirmation dialog ---- */}
+              {pendingMove && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                  <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <Move className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900">工程を移動しますか？</h3>
+                        <p className="text-sm text-gray-500">依存する工程も自動でシフトされます</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-1 max-h-48 overflow-y-auto">
+                      {pendingMove.previewPhases.map((p, idx) => (
+                        <div key={p.id} className="flex items-center gap-2 text-sm">
+                          <span
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              idx === 0 ? "bg-blue-500" : "bg-amber-400"
+                            }`}
+                          />
+                          <span className="text-gray-700 truncate">{p.name}</span>
+                          {idx === 0 && (
+                            <span className="ml-auto text-xs text-blue-600 font-medium flex-shrink-0">
+                              {pendingMove.dragResult.new_start_date} 開始
+                            </span>
+                          )}
+                          {idx > 0 && (
+                            <span className="ml-auto text-xs text-amber-600 flex-shrink-0">連動</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {pendingMove.previewPhases.length > 1 && (
+                      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <span>
+                          {pendingMove.previewPhases.length - 1}個の依存工程が同じ日数だけシフトされます。
+                        </span>
+                      </div>
+                    )}
+
+                    {movePhaseMutation.isError && (
+                      <p className="text-sm text-red-600 mb-3">
+                        {(movePhaseMutation.error as Error).message}
+                      </p>
+                    )}
+
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={cancelMove}
+                        className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        onClick={confirmMove}
+                        disabled={movePhaseMutation.isPending}
+                        className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {movePhaseMutation.isPending ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            処理中...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4" />
+                            適用する
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ---- Success toast ---- */}
+              {cascadeResult && (
+                <div className="fixed bottom-6 right-6 z-50 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 text-sm">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>
+                    {cascadeResult.affected_count}工程のスケジュールを更新しました
+                  </span>
+                  <button
+                    onClick={() => setCascadeResult(null)}
+                    className="ml-2 opacity-70 hover:opacity-100"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

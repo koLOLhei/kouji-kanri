@@ -13,7 +13,7 @@ from models.phase import Phase
 from models.user import User
 from schemas.phase import PhaseScheduleUpdate, PhaseResponse
 from services.auth_service import get_current_user
-from services.schedule_service import calculate_critical_path, get_gantt_data, auto_schedule
+from services.schedule_service import calculate_critical_path, get_gantt_data, auto_schedule, cascade_date_change
 
 router = APIRouter(prefix="/api/projects/{project_id}/schedule", tags=["schedule"])
 
@@ -78,6 +78,41 @@ def update_phase_schedule(
     db.commit()
     db.refresh(phase)
     return PhaseResponse.model_validate(phase)
+
+
+class MovePhaseRequest(BaseModel):
+    new_start_date: date
+
+
+@router.put("/phases/{phase_id}/move")
+def move_phase_cascade(
+    project_id: str,
+    phase_id: str,
+    req: MovePhaseRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Move a phase to a new start date, automatically cascading the change
+    to all dependent phases.
+
+    Returns a list of all affected phases with their new planned dates.
+    """
+    _verify_project(project_id, user, db)
+
+    phases = (
+        db.query(Phase)
+        .filter(Phase.project_id == project_id)
+        .order_by(Phase.sort_order)
+        .all()
+    )
+
+    phase = next((p for p in phases if p.id == phase_id), None)
+    if not phase:
+        raise HTTPException(status_code=404, detail="工程が見つかりません")
+
+    affected = cascade_date_change(phase_id, req.new_start_date, phases, db)
+    return {"status": "ok", "affected_count": len(affected), "affected_phases": affected}
 
 
 class AutoScheduleRequest(BaseModel):

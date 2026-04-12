@@ -225,6 +225,90 @@ def get_gantt_data(project_id: str, db: Session) -> dict[str, Any]:
     }
 
 
+def cascade_date_change(
+    phase_id: str,
+    new_start: date,
+    phases: list[Phase],
+    db: Session,
+) -> list[dict[str, Any]]:
+    """
+    When a phase start date changes, automatically shift all dependent phases.
+
+    - Finds all phases that depend on this phase (directly or transitively).
+    - Calculates the delta (new_start - old_start).
+    - Shifts all dependents by the same delta.
+    - Persists the changes to the DB.
+    - Returns a list of all affected phase dicts with their new dates.
+    """
+    phase_map: dict[str, Phase] = {p.id: p for p in phases}
+
+    changed_phase = phase_map.get(phase_id)
+    if not changed_phase:
+        return []
+
+    old_start = changed_phase.planned_start
+    if old_start is None:
+        # Phase has no existing start – just set it without cascading
+        dur = changed_phase.duration_days or (
+            (changed_phase.planned_end - changed_phase.planned_start).days
+            if changed_phase.planned_start and changed_phase.planned_end
+            else 7
+        )
+        changed_phase.planned_start = new_start
+        changed_phase.planned_end = new_start + timedelta(days=dur)
+        db.commit()
+        db.refresh(changed_phase)
+        return [{"id": phase_id, "planned_start": changed_phase.planned_start.isoformat(),
+                 "planned_end": changed_phase.planned_end.isoformat() if changed_phase.planned_end else None}]
+
+    delta: timedelta = new_start - old_start
+    if delta.days == 0:
+        return []
+
+    # Build successor map (phase_id -> list of phase_ids that depend on it)
+    successors: dict[str, list[str]] = {p.id: [] for p in phases}
+    for p in phases:
+        for dep_id in (p.depends_on or []):
+            if dep_id in successors:
+                successors[dep_id].append(p.id)
+
+    # BFS from changed_phase to find all transitive dependents
+    affected_ids: list[str] = []
+    visited = {phase_id}
+    queue = list(successors.get(phase_id, []))
+    while queue:
+        cur_id = queue.pop(0)
+        if cur_id in visited:
+            continue
+        visited.add(cur_id)
+        affected_ids.append(cur_id)
+        queue.extend(successors.get(cur_id, []))
+
+    # Apply delta to changed phase itself + all dependents
+    all_changed: list[dict[str, Any]] = []
+
+    def _shift_phase(p: Phase) -> dict[str, Any]:
+        if p.planned_start:
+            p.planned_start = p.planned_start + delta
+        if p.planned_end:
+            p.planned_end = p.planned_end + delta
+        return {
+            "id": p.id,
+            "name": p.name,
+            "planned_start": p.planned_start.isoformat() if p.planned_start else None,
+            "planned_end": p.planned_end.isoformat() if p.planned_end else None,
+        }
+
+    all_changed.append(_shift_phase(changed_phase))
+    for dep_id in affected_ids:
+        dep_phase = phase_map.get(dep_id)
+        if dep_phase:
+            all_changed.append(_shift_phase(dep_phase))
+
+    db.commit()
+    return all_changed
+
+
 def auto_schedule(phases: list[Phase], project_start: date) -> list[dict[str, Any]]:
     """
     Auto-calculate planned_start / planned_end for each phase

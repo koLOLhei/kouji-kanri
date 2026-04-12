@@ -6,7 +6,25 @@ import { useAuth } from "@/lib/auth";
 import { apiFetch, formatAmount } from "@/lib/utils";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Wallet, Plus } from "lucide-react";
+import { ArrowLeft, Wallet, Plus, AlertTriangle, CheckCircle2 } from "lucide-react";
+
+interface PendingApproval {
+  id: string;
+  category: string;
+  description: string | null;
+  amount: number;
+  expense_date: string | null;
+  vendor_name: string | null;
+  approval_required: boolean;
+  approved: boolean;
+  approved_by: string | null;
+}
+
+interface PendingApprovalsResult {
+  items: PendingApproval[];
+  count: number;
+  total_pending_amount: number;
+}
 
 interface CostSummary {
   total_budget: number;
@@ -64,6 +82,23 @@ export default function CostsPage() {
     queryKey: ["actuals", id],
     queryFn: () => apiFetch(`/api/projects/${id}/costs/actuals`, { token: token! }),
     enabled: !!token,
+  });
+
+  const { data: pendingApprovals } = useQuery<PendingApprovalsResult>({
+    queryKey: ["cost-pending-approvals", id],
+    queryFn: () => apiFetch(`/api/projects/${id}/costs/pending-approvals`, { token: token! }),
+    enabled: !!token,
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (actualId: string) =>
+      apiFetch(`/api/projects/${id}/costs/actuals/${actualId}/approve`, {
+        token: token!, method: "POST", body: JSON.stringify({ approved: true }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["actuals", id] });
+      queryClient.invalidateQueries({ queryKey: ["cost-pending-approvals", id] });
+    },
   });
 
   const createBudget = useMutation({
@@ -157,6 +192,47 @@ export default function CostsPage() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Pending Approvals Banner */}
+      {pendingApprovals && pendingApprovals.count > 0 && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <p className="font-semibold text-amber-800">
+              承認待ち: {pendingApprovals.count}件 (合計 {formatAmount(pendingApprovals.total_pending_amount)})
+            </p>
+          </div>
+          <div className="space-y-2">
+            {pendingApprovals.items.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 border border-amber-200">
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-gray-800">{item.category}</span>
+                  {item.description && (
+                    <span className="text-sm text-gray-500 ml-2">{item.description}</span>
+                  )}
+                  {item.vendor_name && (
+                    <span className="text-xs text-gray-400 ml-2">({item.vendor_name})</span>
+                  )}
+                </div>
+                <span className="text-sm font-bold text-gray-800 flex-shrink-0">
+                  {formatAmount(item.amount)}
+                </span>
+                <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium flex-shrink-0">
+                  承認が必要
+                </span>
+                <button
+                  onClick={() => approveMutation.mutate(item.id)}
+                  disabled={approveMutation.isPending}
+                  className="flex items-center gap-1 text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50 flex-shrink-0"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  承認
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -300,16 +376,34 @@ export default function CostsPage() {
                   <th className="text-left px-4 py-2">取引先</th>
                   <th className="text-left px-4 py-2">日付</th>
                   <th className="text-right px-4 py-2">金額</th>
+                  <th className="text-center px-4 py-2">承認</th>
                 </tr>
               </thead>
               <tbody>
-                {actuals.map(a => (
-                  <tr key={a.id} className="border-t">
+                {actuals.map((a: Actual & { approval_required?: boolean; approved?: boolean }) => (
+                  <tr key={a.id} className={`border-t ${a.approval_required && !a.approved ? "bg-amber-50/40" : ""}`}>
                     <td className="px-4 py-2">{a.category}</td>
                     <td className="px-4 py-2">{a.description}</td>
                     <td className="px-4 py-2">{a.vendor || "-"}</td>
                     <td className="px-4 py-2">{a.date}</td>
-                    <td className="px-4 py-2 text-right">{formatAmount(a.amount)}</td>
+                    <td className="px-4 py-2 text-right font-medium">{formatAmount(a.amount)}</td>
+                    <td className="px-4 py-2 text-center">
+                      {a.approval_required ? (
+                        a.approved ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-green-700 font-medium">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            承認済
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium">
+                            <AlertTriangle className="w-3 h-3" />
+                            承認が必要
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
