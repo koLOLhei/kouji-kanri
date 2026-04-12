@@ -125,6 +125,58 @@ class ApiKeyCreatedResponse(BaseModel):
     created_at: datetime
 
 
+# ── SSRF防止 ──────────────────────────────────────────────────────────────────
+
+import ipaddress
+from urllib.parse import urlparse
+
+_BLOCKED_HOSTS = {
+    "localhost", "127.0.0.1", "0.0.0.0", "::1",
+    "metadata.google.internal", "169.254.169.254",  # Cloud metadata
+}
+
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+
+def _validate_webhook_url(url: str) -> None:
+    """Validate webhook URL to prevent SSRF attacks."""
+    parsed = urlparse(url)
+
+    # Must be HTTPS in production
+    if parsed.scheme not in ("https", "http"):
+        raise HTTPException(400, "Webhook URLはhttpsまたはhttpである必要があります")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(400, "無効なURLです")
+
+    # Block known internal hostnames
+    if hostname.lower() in _BLOCKED_HOSTS:
+        raise HTTPException(400, "内部ネットワークのURLは指定できません")
+
+    # Block private/reserved IP ranges
+    try:
+        addr = ipaddress.ip_address(hostname)
+        for net in _BLOCKED_NETWORKS:
+            if addr in net:
+                raise HTTPException(400, "プライベートIPアドレスは指定できません")
+    except ValueError:
+        pass  # Not an IP literal (hostname) - OK
+
+    # Block common internal patterns
+    lower = hostname.lower()
+    if any(p in lower for p in ["internal", ".local", "metadata", ".svc.cluster"]):
+        raise HTTPException(400, "内部ネットワークのURLは指定できません")
+
+
 # ── Webhook エンドポイント ──────────────────────────────────────────────────
 
 @router.get("/webhooks", response_model=list[WebhookResponse])
@@ -154,6 +206,9 @@ def create_webhook(
             status_code=400,
             detail=f"無効なイベント: {invalid}。有効値: {VALID_EVENTS}",
         )
+
+    # SSRF防止: URLバリデーション
+    _validate_webhook_url(req.url)
 
     hook = WebhookConfig(
         tenant_id=user.tenant_id,
@@ -265,9 +320,20 @@ def delete_api_key(
 @router.get("/ical/{project_id}", response_class=Response)
 def export_ical(
     project_id: str,
+    token: str | None = None,
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """点検スケジュールをiCal形式でエクスポート（認証不要・外部カレンダー連携用）"""
+    """点検スケジュールをiCal形式でエクスポート（認証必須）"""
+
+    # プロジェクトのテナント所有権を検証
+    from models.project import Project
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.tenant_id == user.tenant_id,
+    ).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
 
     schedules = db.query(InspectionScheduleTemplate).filter(
         InspectionScheduleTemplate.facility_id == project_id,

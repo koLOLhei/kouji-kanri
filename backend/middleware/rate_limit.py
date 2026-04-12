@@ -71,30 +71,42 @@ _tenant_counter = _SlidingWindowCounter(WINDOW_SECONDS)
 # ---------------------------------------------------------------------------
 
 def _get_tenant_id_from_request(request: Request) -> str | None:
+    """Extract tenant_id from JWT WITH signature verification.
+
+    Without verification, an attacker can forge a token with another tenant's ID
+    to exhaust their rate limit (DoS via rate-limit poisoning).
+    """
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         return None
     token = auth[len("Bearer "):]
     try:
-        import base64
-        import json
-        # JWT = header.payload.signature  – decode payload (no verification needed here)
-        parts = token.split(".")
-        if len(parts) != 3:
-            return None
-        payload_b64 = parts[1]
-        # Add padding
-        payload_b64 += "=" * (4 - len(payload_b64) % 4)
-        payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+        from jose import jwt, JWTError
+        from config import settings
+        payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
         return payload.get("tenant_id")
     except Exception:
         return None
 
 
 def _client_ip(request: Request) -> str:
+    """Extract client IP safely.
+
+    Only trust X-Forwarded-For from known reverse proxies.
+    In production behind Render/Vercel, the FIRST hop is the real proxy.
+    We use request.client.host (set by the ASGI server from the TCP connection)
+    as the primary source, falling back to X-Forwarded-For only when
+    request.client is unavailable (e.g. in test environments).
+    """
+    # Prefer the TCP-level IP (cannot be spoofed by headers)
+    if request.client and request.client.host not in ("testclient", "127.0.0.1", "0.0.0.0"):
+        return request.client.host
+    # Fallback: trust only the LAST entry in X-Forwarded-For (closest proxy)
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        # The last entry is from the closest trusted proxy
+        parts = [p.strip() for p in forwarded.split(",")]
+        return parts[-1] if parts else "unknown"
     if request.client:
         return request.client.host
     return "unknown"
