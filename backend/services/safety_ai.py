@@ -166,6 +166,108 @@ def predict_risk_7days(project_id: str, db: Session) -> list[dict]:
     return forecasts
 
 
+def generate_ky_draft(project_id: str, db: Session, target_date: date | None = None) -> dict:
+    """現場データに基づいたKY活動（危険予知）の文章を自動生成。
+
+    過去のインシデント、天候、工種、季節を分析し、
+    その現場特有の危険予知シートの下書きを作成する。
+    """
+    if target_date is None:
+        target_date = datetime.now(timezone.utc).date()
+
+    # データ収集
+    score_data = calculate_safety_score(project_id, db)
+    recent_incidents = db.query(IncidentReport).filter(
+        IncidentReport.project_id == project_id,
+        IncidentReport.incident_date >= target_date - timedelta(days=90),
+    ).order_by(IncidentReport.incident_date.desc()).limit(10).all()
+
+    weather = db.query(WeatherRecord).filter(
+        WeatherRecord.project_id == project_id,
+        WeatherRecord.record_date == target_date,
+    ).first()
+
+    from models.phase import Phase
+    active_phases = db.query(Phase).filter(
+        Phase.project_id == project_id,
+        Phase.status == "in_progress",
+    ).all()
+    work_types = [p.name for p in active_phases]
+
+    # 危険要因を現場データから抽出
+    hazards = []
+    countermeasures = []
+
+    # 季節リスク
+    month = target_date.month
+    if month in (6, 7, 8, 9):
+        hazards.append("高温による熱中症")
+        countermeasures.append("こまめな水分補給と休憩の確保。WBGT値の確認。")
+    if month in (12, 1, 2):
+        hazards.append("路面凍結・霜による転倒")
+        countermeasures.append("朝礼時に足元の確認を徹底。滑り止め処置の実施。")
+    if month in (6, 7, 9, 10):
+        hazards.append("降雨による足場の滑り")
+        countermeasures.append("足場上の作業前に滑り止めを確認。雨天時の高所作業は中止判断。")
+
+    # 天候リスク
+    if weather:
+        w = (weather.weather_morning or "").lower()
+        if "雨" in w or "rain" in w:
+            if "降雨による足場の滑り" not in hazards:
+                hazards.append("降雨による足場の滑り・視界不良")
+                countermeasures.append("足場上の水たまり除去。雨具着用による視界制限に注意。")
+        if "風" in w or "wind" in w:
+            hazards.append("強風による資材飛散・高所作業の危険")
+            countermeasures.append("風速10m/s以上で高所作業中止。資材の固定確認。")
+
+    # 工種別リスク
+    for wt in work_types:
+        if "塗装" in wt:
+            hazards.append(f"{wt}: 有機溶剤による中毒・火災")
+            countermeasures.append("防毒マスク着用。火気厳禁の確認。換気の徹底。")
+        if "足場" in wt or "仮設" in wt:
+            hazards.append(f"{wt}: 足場からの墜落")
+            countermeasures.append("安全帯（フルハーネス）の確実な使用。昇降時の三点支持。")
+        if "防水" in wt:
+            hazards.append(f"{wt}: トーチ工法による火傷・火災")
+            countermeasures.append("消火器の配置確認。作業後の火気確認巡回。")
+        if "解体" in wt or "撤去" in wt:
+            hazards.append(f"{wt}: 飛散物による怪我")
+            countermeasures.append("立入禁止区域の設定。保護メガネ着用。")
+
+    # 過去インシデントからの学び
+    for inc in recent_incidents[:3]:
+        hazards.append(f"過去事例: {inc.title or '不明'} ({inc.incident_date.isoformat()})")
+        if inc.corrective_action:
+            countermeasures.append(f"再発防止: {inc.corrective_action[:80]}")
+
+    # デフォルト（何もない場合）
+    if not hazards:
+        hazards.append("つまずき・転倒（整理整頓の不備）")
+        countermeasures.append("通路上の資材・工具を整理。歩行経路を確保。")
+
+    return {
+        "date": target_date.isoformat(),
+        "project_id": project_id,
+        "work_types": work_types,
+        "safety_score": score_data["score"],
+        "risk_level": score_data["risk_level"],
+        "hazards": hazards,
+        "countermeasures": countermeasures,
+        "weather": {
+            "morning": weather.weather_morning if weather else None,
+            "afternoon": weather.weather_afternoon if weather else None,
+        },
+        "ky_sheet_draft": {
+            "theme": f"本日の作業: {'・'.join(work_types) or '一般作業'}",
+            "danger_items": [{"hazard": h, "countermeasure": c} for h, c in zip(hazards, countermeasures)],
+            "team_goal": f"本日の目標: {score_data['risk_level']}リスクレベル — {'安全第一で作業を進めましょう' if score_data['risk_level'] == 'low' else '特に注意して作業を行いましょう'}",
+        },
+        "generated_by": "KAMO Safety AI",
+    }
+
+
 def _build_risk_notes(day_of_week: int, d: date, base_result: dict) -> list[str]:
     notes = []
     if day_of_week == 0:

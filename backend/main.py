@@ -152,9 +152,21 @@ def _run_migrations(engine):
 async def lifespan(app: FastAPI):
     # G55: Structured JSON logging
     setup_logging()
-    # DB初期化（同期 - テーブル作成を確実に完了させる）
+    # DB初期化: Alembic → create_all(新テーブル補完) → 手動マイグレーション(レガシー)
     try:
+        # Alembic migration (primary)
+        try:
+            from alembic.config import Config
+            from alembic import command
+            alembic_cfg = Config(str(Path(__file__).parent / "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", str(Path(__file__).parent / "alembic"))
+            command.upgrade(alembic_cfg, "head")
+            print("[init] Alembic migrations applied", flush=True)
+        except Exception as e:
+            print(f"[init] Alembic migration skipped: {e}", flush=True)
+        # Fallback: create_all for any tables not yet in Alembic
         Base.metadata.create_all(bind=engine)
+        # Legacy column migrations (will be removed once fully migrated to Alembic)
         _run_migrations(engine)
         db = SessionLocal()
         try:

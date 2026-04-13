@@ -65,6 +65,30 @@ def receive_chat_lead(req: ChatLeadRequest, db: Session = Depends(get_db)):
     )
     db.add(lead)
     db.commit()
+
+    # 自動フォローアップ: CRM通知を生成して営業が即対応できるようにする
+    try:
+        from models.notification import Notification
+        # 全admin/managerユーザーに通知
+        from models.user import User
+        admins = db.query(User).filter(
+            User.tenant_id == tenant_id,
+            User.role.in_(["admin", "manager"]),
+        ).all()
+        meta = req.metadata or {}
+        for admin in admins:
+            notif = Notification(
+                tenant_id=tenant_id,
+                user_id=admin.id,
+                title=f"新規リード: {req.contact_name}様 ({meta.get('service_type', '問い合わせ')})",
+                message=f"電話: {req.contact_phone} / 経路: {req.source_detail} / 優先度: {req.priority}",
+                notification_type="lead",
+                link=f"/leads",
+            )
+            db.add(notif)
+        db.commit()
+    except Exception:
+        db.rollback()  # 通知失敗してもリード保存は成功させる
     db.refresh(lead)
 
     # メール通知 → contact@soara-mu.com

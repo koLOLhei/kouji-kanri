@@ -350,10 +350,25 @@ def export_ical(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    from models.inspection import Inspection
+    from models.milestone import Milestone
+
     schedules = db.query(InspectionScheduleTemplate).filter(
         InspectionScheduleTemplate.facility_id == project_id,
         InspectionScheduleTemplate.is_active == True,
         InspectionScheduleTemplate.next_due.isnot(None),
+    ).all()
+
+    # 通常の検査予定も取得
+    inspections = db.query(Inspection).filter(
+        Inspection.project_id == project_id,
+        Inspection.scheduled_date.isnot(None),
+    ).all()
+
+    # マイルストーンも取得
+    milestones = db.query(Milestone).filter(
+        Milestone.project_id == project_id,
+        Milestone.due_date.isnot(None),
     ).all()
 
     # iCal生成
@@ -363,8 +378,10 @@ def export_ical(
         "PRODID:-//KoujiKanri//InspectionSchedule//JP",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
+        f"X-WR-CALNAME:{_ical_escape(project.name)} - 工事予定",
     ]
 
+    # 定期点検スケジュール
     for sched in schedules:
         uid = f"{sched.id}@kouji-kanri"
         dtstart = sched.next_due.strftime("%Y%m%d")
@@ -384,6 +401,37 @@ def export_ical(
             f"DTSTART;VALUE=DATE:{dtstart}",
             f"SUMMARY:{summary}",
             f"DESCRIPTION:{description}",
+            "END:VEVENT",
+        ])
+
+    # 通常の検査予定
+    for insp in inspections:
+        uid = f"insp-{insp.id}@kouji-kanri"
+        dtstart = insp.scheduled_date.strftime("%Y%m%d")
+        summary = _ical_escape(f"[検査] {insp.title}")
+        desc_parts = [f"種別: {insp.inspection_type or ''}"]
+        if getattr(insp, 'inspector_name', None):
+            desc_parts.append(f"検査員: {insp.inspector_name}")
+        description = _ical_escape("\\n".join(desc_parts))
+        lines.extend([
+            "BEGIN:VEVENT",
+            f"UID:{uid}",
+            f"DTSTART;VALUE=DATE:{dtstart}",
+            f"SUMMARY:{summary}",
+            f"DESCRIPTION:{description}",
+            "END:VEVENT",
+        ])
+
+    # マイルストーン
+    for ms in milestones:
+        uid = f"ms-{ms.id}@kouji-kanri"
+        dtstart = ms.due_date.strftime("%Y%m%d")
+        summary = _ical_escape(f"[MS] {ms.title}")
+        lines.extend([
+            "BEGIN:VEVENT",
+            f"UID:{uid}",
+            f"DTSTART;VALUE=DATE:{dtstart}",
+            f"SUMMARY:{summary}",
             "END:VEVENT",
         ])
 

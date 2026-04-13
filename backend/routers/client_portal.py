@@ -28,6 +28,7 @@ from services.auth_service import get_current_user
 from services.project_access import verify_project_access
 from services.storage_service import generate_presigned_url
 from services.timezone_utils import today_jst
+from config import settings as app_settings
 
 admin_router = APIRouter(prefix="/api/projects/{project_id}/client-portal", tags=["client-portal"])
 public_router = APIRouter(prefix="/api/portal", tags=["client-portal-public"])
@@ -370,6 +371,61 @@ def get_portal_timeline(token: str, db: Session = Depends(get_db)):
 
     events.sort(key=lambda e: e["date"], reverse=True)
     return events
+
+
+@public_router.get("/{token}/pulse")
+def get_portal_pulse(token: str, db: Session = Depends(get_db)):
+    """今日の現場の「熱量」— 施主が一目で今日の現場活動量を把握できる。"""
+    config, project = _get_config_by_token(token, db)
+    today = today_jst()
+
+    today_photo_count = db.query(func.count(Photo.id)).filter(
+        Photo.project_id == project.id,
+        func.date(Photo.created_at) == today,
+    ).scalar() or 0
+
+    today_report = db.query(DailyReport).filter(
+        DailyReport.project_id == project.id,
+        DailyReport.report_date == today,
+    ).first()
+
+    total_phases = db.query(func.count(Phase.id)).filter(Phase.project_id == project.id).scalar() or 0
+    completed_phases = db.query(func.count(Phase.id)).filter(Phase.project_id == project.id, Phase.status == "completed").scalar() or 0
+    active_phases = db.query(Phase).filter(Phase.project_id == project.id, Phase.status == "in_progress").all()
+
+    # 熱量スコア: 0-100
+    pulse = 0
+    if today_photo_count > 0:
+        pulse += min(today_photo_count * 10, 40)
+    if today_report:
+        pulse += 30
+        if today_report.worker_count and today_report.worker_count > 0:
+            pulse += min(today_report.worker_count * 3, 30)
+
+    return {
+        "date": today.isoformat(),
+        "pulse_score": min(pulse, 100),
+        "pulse_label": "活発" if pulse >= 70 else "稼働中" if pulse >= 30 else "静か",
+        "today_photos": today_photo_count,
+        "has_daily_report": today_report is not None,
+        "worker_count": today_report.worker_count if today_report else 0,
+        "work_description": (today_report.work_description or "")[:200] if today_report else "",
+        "progress_percent": round(completed_phases / total_phases * 100) if total_phases > 0 else 0,
+        "active_phases": [{"name": p.name, "phase_code": p.phase_code} for p in active_phases],
+    }
+
+
+@public_router.get("/{token}/photos/{photo_id}/integrity")
+def get_photo_integrity_seal(token: str, photo_id: str, db: Session = Depends(get_db)):
+    """写真の改ざん防止証明シールを取得。施主が「この写真は本物か」を確認できる。"""
+    config, project = _get_config_by_token(token, db)
+    if not config.show_photos:
+        raise HTTPException(status_code=403, detail="写真の閲覧権限がありません")
+    photo = db.query(Photo).filter(Photo.id == photo_id, Photo.project_id == project.id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="写真が見つかりません")
+    from services.integrity_service import generate_integrity_seal
+    return generate_integrity_seal(photo)
 
 
 # ─── クライアント承認API (認証必要、viewer/client/admin ロール) ───

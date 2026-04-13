@@ -12,7 +12,11 @@ Endpoints:
   GET  /api/electronic-delivery/work-types/{work_type}/subtypes/{subtype}/details
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+import threading
+import uuid
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -39,6 +43,26 @@ from services.photo_categories import (
 import io
 
 router = APIRouter(tags=["electronic-delivery"])
+
+# Background ZIP job tracking (in-memory; sufficient for single-instance Render)
+_zip_jobs: dict[str, dict] = {}
+
+
+def _build_zip_background(job_id: str, project_id: str, tenant_id: str):
+    """Build ZIP in a background thread to avoid blocking the main event loop."""
+    from database import SessionLocal
+    from services.storage_service import upload_file
+    db = SessionLocal()
+    try:
+        zip_bytes = build_delivery_package(project_id, db, tenant_id=tenant_id)
+        # Store to S3/local storage
+        key = f"delivery/{project_id}/{job_id}.zip"
+        upload_file(key, io.BytesIO(zip_bytes), content_type="application/zip")
+        _zip_jobs[job_id] = {"status": "completed", "key": key, "size": len(zip_bytes), "completed_at": datetime.utcnow().isoformat()}
+    except Exception as e:
+        _zip_jobs[job_id] = {"status": "failed", "error": str(e)}
+    finally:
+        db.close()
 
 # ── Reference data (no auth required) ──────────────────────────────────────
 
@@ -194,12 +218,17 @@ def download_meet_xml(
 @router.post("/api/projects/{project_id}/electronic-delivery/generate")
 def generate_delivery_package(
     project_id: str,
+    background: bool = False,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
     """
     Generate the full electronic delivery ZIP package.
+
+    Query params:
+      background=true: Start async job, return job_id for polling.
+      background=false (default): Synchronous download (small projects).
 
     The ZIP follows the CALS/EC folder structure:
       INDE_C/INDEX_C.XML
@@ -210,12 +239,25 @@ def generate_delivery_package(
       OTHRS/
     """
     project = _get_project_or_404(project_id, user, db)
+
+    if background:
+        # Async: start background thread, return job_id
+        job_id = str(uuid.uuid4())
+        _zip_jobs[job_id] = {"status": "processing", "started_at": datetime.utcnow().isoformat()}
+        t = threading.Thread(
+            target=_build_zip_background,
+            args=(job_id, project_id, user.tenant_id),
+            daemon=True,
+        )
+        t.start()
+        return {"status": "accepted", "job_id": job_id, "poll_url": f"/api/projects/{project_id}/electronic-delivery/jobs/{job_id}"}
+
+    # Sync: direct download (for small projects)
     try:
         zip_bytes = build_delivery_package(project_id, db, tenant_id=user.tenant_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    # Build a safe filename from the project name/code
     safe_name = (project.project_code or project.id).replace("/", "-")
     filename = f"電子納品_{safe_name}.zip"
 
@@ -225,5 +267,53 @@ def generate_delivery_package(
         headers={
             "Content-Disposition": f"attachment; filename*=UTF-8''{filename}",
             "Content-Length": str(len(zip_bytes)),
+        },
+    )
+
+
+@router.get("/api/projects/{project_id}/electronic-delivery/jobs/{job_id}")
+def check_zip_job(
+    project_id: str,
+    job_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Poll background ZIP generation job status."""
+    verify_project_access(project_id, user, db)
+    job = _zip_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="ジョブが見つかりません")
+    if job["status"] == "completed":
+        return {**job, "download_url": f"/api/projects/{project_id}/electronic-delivery/download/{job_id}"}
+    return job
+
+
+@router.get("/api/projects/{project_id}/electronic-delivery/download/{job_id}")
+def download_generated_zip(
+    project_id: str,
+    job_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Download a previously generated ZIP from storage."""
+    verify_project_access(project_id, user, db)
+    project = _get_project_or_404(project_id, user, db)
+    job = _zip_jobs.get(job_id)
+    if not job or job.get("status") != "completed":
+        raise HTTPException(status_code=404, detail="ZIPが見つかりません")
+
+    from services.storage_service import download_file
+    file_data = download_file(job["key"])
+    if not file_data:
+        raise HTTPException(status_code=404, detail="ファイルが見つかりません")
+
+    safe_name = (project.project_code or project.id).replace("/", "-")
+    filename = f"電子納品_{safe_name}.zip"
+
+    return StreamingResponse(
+        file_data,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{filename}",
         },
     )
