@@ -94,6 +94,12 @@ def _run_migrations(engine):
         # E43: GreenFile extra columns (table itself is created by metadata.create_all)
         ("green_files", "rejection_reason", "TEXT"),
         ("green_files", "due_date", "TIMESTAMP"),
+        # F46: Drawing approval workflow columns
+        ("drawings", "drawing_category", "VARCHAR(50)"),
+        ("drawings", "approval_status", "VARCHAR(30) DEFAULT 'draft'"),
+        ("drawings", "approved_by", "VARCHAR(36)"),
+        ("drawings", "approved_at", "TIMESTAMP"),
+        ("drawings", "rejection_reason", "TEXT"),
     ]
     with engine.connect() as conn:
         # Advisory lock prevents race conditions in multi-worker deployments.
