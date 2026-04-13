@@ -7,10 +7,11 @@ databases:
 services:
   - type: web
     name: kouji-kanri-api
-    runtime: docker
+    runtime: python
     plan: free
     rootDir: backend
-    dockerfilePath: ./Dockerfile
+    buildCommand: pip install -r requirements.txt
+    startCommand: python start.py
     envVars:
       - key: DATABASE_URL
         fromDatabase:
