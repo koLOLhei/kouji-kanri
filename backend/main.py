@@ -120,7 +120,7 @@ def _run_migrations(engine):
             # A6: Performance indexes — run after column migrations
             index_migrations = [
                 "CREATE INDEX IF NOT EXISTS idx_photos_project_id ON photos(project_id)",
-                "CREATE INDEX IF NOT EXISTS idx_photos_tenant_id ON photos(tenant_id)",
+                # photos.tenant_id は存在しない（project_id経由で間接参照）ため削除
                 "CREATE INDEX IF NOT EXISTS idx_daily_reports_project_id ON daily_reports(project_id)",
                 "CREATE INDEX IF NOT EXISTS idx_daily_reports_report_date ON daily_reports(report_date)",
                 "CREATE INDEX IF NOT EXISTS idx_phases_project_id ON phases(project_id)",
