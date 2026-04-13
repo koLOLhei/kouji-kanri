@@ -62,10 +62,10 @@ def receive_contact_form(req: ContactFormRequest, db: Session = Depends(get_db))
       </div>
     </div>"""
 
-    send_email(
+    email_result = send_email(
         to=["contact@soara-mu.com"],
         subject=f"【KAMO】お問い合わせ: {req.inquiry_type} - {req.name}様",
         html_body=email_body,
     )
 
-    return {"status": "ok"}
+    return {"status": "ok", "email_status": email_result.get("status", "unknown")}
