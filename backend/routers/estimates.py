@@ -1,9 +1,9 @@
-"""見積書 (Estimate) router."""
+"""見積書 (Estimate) router — CRUD + 自動計算 + PDF生成。"""
 from config import app_settings
-
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ from models.business_docs import Estimate
 from models.project import Project
 from models.user import User
 from services.auth_service import get_current_user
+from services.estimate_generator import calculate_estimate, generate_estimate_pdf, UNIT_PRICES
 
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
 
@@ -170,3 +171,59 @@ def convert_estimate_to_project(
     db.refresh(project)
     db.refresh(estimate)
     return {"project": project, "estimate": estimate}
+
+
+# ---------- 自動計算 + PDF ----------
+
+class QuickEstimateItem(BaseModel):
+    item_code: str
+    quantity: float
+    unit_price: float | None = None
+    note: str = ""
+
+
+class QuickEstimateRequest(BaseModel):
+    client_name: str
+    project_name: str
+    location: str = ""
+    items: list[QuickEstimateItem]
+    warranty: str = ""
+
+
+@router.get("/unit-prices")
+def list_unit_prices(user: User = Depends(get_current_user)):
+    """工種別の標準単価一覧。フロントのドロップダウン/自動入力用。"""
+    return UNIT_PRICES
+
+
+@router.post("/quick-calculate")
+def quick_calculate(req: QuickEstimateRequest, user: User = Depends(get_current_user)):
+    """見積金額をリアルタイム計算（PDF生成なし）。"""
+    items = [item.model_dump() for item in req.items]
+    return calculate_estimate(items)
+
+
+@router.post("/generate-pdf")
+def generate_pdf(req: QuickEstimateRequest, user: User = Depends(get_current_user)):
+    """見積書PDFを自動生成してダウンロード。平米単価×面積で自動計算。"""
+    items = [item.model_dump() for item in req.items]
+    try:
+        pdf_bytes = generate_estimate_pdf(
+            client_name=req.client_name,
+            project_name=req.project_name,
+            location=req.location,
+            items=items,
+            warranty=req.warranty,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF生成に失敗: {e}")
+
+    safe_name = req.client_name.replace("/", "-").replace("\\", "-")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''見積書_{safe_name}.pdf",
+            "Content-Length": str(len(pdf_bytes)),
+        },
+    )
