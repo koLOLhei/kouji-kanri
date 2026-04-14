@@ -262,10 +262,93 @@ def generate_ky_draft(project_id: str, db: Session, target_date: date | None = N
         "ky_sheet_draft": {
             "theme": f"本日の作業: {'・'.join(work_types) or '一般作業'}",
             "danger_items": [{"hazard": h, "countermeasure": c} for h, c in zip(hazards, countermeasures)],
-            "team_goal": f"本日の目標: {score_data['risk_level']}リスクレベル — {'安全第一で作業を進めましょう' if score_data['risk_level'] == 'low' else '特に注意して作業を行いましょう'}",
+            "team_goal": _build_team_goal(score_data["risk_level"], work_types, target_date),
         },
+        "morning_script": _build_morning_script(target_date, work_types, hazards, countermeasures, weather, score_data, recent_incidents),
         "generated_by": "KAMO Safety AI",
     }
+
+
+def _build_team_goal(risk_level: str, work_types: list[str], target_date: date) -> str:
+    """チーム目標の自然言語生成。"""
+    dow = ["月", "火", "水", "木", "金", "土", "日"][target_date.weekday()]
+    work_str = "・".join(work_types[:2]) if work_types else "現場作業"
+
+    if risk_level == "critical":
+        return f"本日（{dow}曜日）はリスクが高い状況です。{work_str}作業中は特に声掛けを徹底し、少しでも異変を感じたら即座に作業を中断してください。"
+    if risk_level == "high":
+        return f"本日（{dow}曜日）は注意が必要な日です。{work_str}の作業開始前に、全員で危険箇所の指差し確認を行いましょう。"
+    if risk_level == "medium":
+        return f"本日（{dow}曜日）の{work_str}作業を安全に進めましょう。基本動作の確認を忘れずに。ゼロ災でいこう、ヨシ！"
+    return f"本日（{dow}曜日）の安全スコアは良好です。この調子で{work_str}作業を丁寧に進めましょう。ゼロ災でいこう、ヨシ！"
+
+
+def _build_morning_script(target_date: date, work_types: list, hazards: list, countermeasures: list, weather, score_data: dict, incidents: list) -> str:
+    """朝礼で読み上げ可能なKY活動スクリプトを自然言語で生成。"""
+    dow = ["月", "火", "水", "木", "金", "土", "日"][target_date.weekday()]
+    date_str = f"{target_date.month}月{target_date.day}日（{dow}）"
+    weather_str = ""
+    if weather:
+        weather_str = f"本日の天気は午前「{weather.weather_morning or '不明'}」、午後「{weather.weather_afternoon or '不明'}」の予報です。"
+
+    lines = []
+    lines.append(f"おはようございます。{date_str}の朝礼を始めます。")
+    if weather_str:
+        lines.append(weather_str)
+    lines.append("")
+
+    # 本日の作業内容
+    if work_types:
+        lines.append(f"本日の主な作業内容は{'、'.join(work_types)}です。")
+    else:
+        lines.append("本日も引き続き現場作業を進めます。")
+    lines.append("")
+
+    # KY 4ラウンド法
+    lines.append("【第1ラウンド: どんな危険が潜んでいるか】")
+    for i, h in enumerate(hazards[:5], 1):
+        lines.append(f"  {i}. {h}")
+    lines.append("")
+
+    lines.append("【第2ラウンド: これが危険のポイントだ】")
+    # 最も重要な危険を選出
+    priority_idx = 0
+    for i, h in enumerate(hazards[:5]):
+        if "墜落" in h or "転倒" in h or "中毒" in h or "火災" in h:
+            priority_idx = i
+            break
+    lines.append(f"  → 本日最も注意すべき危険は「{hazards[priority_idx]}」です。")
+    lines.append("")
+
+    lines.append("【第3ラウンド: あなたならどうする】")
+    for i, c in enumerate(countermeasures[:5], 1):
+        lines.append(f"  {i}. {c}")
+    lines.append("")
+
+    lines.append("【第4ラウンド: 私たちはこうする】")
+    if countermeasures:
+        lines.append(f"  チーム行動目標: 「{countermeasures[0]}」を全員が実行します。")
+    lines.append("")
+
+    # 過去インシデント注意喚起
+    if incidents:
+        lines.append("【過去の事故事例からの注意喚起】")
+        for inc in incidents[:2]:
+            lines.append(f"  ・{inc.incident_date.strftime('%m/%d')} {inc.title or '不明'}")
+            if inc.corrective_action:
+                lines.append(f"    → 再発防止策: {inc.corrective_action[:60]}")
+        lines.append("")
+
+    # 安全スコア
+    risk_label = {"low": "良好", "medium": "注意", "high": "警戒", "critical": "危険"}
+    lines.append(f"本日の安全スコアは{score_data['score']}点（{risk_label.get(score_data['risk_level'], '不明')}）です。")
+    lines.append("")
+
+    # 締め
+    lines.append("それでは本日も安全第一で作業を進めましょう。")
+    lines.append("ゼロ災でいこう、ヨシ！")
+
+    return "\n".join(lines)
 
 
 def _build_risk_notes(day_of_week: int, d: date, base_result: dict) -> list[str]:

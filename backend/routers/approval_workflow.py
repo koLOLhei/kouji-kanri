@@ -306,6 +306,37 @@ def act_on_step(
     else:
         _advance_flow(db, flow)
 
+    # 承認アクション通知: 次のステップの承認者にメール通知
+    try:
+        from services.email_service import send_approval_notification
+        action_labels = {"approved": "承認", "rejected": "却下", "returned": "差し戻し", "conditionally_approved": "条件付承認"}
+        # 次の承認者に通知
+        next_steps = db.query(ApprovalStep).filter(
+            ApprovalStep.flow_id == flow.id,
+            ApprovalStep.status == "pending",
+        ).order_by(ApprovalStep.step_order).all()
+        if next_steps and next_steps[0].approver_id:
+            next_approver = db.query(User).filter(User.id == next_steps[0].approver_id).first()
+            if next_approver and next_approver.email:
+                send_approval_notification(
+                    next_approver.email,
+                    flow.entity_type,
+                    f"{flow.title} - {next_steps[0].step_name}",
+                    "pending",
+                )
+        # フロー作成者にアクション結果を通知
+        if flow.created_by:
+            creator = db.query(User).filter(User.id == flow.created_by).first()
+            if creator and creator.email:
+                send_approval_notification(
+                    creator.email,
+                    flow.entity_type,
+                    f"{flow.title} - {step.step_name}",
+                    req.action,
+                )
+    except Exception:
+        pass  # 通知失敗しても承認処理は完了させる
+
     db.refresh(flow)
     steps = db.query(ApprovalStep).filter(ApprovalStep.flow_id == flow.id).order_by(ApprovalStep.step_order).all()
     resp = FlowResponse.model_validate(flow)
@@ -338,6 +369,45 @@ def get_flow_status(
         "completed_at": flow.completed_at.isoformat() if flow.completed_at else None,
         "next_approver_role": pending_steps[0].approver_role if pending_steps else None,
         "next_approver_id": pending_steps[0].approver_id if pending_steps else None,
+    }
+
+
+@router.get("/{flow_id}/history")
+def get_flow_history(
+    flow_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """承認フローの全アクション履歴を時系列で返す。監査証跡として使用。"""
+    flow = _get_flow(db, flow_id, user.tenant_id)
+    steps = db.query(ApprovalStep).filter(
+        ApprovalStep.flow_id == flow.id
+    ).order_by(ApprovalStep.step_order).all()
+
+    history = []
+    for s in steps:
+        if s.acted_at:
+            actor = db.query(User).filter(User.id == s.acted_by).first() if s.acted_by else None
+            history.append({
+                "step_order": s.step_order,
+                "step_name": s.step_name,
+                "action": s.status,
+                "acted_by": s.acted_by,
+                "actor_name": actor.display_name if actor and hasattr(actor, 'display_name') else (actor.email if actor else None),
+                "acted_at": s.acted_at.isoformat(),
+                "comment": s.comment,
+                "conditions": s.conditions,
+            })
+
+    return {
+        "flow_id": flow.id,
+        "title": flow.title,
+        "entity_type": flow.entity_type,
+        "entity_id": flow.entity_id,
+        "final_status": flow.status,
+        "created_at": flow.created_at.isoformat() if flow.created_at else None,
+        "completed_at": flow.completed_at.isoformat() if flow.completed_at else None,
+        "history": history,
     }
 
 

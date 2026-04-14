@@ -14,15 +14,16 @@ Endpoints:
 
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.project import Project
 from models.user import User
+from models.background_job import BackgroundJob
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
 from services.electronic_delivery import (
@@ -44,23 +45,30 @@ import io
 
 router = APIRouter(tags=["electronic-delivery"])
 
-# Background ZIP job tracking (in-memory; sufficient for single-instance Render)
-_zip_jobs: dict[str, dict] = {}
-
 
 def _build_zip_background(job_id: str, project_id: str, tenant_id: str):
-    """Build ZIP in a background thread to avoid blocking the main event loop."""
+    """Build ZIP in a background thread. Job state persisted in DB."""
     from database import SessionLocal
     from services.storage_service import upload_file
     db = SessionLocal()
     try:
         zip_bytes = build_delivery_package(project_id, db, tenant_id=tenant_id)
-        # Store to S3/local storage
         key = f"delivery/{project_id}/{job_id}.zip"
-        upload_file(key, io.BytesIO(zip_bytes), content_type="application/zip")
-        _zip_jobs[job_id] = {"status": "completed", "key": key, "size": len(zip_bytes), "completed_at": datetime.utcnow().isoformat()}
+        upload_file(zip_bytes, key, content_type="application/zip")
+        job = db.query(BackgroundJob).filter(BackgroundJob.id == job_id).first()
+        if job:
+            job.status = "completed"
+            job.result_key = key
+            job.result_size = len(zip_bytes)
+            job.completed_at = datetime.now(timezone.utc)
+            db.commit()
     except Exception as e:
-        _zip_jobs[job_id] = {"status": "failed", "error": str(e)}
+        job = db.query(BackgroundJob).filter(BackgroundJob.id == job_id).first()
+        if job:
+            job.status = "failed"
+            job.error_message = str(e)[:500]
+            job.completed_at = datetime.now(timezone.utc)
+            db.commit()
     finally:
         db.close()
 
@@ -241,16 +249,22 @@ def generate_delivery_package(
     project = _get_project_or_404(project_id, user, db)
 
     if background:
-        # Async: start background thread, return job_id
-        job_id = str(uuid.uuid4())
-        _zip_jobs[job_id] = {"status": "processing", "started_at": datetime.utcnow().isoformat()}
+        job = BackgroundJob(
+            tenant_id=user.tenant_id,
+            job_type="zip_generation",
+            project_id=project_id,
+            status="processing",
+        )
+        db.add(job)
+        db.commit()
+        db.refresh(job)
         t = threading.Thread(
             target=_build_zip_background,
-            args=(job_id, project_id, user.tenant_id),
+            args=(job.id, project_id, user.tenant_id),
             daemon=True,
         )
         t.start()
-        return {"status": "accepted", "job_id": job_id, "poll_url": f"/api/projects/{project_id}/electronic-delivery/jobs/{job_id}"}
+        return {"status": "accepted", "job_id": job.id, "poll_url": f"/api/projects/{project_id}/electronic-delivery/jobs/{job.id}"}
 
     # Sync: direct download (for small projects)
     try:
@@ -280,12 +294,25 @@ def check_zip_job(
 ):
     """Poll background ZIP generation job status."""
     verify_project_access(project_id, user, db)
-    job = _zip_jobs.get(job_id)
+    job = db.query(BackgroundJob).filter(
+        BackgroundJob.id == job_id,
+        BackgroundJob.project_id == project_id,
+        BackgroundJob.tenant_id == user.tenant_id,
+    ).first()
     if not job:
         raise HTTPException(status_code=404, detail="ジョブが見つかりません")
-    if job["status"] == "completed":
-        return {**job, "download_url": f"/api/projects/{project_id}/electronic-delivery/download/{job_id}"}
-    return job
+    result = {
+        "job_id": job.id,
+        "status": job.status,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+    }
+    if job.status == "completed":
+        result["download_url"] = f"/api/projects/{project_id}/electronic-delivery/download/{job_id}"
+        result["size"] = job.result_size
+    if job.status == "failed":
+        result["error"] = job.error_message
+    return result
 
 
 @router.get("/api/projects/{project_id}/electronic-delivery/download/{job_id}")
@@ -298,20 +325,25 @@ def download_generated_zip(
     """Download a previously generated ZIP from storage."""
     verify_project_access(project_id, user, db)
     project = _get_project_or_404(project_id, user, db)
-    job = _zip_jobs.get(job_id)
-    if not job or job.get("status") != "completed":
+    job = db.query(BackgroundJob).filter(
+        BackgroundJob.id == job_id,
+        BackgroundJob.project_id == project_id,
+        BackgroundJob.tenant_id == user.tenant_id,
+        BackgroundJob.status == "completed",
+    ).first()
+    if not job or not job.result_key:
         raise HTTPException(status_code=404, detail="ZIPが見つかりません")
 
     from services.storage_service import download_file
-    file_data = download_file(job["key"])
-    if not file_data:
+    file_bytes = download_file(job.result_key)
+    if not file_bytes:
         raise HTTPException(status_code=404, detail="ファイルが見つかりません")
 
     safe_name = (project.project_code or project.id).replace("/", "-")
     filename = f"電子納品_{safe_name}.zip"
 
     return StreamingResponse(
-        file_data,
+        io.BytesIO(file_bytes),
         media_type="application/zip",
         headers={
             "Content-Disposition": f"attachment; filename*=UTF-8''{filename}",

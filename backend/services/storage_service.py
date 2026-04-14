@@ -117,6 +117,34 @@ def upload_file(file_data: bytes, key: str, content_type: str = "application/oct
     return key
 
 
+def download_file(key: str) -> bytes | None:
+    """Download file from storage. Returns bytes or None if not found."""
+    if _use_s3:
+        import boto3
+        from botocore.config import Config as BotoConfig
+        from botocore.exceptions import ClientError
+        client = boto3.client(
+            "s3", endpoint_url=settings.s3_endpoint,
+            aws_access_key_id=settings.s3_access_key,
+            aws_secret_access_key=settings.s3_secret_key,
+            region_name=settings.s3_region,
+            config=BotoConfig(signature_version="s3v4"),
+        )
+        try:
+            from io import BytesIO
+            buf = BytesIO()
+            client.download_fileobj(settings.s3_bucket, key, buf)
+            buf.seek(0)
+            return buf.read()
+        except ClientError:
+            return None
+    else:
+        filepath = _safe_local_path(key)
+        if filepath and filepath.exists():
+            return filepath.read_bytes()
+        return None
+
+
 def generate_presigned_url(key: str, expires_in: int = 3600) -> str:
     """Generate a URL for downloading."""
     if _use_s3:
