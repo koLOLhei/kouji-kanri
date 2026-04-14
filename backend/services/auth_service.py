@@ -74,9 +74,16 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
         raise HTTPException(status_code=401, detail="ユーザーが見つかりません")
-    # Verify token_version to support role-change/deactivation revocation
+    # Verify token_version (キャッシュ経由でDB負荷軽減)
     token_tv = payload.get("token_version", 0)
-    if token_tv != user.token_version:
+    from services.cache_service import get_cached_token_version, set_cached_token_version
+    cached_tv = get_cached_token_version(user_id)
+    if cached_tv is not None:
+        current_tv = cached_tv
+    else:
+        current_tv = user.token_version
+        set_cached_token_version(user_id, current_tv)
+    if token_tv != current_tv:
         raise HTTPException(status_code=401, detail="セッションが無効です。再ログインしてください")
     return user
 
