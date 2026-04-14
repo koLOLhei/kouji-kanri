@@ -66,6 +66,7 @@ from models.ccus import CcusRecord
 from models.recycling import RecyclingNotice
 from models.green_file import GreenFile
 from models.invite_token import InviteToken
+from models.background_job import BackgroundJob
 
 __all__ = [
     "Tenant", "User", "Project", "Phase", "PhaseRequirement",
@@ -103,4 +104,5 @@ __all__ = [
     "NeighborhoodRecord", "TemporaryWork",
     "RetirementMutualAidRecord", "CcusRecord", "RecyclingNotice",
     "GreenFile",
+    "BackgroundJob",
 ]

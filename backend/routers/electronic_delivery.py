@@ -347,5 +347,6 @@ def download_generated_zip(
         media_type="application/zip",
         headers={
             "Content-Disposition": f"attachment; filename*=UTF-8''{filename}",
+            "Content-Length": str(len(file_bytes)),
         },
     )
