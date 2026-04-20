@@ -166,8 +166,8 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
+        {/* Scroll indicator — hidden on mobile to avoid overlap with CTAs */}
+        <div className="hidden md:flex absolute bottom-10 left-1/2 -translate-x-1/2 flex-col items-center gap-3">
           <span className="text-[10px] tracking-[0.3em] text-white/30 uppercase">Scroll</span>
           <div className="w-px h-12 bg-white/20" />
         </div>
