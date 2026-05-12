@@ -7,10 +7,16 @@ databases:
 services:
   - type: web
     name: kouji-kanri-api
-    runtime: docker
+    runtime: python
     plan: free
     rootDir: backend
-    dockerfilePath: ./Dockerfile
+    buildCommand: |
+      pip install -r requirements.txt
+      # 日本語フォントを Linux 環境にインストール (Render Python runtime)
+      apt-get update -qq && apt-get install -y -qq --no-install-recommends fonts-noto-cjk fonts-noto-cjk-extra fonts-ipafont-gothic fonts-ipafont-mincho 2>/dev/null || \
+        (mkdir -p $HOME/.fonts && curl -fsSL https://github.com/notofonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf -o $HOME/.fonts/NotoSansCJKjp-Regular.otf && fc-cache -f 2>/dev/null) || \
+        echo "[font-install] fallback failed, japanese PDF may render as tofu"
+    startCommand: python start.py
     envVars:
       - key: DATABASE_URL
         fromDatabase:
