@@ -1,6 +1,6 @@
 """個人タスク管理 (UserTask) router."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -46,7 +46,10 @@ def list_tasks(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    q = db.query(UserTask).filter(UserTask.user_id == user.id)
+    q = db.query(UserTask).filter(
+        UserTask.user_id == user.id,
+        UserTask.tenant_id == user.tenant_id,
+    )
     if completed is not None:
         q = q.filter(UserTask.completed == completed)
     if project_id:
@@ -85,6 +88,7 @@ def today_tasks(
     today = today_jst()
     return db.query(UserTask).filter(
         UserTask.user_id == user.id,
+        UserTask.tenant_id == user.tenant_id,
         UserTask.due_date == today,
         UserTask.completed == False,
     ).order_by(UserTask.priority.asc()).all()
@@ -98,6 +102,7 @@ def overdue_tasks(
     today = today_jst()
     return db.query(UserTask).filter(
         UserTask.user_id == user.id,
+        UserTask.tenant_id == user.tenant_id,
         UserTask.due_date < today,
         UserTask.completed == False,
     ).order_by(UserTask.due_date.asc()).all()
@@ -113,6 +118,7 @@ def update_task(
     record = db.query(UserTask).filter(
         UserTask.id == task_id,
         UserTask.user_id == user.id,
+        UserTask.tenant_id == user.tenant_id,
     ).first()
     if not record:
         raise HTTPException(status_code=404, detail="タスクが見つかりません")
@@ -132,6 +138,7 @@ def delete_task(
     record = db.query(UserTask).filter(
         UserTask.id == task_id,
         UserTask.user_id == user.id,
+        UserTask.tenant_id == user.tenant_id,
     ).first()
     if not record:
         raise HTTPException(status_code=404, detail="タスクが見つかりません")
@@ -149,6 +156,7 @@ def complete_task(
     record = db.query(UserTask).filter(
         UserTask.id == task_id,
         UserTask.user_id == user.id,
+        UserTask.tenant_id == user.tenant_id,
     ).first()
     if not record:
         raise HTTPException(status_code=404, detail="タスクが見つかりません")

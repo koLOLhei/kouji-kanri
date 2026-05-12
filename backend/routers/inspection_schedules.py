@@ -11,6 +11,7 @@ from database import get_db
 from models.client_portal import InspectionScheduleTemplate
 from models.user import User
 from services.auth_service import get_current_user
+from services.project_access import verify_facility_access
 from services.timezone_utils import today_jst
 
 router = APIRouter(
@@ -158,6 +159,7 @@ def list_schedules(
     db: Session = Depends(get_db),
 ):
     """施設に登録された全点検スケジュール"""
+    verify_facility_access(facility_id, user, db)
     schedules = db.query(InspectionScheduleTemplate).filter(
         InspectionScheduleTemplate.facility_id == facility_id,
     ).order_by(InspectionScheduleTemplate.next_due.asc().nullslast()).all()
@@ -172,6 +174,7 @@ def create_schedule(
     db: Session = Depends(get_db),
 ):
     """点検スケジュールを新規作成（初回時はデフォルトも投入）"""
+    verify_facility_access(facility_id, user, db)
 
     if req.frequency not in FREQUENCY_MONTHS:
         raise HTTPException(
@@ -207,6 +210,7 @@ def update_schedule(
     db: Session = Depends(get_db),
 ):
     """点検スケジュールを更新"""
+    verify_facility_access(facility_id, user, db)
 
     schedule = db.query(InspectionScheduleTemplate).filter(
         InspectionScheduleTemplate.id == schedule_id,
@@ -238,6 +242,7 @@ def list_overdue(
     db: Session = Depends(get_db),
 ):
     """期限超過の点検スケジュール"""
+    verify_facility_access(facility_id, user, db)
     today = today_jst()
     schedules = db.query(InspectionScheduleTemplate).filter(
         InspectionScheduleTemplate.facility_id == facility_id,
@@ -255,6 +260,7 @@ def list_upcoming(
     db: Session = Depends(get_db),
 ):
     """N日以内に期限が来る点検スケジュール"""
+    verify_facility_access(facility_id, user, db)
     today = today_jst()
     cutoff = today + relativedelta(days=days)
     schedules = db.query(InspectionScheduleTemplate).filter(
@@ -275,6 +281,7 @@ def complete_inspection(
     db: Session = Depends(get_db),
 ):
     """点検完了を記録し、次回予定日を自動計算"""
+    verify_facility_access(facility_id, user, db)
 
     schedule = db.query(InspectionScheduleTemplate).filter(
         InspectionScheduleTemplate.id == schedule_id,

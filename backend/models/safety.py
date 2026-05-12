@@ -13,6 +13,7 @@ class KYActivity(Base):
     __tablename__ = "ky_activities"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str | None] = mapped_column(String(36))
     project_id: Mapped[str] = mapped_column(String(36), nullable=False)
     activity_date: Mapped[date] = mapped_column(Date, nullable=False)
     location: Mapped[str | None] = mapped_column(String(255))
@@ -28,6 +29,7 @@ class SafetyPatrol(Base):
     __tablename__ = "safety_patrols"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str | None] = mapped_column(String(36))
     project_id: Mapped[str] = mapped_column(String(36), nullable=False)
     patrol_date: Mapped[date] = mapped_column(Date, nullable=False)
     inspector_name: Mapped[str | None] = mapped_column(String(255))
@@ -43,6 +45,7 @@ class IncidentReport(Base):
     __tablename__ = "incident_reports"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str | None] = mapped_column(String(36))
     project_id: Mapped[str] = mapped_column(String(36), nullable=False)
     incident_date: Mapped[date] = mapped_column(Date, nullable=False)
     incident_type: Mapped[str] = mapped_column(String(50), nullable=False)  # accident, near_miss, unsafe_condition
@@ -62,6 +65,7 @@ class SafetyTraining(Base):
     __tablename__ = "safety_trainings"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id: Mapped[str | None] = mapped_column(String(36))
     project_id: Mapped[str] = mapped_column(String(36), nullable=False)
     training_date: Mapped[date] = mapped_column(Date, nullable=False)
     training_type: Mapped[str] = mapped_column(String(100), nullable=False)

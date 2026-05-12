@@ -6,7 +6,8 @@ import { useAuth } from "@/lib/auth";
 import { apiFetch, formatDate } from "@/lib/utils";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, FileImage, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, FileImage, Plus, ChevronDown, ChevronUp, Eye, X } from "lucide-react";
+import { PdfViewer } from "@/components/pdf-viewer";
 
 interface Drawing {
   id: string;
@@ -33,6 +34,7 @@ export default function DrawingsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewerDrawingId, setViewerDrawingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     drawing_number: "",
     title: "",
@@ -134,6 +136,15 @@ export default function DrawingsPage() {
         </form>
       )}
 
+      {viewerDrawingId && (
+        <DrawingViewerModal
+          projectId={id!}
+          drawingId={viewerDrawingId}
+          token={token}
+          onClose={() => setViewerDrawingId(null)}
+        />
+      )}
+
       {isLoading ? (
         <p className="text-gray-500">読み込み中...</p>
       ) : drawings.length === 0 ? (
@@ -143,7 +154,7 @@ export default function DrawingsPage() {
           {drawings.map(d => (
             <div key={d.id} className="bg-white border rounded-lg p-4">
               <div className="flex items-start justify-between">
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="font-mono text-sm text-gray-500">{d.drawing_number}</p>
                   <p className="font-semibold mt-1">{d.title}</p>
                   <div className="flex items-center gap-2 mt-2">
@@ -152,6 +163,13 @@ export default function DrawingsPage() {
                   </div>
                   <p className="text-xs text-gray-400 mt-2">{formatDate(d.uploaded_at)}</p>
                 </div>
+                <button
+                  onClick={() => setViewerDrawingId(d.id)}
+                  className="ml-2 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors flex-shrink-0"
+                  title="ブラウザで開く"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
               </div>
               {d.revisions && d.revisions.length > 0 && (
                 <div className="mt-3 border-t pt-2">
@@ -178,6 +196,85 @@ export default function DrawingsPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+interface DrawingDetail {
+  drawing: { id: string; title: string; drawing_number: string };
+  revisions: Array<{
+    id: string;
+    revision_number: number;
+    download_url: string | null;
+    file_key: string | null;
+  }>;
+}
+
+function DrawingViewerModal({
+  projectId,
+  drawingId,
+  token,
+  onClose,
+}: {
+  projectId: string;
+  drawingId: string;
+  token: string | null;
+  onClose: () => void;
+}) {
+  const { data, isLoading } = useQuery<DrawingDetail>({
+    queryKey: ["drawing", projectId, drawingId],
+    queryFn: () =>
+      apiFetch(`/api/projects/${projectId}/drawings/${drawingId}`, { token: token! }),
+    enabled: !!token && !!drawingId,
+  });
+
+  const latest = data?.revisions?.[0];
+  const url = latest?.download_url;
+  const isPdf = (latest?.file_key || "").toLowerCase().endsWith(".pdf");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <div>
+            <p className="font-semibold text-gray-900">
+              {data?.drawing.drawing_number} {data?.drawing.title}
+            </p>
+            {latest && (
+              <p className="text-xs text-gray-500">Rev.{latest.revision_number}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded hover:bg-gray-100"
+            aria-label="閉じる"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-4">
+          {isLoading && <p className="text-sm text-gray-500">読み込み中...</p>}
+          {!isLoading && !url && (
+            <p className="text-sm text-gray-500">図面ファイルがありません</p>
+          )}
+          {url && isPdf && <PdfViewer url={url} filename={data?.drawing.title} />}
+          {url && !isPdf && (
+            <div className="text-center space-y-3">
+              <p className="text-sm text-gray-600">
+                このファイル形式（CAD/画像）はブラウザビューアで開けません
+              </p>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+              >
+                ダウンロードして外部アプリで開く
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

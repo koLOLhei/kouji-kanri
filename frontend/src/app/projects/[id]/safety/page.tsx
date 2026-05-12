@@ -6,10 +6,9 @@ import { useAuth } from "@/lib/auth";
 import { apiFetch, formatDate } from "@/lib/utils";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  ArrowLeft, Shield, Plus, AlertTriangle, BookOpen, Eye, GraduationCap,
-  BarChart2, Zap, Users,
-} from "lucide-react";
+import { ArrowLeft, Shield, Plus, AlertTriangle, Eye, GraduationCap, BarChart2, Zap, Users } from "lucide-react";
+import { useOfflineMutation } from "@/lib/offline-mutation";
+import { VoiceTextarea } from "@/components/voice-input";
 
 type TabKey = "ky" | "patrol" | "incident" | "training" | "analysis";
 
@@ -227,7 +226,7 @@ function AiSafetySection({ id, token }: { id: string; token: string }) {
           <h3 className="font-semibold mb-3">7日間リスク予測</h3>
           <div className="grid grid-cols-7 gap-1">
             {predictions.map((day) => {
-              const cfg = RISK_CONFIG[day.risk_level] ?? RISK_CONFIG.medium;
+              const _cfg = RISK_CONFIG[day.risk_level] ?? RISK_CONFIG.medium;
               const colorMap = { low: "bg-green-400", medium: "bg-yellow-400", high: "bg-orange-500", critical: "bg-red-600" };
               const barColor = colorMap[day.risk_level] ?? "bg-yellow-400";
               return (
@@ -436,13 +435,16 @@ export default function SafetyPage() {
     enabled: !!token && !!endpoint,
   });
 
+  const offlineMutate = useOfflineMutation();
   const createMutation = useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      apiFetch(`/api/projects/${id}/safety/${endpoint}`, {
-        token: token!,
+    mutationFn: async (body: Record<string, unknown>) => {
+      const res = await offlineMutate(`/api/projects/${id}/safety/${endpoint}`, {
         method: "POST",
-        body: JSON.stringify(body),
-      }),
+        body,
+      });
+      if (!res.ok) throw new Error(res.error ?? "送信に失敗しました");
+      return res;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["safety", id, endpoint] });
       setShowForm(false);
@@ -532,8 +534,9 @@ export default function SafetyPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">内容</label>
-                <textarea value={form.description}
+                <VoiceTextarea value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
+                  placeholder="作業内容・危険要素・対策など... (マイクボタンで音声入力)"
                   className="w-full border rounded px-3 py-2 h-24" required />
               </div>
               <div className="flex gap-2">

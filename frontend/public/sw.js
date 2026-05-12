@@ -160,7 +160,7 @@ async function handlePhotoUpload(request) {
           headers: { "Content-Type": "application/json" },
         }
       );
-    } catch (queueError) {
+    } catch (_queueError) {
       return new Response(
         JSON.stringify({ error: "写真のキューイングに失敗しました" }),
         { status: 500, headers: { "Content-Type": "application/json" } }
@@ -224,7 +224,7 @@ async function handleMutableRequest(request) {
           headers: { "Content-Type": "application/json" },
         }
       );
-    } catch (queueError) {
+    } catch (_queueError) {
       return new Response(
         JSON.stringify({ error: "リクエストのキューイングに失敗しました" }),
         { status: 500, headers: { "Content-Type": "application/json" } }
@@ -246,10 +246,50 @@ async function syncQueue() {
 
   for (const req of requests) {
     try {
+      // multipart 疑似リクエストを FormData に再構築
+      let body = req.body;
+      const headers = { ...(req.headers || {}) };
+      try {
+        const bodyStr = typeof body === "string" ? body : new TextDecoder().decode(body);
+        const parsed = JSON.parse(bodyStr);
+        if (parsed && parsed._multipart === true) {
+          const fd = new FormData();
+          for (const [k, v] of Object.entries(parsed)) {
+            if (k === "_multipart") continue;
+            if (k === "file_base64" && typeof v === "string") {
+              const fname = String(parsed.file_name || "upload.bin");
+              const ftype = String(parsed.file_type || "application/octet-stream");
+              const bin = atob(v);
+              const arr = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+              fd.append("file", new Blob([arr], { type: ftype }), fname);
+              continue;
+            }
+            if (k === "photo_base64" && typeof v === "string") {
+              const fname = String(parsed.photo_name || "photo.jpg");
+              const ftype = String(parsed.photo_type || "image/jpeg");
+              const bin = atob(v);
+              const arr = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+              fd.append("file", new Blob([arr], { type: ftype }), fname);
+              continue;
+            }
+            if (k === "file_name" || k === "file_type" || k === "photo_name" || k === "photo_type") continue;
+            if (v === null || v === undefined) continue;
+            fd.append(k, typeof v === "string" ? v : JSON.stringify(v));
+          }
+          body = fd;
+          delete headers["Content-Type"];
+          delete headers["content-type"];
+        }
+      } catch {
+        // not JSON or not multipart marker — send as-is
+      }
+
       const response = await fetch(req.url, {
         method: req.method,
-        headers: req.headers,
-        body: req.body,
+        headers,
+        body,
       });
       if (response.ok || response.status < 500) {
         await deleteQueuedRequest(req.id);

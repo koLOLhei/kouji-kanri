@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 12mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 16pt; font-weight: bold; text-align: center; padding: 6px 0; margin-bottom: 8px; letter-spacing: 6px; border-top: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 9pt; vertical-align: top; }
+th { background: #e8eaf0; font-weight: bold; white-space: nowrap; text-align: center; }
+.worker-table th, .worker-table td { font-size: 8.5pt; padding: 2px 4px; }
+.center { text-align: center; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.notes-box { border: 1px solid #333; min-height: 40px; padding: 5px; font-size: 9pt; white-space: pre-wrap; margin: 4px 0 8px; }
+.doc-footer { margin-top: 8px; border-top: 1px solid #999; padding-top: 3px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">作　業　日　報</div>
+
+<table>
+  <tr>
+    <th style="width:60px">日付</th>
+    <td style="width:120px">{{ report_date|default('　　年　　月　　日') }}</td>
+    <th style="width:60px">確認者</th>
+    <td>{{ confirmer|default('') }}</td>
+  </tr>
+  <tr>
+    <th>工事件名</th>
+    <td>{{ project.name }}</td>
+    <th>職種</th>
+    <td>{{ job_type|default('') }}</td>
+  </tr>
+  <tr>
+    <th>場所</th>
+    <td>{{ work_location|default('') }}</td>
+    <th>工事内容</th>
+    <td>{{ work_content|default('') }}</td>
+  </tr>
+  <tr>
+    <th>記入者</th>
+    <td>{{ writer|default('') }}</td>
+    <th>天気 / 気温</th>
+    <td>{{ weather|default('') }} / {{ temperature|default('') }}</td>
+  </tr>
+</table>
+
+<table class="worker-table">
+  <thead>
+    <tr>
+      <th rowspan="2" style="width:24px">No.</th>
+      <th rowspan="2" style="width:90px">作業員氏名</th>
+      <th colspan="2" style="width:120px">作業時間</th>
+      <th rowspan="2" style="width:60px">時間<br>(h)</th>
+      <th rowspan="2">作業内容</th>
+      <th rowspan="2" style="width:80px">備考</th>
+      <th rowspan="2" style="width:80px">備考</th>
+    </tr>
+    <tr>
+      <th style="width:60px">始業</th>
+      <th style="width:60px">終業</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set workers_list = workers|default([], true) %}
+    {% set min_rows = 15 if workers_list|length < 15 else workers_list|length %}
+    {% for i in range(min_rows) %}
+    {% set w = workers_list[i] if i < workers_list|length else {} %}
+    <tr>
+      <td class="center">{{ i + 1 }}</td>
+      <td>{{ w.name|default('') }}</td>
+      <td class="center">{{ w.start_time|default('') }}</td>
+      <td class="center">{{ w.end_time|default('') }}</td>
+      <td class="num">{{ w.hours|default('') }}</td>
+      <td>{{ w.work|default('') }}</td>
+      <td>{{ w.note1|default('') }}</td>
+      <td>{{ w.note2|default('') }}</td>
+    </tr>
+    {% endfor %}
+    <tr>
+      <td colspan="4" class="center">計（人工）</td>
+      <td class="num">{{ total_hours|default('') }}</td>
+      <td colspan="3">合計人工: {{ total_workers|default(workers_list|length) }} 人</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 style="margin:8px 0 3px; font-size:10pt;">備考</h3>
+<div class="notes-box">{{ remarks|default('') }}</div>
+
+<div class="doc-footer">
+  <span>作業日報（作業員別時間管理付）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }}</span>
+</div>
+</body>
+</html>

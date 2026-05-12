@@ -75,12 +75,16 @@ class TemplateFieldsResponse(BaseModel):
     summary="利用可能なテンプレート一覧",
 )
 def list_templates(
+    response: Response,
     category: str | None = None,
     user: User = Depends(get_current_user),
 ):
     """
     利用可能な書類テンプレートをすべて返す。
     `category` クエリパラメーターで絞り込み可能。
+
+    レジストリはプロセス起動時に固定されるため、ブラウザに10分キャッシュさせる
+    (Cache-Control: private, max-age=600)。テンプレ追加時は再起動でキャッシュ無効化。
     """
     result = []
     for template_type, info in TEMPLATE_REGISTRY.items():
@@ -94,6 +98,7 @@ def list_templates(
             file=info["file"],
             required_fields=info.get("required_fields", []),
         ))
+    response.headers["Cache-Control"] = "private, max-age=600"
     return result
 
 
@@ -126,6 +131,24 @@ def get_template_fields(
         "material": ["notes", "quality_docs"],
         "change": ["notes", "agreement_result", "agreement_date", "agreement_comments"],
         "completion": ["notes", "tax_amount", "handover_documents"],
+        "green_file": [
+            "company_name", "company_address", "representative", "contact",
+            "general_contractor", "site_manager", "submission_date",
+            "workers", "machines", "tools", "vehicles", "chemicals",
+            "license_number", "license_date", "license_categories",
+            "employment_insurance", "employment_insurance_no",
+            "health_insurance", "health_insurance_no",
+            "pension_insurance", "pension_insurance_no",
+            "general_safety_manager", "original_safety_manager", "safety_manager",
+            "education_date", "education_location", "educator",
+            "responsible_person", "operators", "operator_qualifications",
+            "fire_types", "watchman", "extinguisher",
+            "ventilation", "respiratory_protection", "other_protection",
+            "fiscal_year", "basic_policy", "management_roles", "strategies",
+            "subcontractor_name", "items", "attendees",
+            "inspection_date", "inspector", "scaffold_type", "scaffold_height",
+            "notes", "doc_version",
+        ],
         "general": ["notes", "doc_version"],
     }
     category = info.get("category", "general")

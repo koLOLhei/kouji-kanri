@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1e40af; padding: 6px 0; margin-bottom: 8px; letter-spacing: 2px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 5px 7px; font-size: 9.5pt; vertical-align: top; }
+th { background: #dbeafe; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #1e40af; padding: 2px 7px; margin: 12px 0 5px; background: #eff6ff; }
+.center { text-align: center; }
+.signature-box { display: flex; justify-content: flex-end; margin-top: 16px; }
+.signature-box .item { text-align: center; margin-left: 16px; }
+.stamp { display: inline-block; width: 50px; height: 50px; border: 1px solid #333; line-height: 50px; text-align: center; }
+.doc-footer { margin-top: 14px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">全建統一様式 第1号-甲</div>
+<div class="doc-title">建設業法・雇用改善法等に基づく届出書</div>
+
+<table>
+  <tr>
+    <th style="width:120px">工事名</th><td colspan="3">{{ project.name }}</td>
+  </tr>
+  <tr>
+    <th>所在地</th><td colspan="3">{{ project.location|default('') }}</td>
+  </tr>
+  <tr>
+    <th>会社名</th><td>{{ company_name|default('') }}</td>
+    <th style="width:120px">代表者</th><td>{{ representative|default('') }}　㊞</td>
+  </tr>
+  <tr>
+    <th>所在地</th><td colspan="3">{{ company_address|default('') }}</td>
+  </tr>
+  <tr>
+    <th>電話</th><td>{{ phone|default('') }}</td>
+    <th>FAX</th><td>{{ fax|default('') }}</td>
+  </tr>
+</table>
+
+<h2>1. 建設業の許可</h2>
+<table>
+  <tr>
+    <th style="width:120px">許可番号</th><td>{{ license_number|default('') }}</td>
+    <th style="width:100px">許可年月日</th><td>{{ license_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>許可業種</th><td colspan="3">{{ license_categories|default('') }}</td>
+  </tr>
+</table>
+
+<h2>2. 雇用保険・健康保険・厚生年金保険の加入状況</h2>
+<table>
+  <tr>
+    <th style="width:120px">雇用保険</th>
+    <td>{% if employment_insurance %}✓加入 {{ employment_insurance_no|default('') }}{% else %}□未加入{% endif %}</td>
+  </tr>
+  <tr>
+    <th>健康保険</th>
+    <td>{% if health_insurance %}✓加入 {{ health_insurance_no|default('') }}{% else %}□未加入{% endif %}</td>
+  </tr>
+  <tr>
+    <th>厚生年金保険</th>
+    <td>{% if pension_insurance %}✓加入 {{ pension_insurance_no|default('') }}{% else %}□未加入{% endif %}</td>
+  </tr>
+  <tr>
+    <th>建設業退職金共済</th>
+    <td>{% if taishokukin_kyosai %}✓加入{% else %}□未加入{% endif %}</td>
+  </tr>
+</table>
+
+<h2>3. 安全衛生管理体制</h2>
+<table>
+  <tr>
+    <th style="width:120px">統括安全衛生責任者</th><td>{{ general_safety_manager|default('') }}</td>
+  </tr>
+  <tr>
+    <th>元方安全衛生管理者</th><td>{{ original_safety_manager|default('') }}</td>
+  </tr>
+  <tr>
+    <th>安全衛生責任者</th><td>{{ safety_manager|default('') }}</td>
+  </tr>
+</table>
+
+<p>上記のとおり相違なく届け出いたします。</p>
+<div class="signature-box">
+  <div class="item">
+    {{ submission_date|default('　　年　　月　　日') }}<br>
+    会社名: {{ company_name|default('') }}<br>
+    代表者: {{ representative|default('') }}　<span class="stamp">㊞</span>
+  </div>
+</div>
+
+<div class="doc-footer">
+  <span>建設業法・雇用改善法等に基づく届出書（全建統一様式 第1号-甲）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 const OUTDOOR_MODE_KEY = "outdoor_mode";
 
@@ -13,30 +13,36 @@ function applyOutdoorMode(enabled: boolean): void {
   }
 }
 
+function subscribe(callback: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = (e: StorageEvent) => {
+    if (e.key === OUTDOOR_MODE_KEY) callback();
+  };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}
+
+function getClientSnapshot(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(OUTDOOR_MODE_KEY) === "true";
+}
+
+function getServerSnapshot(): boolean {
+  return false;
+}
+
 export function useOutdoorMode(): [boolean, () => void] {
-  const [outdoor, setOutdoor] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(OUTDOOR_MODE_KEY) === "true";
-  });
+  const outdoor = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
 
   useEffect(() => {
     applyOutdoorMode(outdoor);
   }, [outdoor]);
 
-  // Apply on initial load from storage
-  useEffect(() => {
-    const stored = localStorage.getItem(OUTDOOR_MODE_KEY) === "true";
-    setOutdoor(stored);
-    applyOutdoorMode(stored);
-  }, []);
-
   const toggle = useCallback(() => {
-    setOutdoor((prev) => {
-      const next = !prev;
-      localStorage.setItem(OUTDOOR_MODE_KEY, String(next));
-      applyOutdoorMode(next);
-      return next;
-    });
+    if (typeof window === "undefined") return;
+    const next = !(localStorage.getItem(OUTDOOR_MODE_KEY) === "true");
+    localStorage.setItem(OUTDOOR_MODE_KEY, String(next));
+    window.dispatchEvent(new StorageEvent("storage", { key: OUTDOOR_MODE_KEY, newValue: String(next) }));
   }, []);
 
   return [outdoor, toggle];

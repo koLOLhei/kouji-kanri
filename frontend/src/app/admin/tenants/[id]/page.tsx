@@ -6,10 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { apiFetch, formatDate } from "@/lib/utils";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  ArrowLeft, Building2, Users, Plus, Shield,
-  UserPlus, Pencil, Ban, CheckCircle, XCircle,
-} from "lucide-react";
+import { ArrowLeft, Building2, Users, Shield, UserPlus, Pencil, Ban, CheckCircle, XCircle } from "lucide-react";
 
 interface Tenant {
   id: string;

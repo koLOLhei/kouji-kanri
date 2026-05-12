@@ -73,6 +73,7 @@ export default function LegalInspectionsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [now] = useState<number>(() => Date.now());
 
   const [form, setForm] = useState({
     inspection_type: "確認申請",
@@ -180,7 +181,7 @@ export default function LegalInspectionsPage() {
               {upcoming.map((insp) => {
                 const config = getTypeConfig(insp.inspection_type);
                 const daysUntil = Math.ceil(
-                  (new Date(insp.scheduled_date).getTime() - Date.now()) /
+                  (new Date(insp.scheduled_date).getTime() - now) /
                     (1000 * 60 * 60 * 24)
                 );
                 return (

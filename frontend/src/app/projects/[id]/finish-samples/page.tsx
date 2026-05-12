@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Palette, Plus, X, CheckCircle, Clock, XCircle } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+
 import { apiFetch } from '@/lib/utils';
 
 interface FinishSample {
@@ -39,7 +39,7 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof CheckCircle; c
 
 export default function FinishSamplesPage() {
   const { id: projectId } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string>('all');
   const [showForm, setShowForm] = useState(false);

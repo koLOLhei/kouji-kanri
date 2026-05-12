@@ -24,7 +24,7 @@ def generate_case_study(project_id: str, db: Session) -> dict:
         raise ValueError("案件が見つかりません")
 
     # 工程情報
-    phases = db.query(Phase).filter(Phase.project_id == project_id).order_by(Phase.order_index).all()
+    phases = db.query(Phase).filter(Phase.project_id == project_id).order_by(Phase.sort_order).all()
     total_phases = len(phases)
     completed_phases = sum(1 for p in phases if p.status == "completed")
 
@@ -65,7 +65,7 @@ def generate_case_study(project_id: str, db: Session) -> dict:
         "category": _infer_category(project, work_types),
 
         # 基本情報
-        "location": project.location or "",
+        "location": project.site_address or "",
         "client_name": project.client_name or "",
         "start_date": start_date.isoformat() if start_date else None,
         "end_date": end_date.isoformat() if end_date else None,
@@ -97,7 +97,7 @@ def generate_case_study(project_id: str, db: Session) -> dict:
         # SEO用テキスト素材
         "seo_draft": {
             "meta_title": f"{project.name} | 施工実績 | 株式会社KAMO",
-            "meta_description": f"{project.location or '東京・神奈川'}の{_infer_category(project, work_types)}。{'・'.join(work_types[:3])}を実施。工期{work_days}日、写真記録{total_photos}枚。",
+            "meta_description": f"{project.site_address or '東京・神奈川'}の{_infer_category(project, work_types)}。{'・'.join(work_types[:3])}を実施。工期{work_days}日、写真記録{total_photos}枚。",
             "h1": project.name,
             "body_intro": f"{'・'.join(work_types[:3])}の施工を行いました。工期{work_days}日間、延べ作業員{round((avg_workers or 0) * work_days)}人日の工事です。全{total_photos}枚の施工写真をGPS・日時付きで記録し、施工品質を証明しています。",
         },

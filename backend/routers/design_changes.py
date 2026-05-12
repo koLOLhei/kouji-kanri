@@ -63,7 +63,7 @@ class DesignChangeUpdate(BaseModel):
 # ---------- Helpers ----------
 
 def _get_next_change_number(project_id: str, db: Session) -> int:
-    verify_project_access(project_id, user, db)
+    """Generate next 設計変更番号. Caller must call verify_project_access first."""
     max_num = db.query(func.max(DesignChange.change_number)).filter(
         DesignChange.project_id == project_id
     ).scalar()
@@ -207,13 +207,27 @@ def update_design_change(
         data["difference_amount"] = new_changed - new_original
 
     # Set approved_at when approving
-    if data.get("status") == "approved" and dc.status != "approved":
+    became_approved = data.get("status") == "approved" and dc.status != "approved"
+    if became_approved:
         data["approved_at"] = datetime.now(timezone.utc)
 
     for k, v in data.items():
         setattr(dc, k, v)
     db.commit()
     db.refresh(dc)
+
+    # 承認になった瞬間、Project / CostBudget に自動カスケード
+    # （契約金額・工期・予算行が自動で書き換わる）
+    if became_approved:
+        from services.design_change_cascade import apply_design_change_cascade
+        try:
+            apply_design_change_cascade(db, dc)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"[design-change-cascade] failed for DC {dc.id}: {e}"
+            )
+
     return dc
 
 

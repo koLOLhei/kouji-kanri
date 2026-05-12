@@ -42,7 +42,8 @@ def get_onboarding_status(
         }
 
     # プロジェクト (subqueryで全件取得を避ける)
-    project_subq = db.query(Project.id).filter(Project.tenant_id == tid).subquery()
+    from sqlalchemy import select
+    project_subq = select(Project.id).where(Project.tenant_id == tid).scalar_subquery()
     has_first_project = db.query(Project).filter(Project.tenant_id == tid).limit(1).count() > 0
 
     # 工程

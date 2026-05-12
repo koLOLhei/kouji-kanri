@@ -14,7 +14,6 @@ import {
   FileText,
   HardHat,
   TrendingUp,
-  Users,
   ChevronRight,
   AlertCircle,
 } from "lucide-react";
@@ -114,6 +113,9 @@ export default function ClientPortalPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             {portal.contractor_logo_url ? (
+              // 顧客向けポータル: contractor が任意のホストから提供するロゴ。
+              // next/image でホワイトリスト管理するより eslint-disable のほうが現実的。
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={portal.contractor_logo_url}
                 alt={portal.contractor_name}
@@ -296,6 +298,7 @@ export default function ClientPortalPage() {
                     key={photo.id}
                     className="group relative aspect-square rounded-xl overflow-hidden bg-gray-100 shadow-sm hover:shadow-lg transition-shadow"
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={photo.thumbnail_url}
                       alt={photo.caption}

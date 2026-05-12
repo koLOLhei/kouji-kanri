@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A3 landscape; margin: 10mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9pt; color: #1a1a1a; margin: 0; line-height: 1.35; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1e40af; padding: 5px 0; margin-bottom: 6px; letter-spacing: 2px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 8.5pt; vertical-align: middle; }
+th { background: #dbeafe; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #1e40af; padding: 2px 7px; margin: 10px 0 4px; background: #eff6ff; }
+.center { text-align: center; }
+.policy-block { border: 1px solid #333; padding: 6px 8px; min-height: 50px; font-size: 9pt; line-height: 1.5; margin-bottom: 6px; }
+.month-grid th, .month-grid td { font-size: 8pt; padding: 2px 3px; text-align: center; }
+.signature-block { margin-top: 14px; text-align: right; line-height: 1.7; font-size: 9pt; }
+.stamp { display: inline-block; width: 42px; height: 42px; border: 1px solid #333; line-height: 42px; text-align: center; margin-left: 6px; }
+.doc-footer { margin-top: 8px; border-top: 1px solid #999; padding-top: 3px; font-size: 7.5pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">建設業における年間計画書</div>
+<div class="doc-title">建設業における安全衛生管理年間計画書<br><span style="font-size:11pt;">（{{ fiscal_year|default('令和　年度') }}　月別計画）</span></div>
+
+<table>
+  <tr>
+    <th style="width:120px">事業所の名称</th><td colspan="3">{{ project.name }}</td>
+    <th style="width:100px">作成年月日</th><td>{{ submission_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>会社名</th><td>{{ company_name|default('') }}</td>
+    <th>所在地</th><td colspan="3">{{ company_address|default('') }}</td>
+  </tr>
+</table>
+
+<h2>1. 安全衛生管理体制</h2>
+<table>
+  <thead>
+    <tr><th style="width:30px">No.</th><th style="width:200px">役職</th><th style="width:200px">氏名</th><th>備考</th></tr>
+  </thead>
+  <tbody>
+    {% for r in management_roles|default([]) %}
+    <tr><td class="center">{{ loop.index }}</td><td>{{ r.role|default('') }}</td><td>{{ r.name|default('') }}</td><td>{{ r.note|default('') }}</td></tr>
+    {% else %}
+    <tr><td class="center">1</td><td>担当役員</td><td>　</td><td></td></tr>
+    <tr><td class="center">2</td><td>雇用管理責任者</td><td>　</td><td></td></tr>
+    <tr><td class="center">3</td><td>総括安全衛生管理者</td><td>　</td><td></td></tr>
+    <tr><td class="center">4</td><td>安全管理者</td><td>　</td><td></td></tr>
+    <tr><td class="center">5</td><td>衛生管理者</td><td>　</td><td></td></tr>
+    <tr><td class="center">6</td><td>安全衛生推進者等</td><td>　</td><td></td></tr>
+    <tr><td class="center">7</td><td>工事担当責任者</td><td>　</td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>2. 基本方針</h2>
+<div class="policy-block">{{ basic_policy|default('１．法令順守を念頭に管理体制の強化推進に取り組み、ゼロ災害を達成する。\n２．安全衛生教育及び健康診断の計画的実施。\n３．リスクアセスメント・KY活動の徹底。\n４．協力業者を含めた安全衛生協議会の活性化。')|replace('\n', '<br>')|safe }}</div>
+
+<h2>3. 重点施策・年間スケジュール</h2>
+<table class="month-grid">
+  <thead>
+    <tr>
+      <th rowspan="2" style="width:140px">重点施策</th>
+      <th rowspan="2" style="width:200px">実施項目</th>
+      <th rowspan="2" style="width:80px">目標</th>
+      <th rowspan="2" style="width:90px">担当</th>
+      <th colspan="12">年間スケジュール（月）</th>
+      <th rowspan="2" style="width:140px">実施上の留意点</th>
+      <th rowspan="2" style="width:80px">備考</th>
+    </tr>
+    <tr>
+      <th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th>
+      <th>10</th><th>11</th><th>12</th><th>1</th><th>2</th><th>3</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set fiscal_months = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3] %}
+    {% for s in strategies|default([]) %}
+    <tr>
+      <td>{{ s.theme|default('') }}</td>
+      <td>{{ s.action|default('') }}</td>
+      <td class="center">{{ s.goal|default('') }}</td>
+      <td class="center">{{ s.owner|default('') }}</td>
+      {% for m in fiscal_months %}
+        <td>{% if (s.months or [])|select('eq', m)|list|length %}○{% endif %}</td>
+      {% endfor %}
+      <td>{{ s.note|default('') }}</td>
+      <td>{{ s.remark|default('') }}</td>
+    </tr>
+    {% else %}
+    {% set defaults = [
+      ('1. 安全衛生管理体制の確立・強化', '1-1.年度安全衛生管理計画書の作成', '年1回', '安全衛生委員', '○', '', '', '', '', '', '', '', '', '', '', '', '年度始め作成', ''),
+      ('', '1-2.安全衛生委員会の定期的開催', '毎月1回', '全委員', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '記録保存', ''),
+      ('', '1-3.本支店管理者の現場パトロール', '対象現場毎月1回以上', '役員・部長', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '指摘事項のフィードバック', ''),
+      ('2. 安全衛生教育の計画的実施', '2-1.雇入時・作業変更時教育の徹底', '随時', '雇用管理責任者', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', 'テキスト作成・選定', ''),
+      ('', '2-2.職員教育の実施', '年2回', '〃', '', '○', '', '', '', '', '○', '', '', '', '', '', '外部講師活用', ''),
+      ('', '2-3.技能講習・特別教育の派遣', '随時', '〃', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '講習機関選定', ''),
+      ('3. 工事所における安全衛生活動の強化', '3-1.安全施工サイクルの実施', '100%実施', '安全衛生管理者', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '作業員の積極参加', ''),
+      ('', '3-2.リスクアセスメントの実施', '〃', '〃', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '記録の保存', ''),
+      ('', '3-3.作業手順書の作成と完全実施', '〃', '〃', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '施主と打合せ', ''),
+      ('', '3-4.安全衛生協議会の実施', '〃', '〃', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '協力業者の参加', ''),
+      ('4. 健康診断の完全実施', '4-1.雇入時健康診断', '随時', '雇用管理責任者', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '○', '配置への考慮', ''),
+      ('', '4-2.定期健康診断', '年1回', '〃', '', '', '', '', '', '', '○', '', '', '', '', '', '結果の保存', ''),
+      ('5. 年間行事', '5-1.全国安全週間（準備月間）', '6月～7月', '安全衛生委員', '', '', '○', '○', '', '', '', '', '', '', '', '', '社内行事と連動', ''),
+      ('', '5-2.全国衛生週間（準備月間）', '9月～10月', '〃', '', '', '', '', '', '○', '○', '', '', '', '', '', '健康管理啓発', ''),
+      ('', '5-3.年末年始災害防止', '12月～1月', '〃', '', '', '', '', '', '', '', '', '○', '○', '', '', '繁忙期災害防止', ''),
+      ('', '5-4.安全大会', '7月', '〃', '', '', '', '○', '', '', '', '', '', '', '', '', '全社員参加', '')
+    ] %}
+    {% for d in defaults %}
+    <tr>
+      <td>{{ d[0] }}</td><td>{{ d[1] }}</td><td class="center">{{ d[2] }}</td><td class="center">{{ d[3] }}</td>
+      <td>{{ d[4] }}</td><td>{{ d[5] }}</td><td>{{ d[6] }}</td><td>{{ d[7] }}</td>
+      <td>{{ d[8] }}</td><td>{{ d[9] }}</td><td>{{ d[10] }}</td><td>{{ d[11] }}</td>
+      <td>{{ d[12] }}</td><td>{{ d[13] }}</td><td>{{ d[14] }}</td><td>{{ d[15] }}</td>
+      <td>{{ d[16] }}</td><td>{{ d[17] }}</td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<p style="margin-top:10px;font-size:9pt;">上記のとおり安全衛生年間計画を樹立したので報告します。</p>
+<div class="signature-block">
+  事業主職氏名: {{ representative|default('') }}<span class="stamp">㊞</span>
+</div>
+
+<div class="doc-footer">
+  <span>建設業における安全衛生管理年間計画書</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

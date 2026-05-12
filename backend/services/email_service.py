@@ -14,25 +14,74 @@ RESEND_API_KEY = settings.resend_api_key or os.getenv("RESEND_API_KEY", "")
 MAIL_FROM = settings.smtp_from or os.getenv("SMTP_FROM", "noreply@kouji.soara-mu.jp")
 
 
+import re
+
+# RFC 5322-lite: 改行を含むアドレスや構造的に明らかに不正なものを除外
+_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+
+def _validate_recipients(addresses: list[str], label: str) -> list[str]:
+    """改行・制御文字を含むアドレスを除去して、形式検証を通したものだけ返す。
+
+    `subject` や `to` ヘッダへの CR/LF インジェクション (HTTPヘッダーは
+    Resend API 側で扱うがJSONなのでそもそも届かないが、二重防御として)
+    """
+    valid = []
+    for addr in addresses or []:
+        if not isinstance(addr, str):
+            continue
+        addr = addr.strip()
+        if "\r" in addr or "\n" in addr or "\x00" in addr:
+            logger.warning(f"[EMAIL] {label} contains control char, skipping: {addr!r}")
+            continue
+        if not _EMAIL_RE.match(addr):
+            logger.warning(f"[EMAIL] {label} invalid format, skipping: {addr!r}")
+            continue
+        valid.append(addr)
+    return valid
+
+
+def _strip_header_injection(text: str) -> str:
+    """件名等から CR/LF/NUL を除去（ヘッダーインジェクション防止）。"""
+    if not isinstance(text, str):
+        return ""
+    return text.replace("\r", " ").replace("\n", " ").replace("\x00", "")
+
+
 def send_email(to: list[str], subject: str, html_body: str,
                cc: list[str] = None, reply_to: str = None) -> dict:
-    """Resend APIでメール送信。APIキー未設定時はログ出力のみ。"""
+    """Resend APIでメール送信。APIキー未設定時はログ出力のみ。
+
+    宛先 / 件名 / Reply-To をサニタイズし、ヘッダインジェクションを防ぐ。
+    """
+
+    # サニタイズ
+    safe_to = _validate_recipients(to, "to")
+    safe_cc = _validate_recipients(cc or [], "cc")
+    safe_subject = _strip_header_injection(subject)
+    safe_reply_to = None
+    if reply_to:
+        v = _validate_recipients([reply_to], "reply_to")
+        safe_reply_to = v[0] if v else None
+    if not safe_to:
+        logger.warning(f"[EMAIL] no valid recipients for subject={safe_subject!r}")
+        return {"status": "failed", "error": "no valid recipients"}
 
     if not RESEND_API_KEY:
-        logger.info(f"[EMAIL-DEV] To: {to}, Subject: {subject}")
+        logger.info(f"[EMAIL-DEV] To: {safe_to}, Subject: {safe_subject}")
         return {"status": "dev_mode", "message": "RESEND_API_KEY未設定"}
 
     try:
         payload = {
             "from": MAIL_FROM,
-            "to": to,
-            "subject": subject,
+            "to": safe_to,
+            "subject": safe_subject,
             "html": html_body,
         }
-        if cc:
-            payload["cc"] = cc
-        if reply_to:
-            payload["reply_to"] = reply_to
+        if safe_cc:
+            payload["cc"] = safe_cc
+        if safe_reply_to:
+            payload["reply_to"] = safe_reply_to
 
         data = json.dumps(payload).encode("utf-8")
         req = Request(
@@ -47,7 +96,7 @@ def send_email(to: list[str], subject: str, html_body: str,
         )
         with urlopen(req, timeout=10) as resp:
             result = json.loads(resp.read())
-            logger.info(f"[EMAIL] Sent to {to}: {subject} → {result.get('id','')}")
+            logger.info(f"[EMAIL] Sent to {safe_to}: {safe_subject} → {result.get('id','')}")
             return {"status": "sent", "id": result.get("id", "")}
 
     except URLError as e:
@@ -55,8 +104,8 @@ def send_email(to: list[str], subject: str, html_body: str,
         if hasattr(e, 'read'):
             try:
                 detail = e.read().decode('utf-8')
-            except Exception:
-                pass
+            except Exception as decode_err:
+                logger.debug(f"[EMAIL] failed to decode error body: {decode_err}")
         logger.error(f"[EMAIL] Resend API error: {e} | detail: {detail}")
         return {"status": "failed", "error": str(e), "detail": detail}
     except Exception as e:

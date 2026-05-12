@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1e40af; padding: 6px 0; margin-bottom: 8px; letter-spacing: 2px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #dbeafe; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #1e40af; padding: 2px 7px; margin: 12px 0 5px; background: #eff6ff; }
+.center { text-align: center; }
+.signature-block { margin-top: 20px; text-align: right; line-height: 1.9; }
+.stamp { display: inline-block; width: 46px; height: 46px; border: 1px solid #333; line-height: 46px; text-align: center; margin-left: 6px; }
+.doc-footer { margin-top: 14px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">全建統一様式 TSK第5号</div>
+<div class="doc-title">年少者・高年齢者就労報告書</div>
+
+<table>
+  <tr><th style="width:120px">工事名称</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr>
+    <th>会社名</th><td>{{ company_name|default('') }}</td>
+    <th style="width:120px">代表者</th><td>{{ representative|default('') }}</td>
+  </tr>
+</table>
+
+<h2>就労者一覧</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>区分</th>
+      <th>氏名</th>
+      <th>生年月日</th>
+      <th>年齢</th>
+      <th>職種</th>
+      <th>従事作業</th>
+      <th>就労期間</th>
+      <th>保護者氏名<br>(年少者)</th>
+      <th>健康診断<br>受診日</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for w in workers|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td class="center">{{ w.category|default('') }}</td>
+      <td>{{ w.name|default('') }}</td>
+      <td class="center">{{ w.birthdate|default('') }}</td>
+      <td class="center">{{ w.age|default('') }}歳</td>
+      <td>{{ w.job_type|default('') }}</td>
+      <td>{{ w.work|default('') }}</td>
+      <td class="center">{{ w.period|default('') }}</td>
+      <td>{{ w.guardian|default('') }}</td>
+      <td class="center">{{ w.health_check|default('') }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(6) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td class="center">{{ '年少者' if loop.index <= 3 else '高年齢者' }}</td>
+      <td>　</td><td></td><td></td><td></td><td>　</td><td></td><td></td><td></td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>就業上の配慮事項</h2>
+<table>
+  <tr>
+    <th style="width:140px">年少者(満18歳未満)</th>
+    <td>
+      ・深夜業(午後10時～午前5時)禁止<br>
+      ・坑内労働、危険有害業務(クレーン運転、高所、玉掛け等)禁止<br>
+      ・週40時間以下、1日8時間以下の労働時間
+    </td>
+  </tr>
+  <tr>
+    <th>高年齢者(満65歳以上)</th>
+    <td>
+      ・身体機能・健康状態に配慮した作業割当<br>
+      ・適切な休憩・休日の確保<br>
+      ・健康診断の定期実施
+    </td>
+  </tr>
+  <tr>
+    <th>共通</th>
+    <td>
+      ・新規入場者教育の徹底<br>
+      ・作業前の健康確認・体調確認<br>
+      ・熱中症・寒冷対策の徹底
+    </td>
+  </tr>
+</table>
+
+<div class="signature-block">
+  {{ submission_date|default('　　年　　月　　日') }}<br>
+  会社名: {{ company_name|default('') }}<br>
+  代表者: {{ representative|default('') }}<span class="stamp">㊞</span>
+</div>
+
+<div class="doc-footer">
+  <span>年少者・高年齢者就労報告書（全建統一様式 TSK第5号）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

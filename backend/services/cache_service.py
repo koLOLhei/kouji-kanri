@@ -47,8 +47,8 @@ def cache_get(key: str) -> str | None:
     if _use_redis and _redis_client:
         try:
             return _redis_client.get(key)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[cache] Redis get failed for {key}, falling back to memory: {e}")
     return _mem_cache.get(key, {}).get("value")
 
 
@@ -58,8 +58,8 @@ def cache_set(key: str, value: str, ttl_seconds: int = 300):
         try:
             _redis_client.setex(key, ttl_seconds, value)
             return
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[cache] Redis set failed for {key}, falling back to memory: {e}")
     import time
     _mem_cache[key] = {"value": value, "expires": time.time() + ttl_seconds}
 
@@ -70,8 +70,8 @@ def cache_delete(key: str):
         try:
             _redis_client.delete(key)
             return
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[cache] Redis delete failed for {key}, falling back to memory: {e}")
     _mem_cache.pop(key, None)
 
 
@@ -84,8 +84,8 @@ def cache_incr(key: str, ttl_seconds: int = 60) -> int:
             pipe.expire(key, ttl_seconds)
             results = pipe.execute()
             return results[0]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[cache] Redis incr failed for {key}, falling back to memory: {e}")
     # インメモリフォールバック
     import time
     now = time.time()

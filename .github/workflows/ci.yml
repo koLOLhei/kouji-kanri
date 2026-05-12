@@ -1,8 +1,30 @@
 name: CI
 on: [push, pull_request]
+
 jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for scanning
+      - name: Scan staged + committed files for secrets
+        run: |
+          chmod +x scripts/secret_scan.sh
+          # Scan all tracked files
+          ./scripts/secret_scan.sh $(git ls-files | tr '\n' ' ')
+      - name: Scan recent commits for leaks (last 50)
+        run: |
+          set +e
+          LEAKS=$(git log -p --all --max-count=50 2>/dev/null | grep -oE 're_[A-Za-z0-9_-]{20,}|sk_(live|test)_[A-Za-z0-9]{20,}|AKIA[A-Z0-9]{16}|ghp_[A-Za-z0-9]{30,}|AIza[A-Za-z0-9_-]{30,}' | sort -u)
+          if [ -n "$LEAKS" ]; then
+            echo "::warning::Secrets found in recent git history (rotate them and rewrite history):"
+            echo "$LEAKS"
+          fi
+
   backend:
     runs-on: ubuntu-latest
+    needs: secret-scan
     services:
       postgres:
         image: postgres:16
@@ -21,13 +43,20 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r backend/requirements.txt && pip install pytest httpx
-      - run: cd backend && DATABASE_URL=postgresql://test:test@localhost:5432/test_db pytest tests/ -v
+      - name: Run backend tests
+        run: cd backend && DATABASE_URL=postgresql://test:test@localhost:5432/test_db pytest tests/ -q
         env:
           SECRET_KEY: test-secret
+          KOUJI_SKIP_SECURITY_CHECK: "1"
+      - name: Tenant isolation lint
+        run: cd backend && python scripts/lint_tenant_isolation.py
+
   frontend:
     runs-on: ubuntu-latest
+    needs: secret-scan
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: "20" }
-      - run: cd frontend && npm ci && npx tsc --noEmit && npm run build
+      - name: Install + build
+        run: cd frontend && npm ci && npx tsc --noEmit && npx eslint . && npm run build

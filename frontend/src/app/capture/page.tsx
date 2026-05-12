@@ -5,21 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/utils";
 import { useSearchParams, useRouter } from "next/navigation";
-import {
-  Camera,
-  CheckCircle,
-  X,
-  ChevronLeft,
-  Loader2,
-  AlertCircle,
-  Trash2,
-  Image,
-  RefreshCw,
-  Upload,
-  LayoutGrid,
-  List,
-  RotateCcw,
-} from "lucide-react";
+import { Camera, CheckCircle, X, ChevronLeft, Loader2, AlertCircle, Trash2, Image as ImageIcon, RefreshCw, Upload, LayoutGrid, List, RotateCcw } from "lucide-react";
 import ElectronicBlackboard, {
   type BlackboardData,
   compositeBlackboardOntoImage,
@@ -50,13 +36,13 @@ interface WorkType {
   code?: string;
 }
 
-interface WorkSubtype {
+interface _WorkSubtype {
   id: string;
   name: string;
   work_type_id: string;
 }
 
-interface WorkDetail {
+interface _WorkDetail {
   id: string;
   name: string;
   subtype_id: string;
@@ -68,7 +54,7 @@ interface PhotoCategory {
   code?: string;
 }
 
-type UploadStatus = "pending" | "uploading" | "done" | "error";
+type UploadStatus = "pending" | "uploading" | "done" | "error" | "queued";
 
 interface UploadItem {
   id: string;
@@ -91,28 +77,99 @@ export default function CapturePage() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
+  // QRからのプリフィルを優先（project, phase, location）
   const [selectedProject, setSelectedProject] = useState(
-    searchParams.get("project") || ""
+    searchParams.get("project_id") || searchParams.get("project") || ""
   );
-  const [selectedPhase, setSelectedPhase] = useState("");
+  const [selectedPhase, setSelectedPhase] = useState(
+    searchParams.get("phase_id") || ""
+  );
   const [selectedReq, setSelectedReq] = useState("");
-  const [caption, setCaption] = useState("");
+  const [caption, setCaption] = useState(
+    searchParams.get("location") ? `[${searchParams.get("location")}] ` : ""
+  );
+  const autoStart = searchParams.get("autostart") === "1";
 
   // Classification
   const [workTypeId, setWorkTypeId] = useState("");
-  const [workSubtypeId, setWorkSubtypeId] = useState("");
-  const [workDetailId, setWorkDetailId] = useState("");
+  const [_workSubtypeId, setWorkSubtypeId] = useState("");
+  const [_workDetailId, setWorkDetailId] = useState("");
   const [photoCategoryId, setPhotoCategoryId] = useState("");
 
   // Electronic blackboard
+  // 屋外現場では「測定値」だけ職人が打ち込めばよいよう、それ以外はすべて自動入力
+  const { user } = useAuth();
   const [bbVisible, setBbVisible] = useState(false);
-  const [bbData, setBbData] = useState<BlackboardData>({
+  const [bbData, setBbData] = useState<BlackboardData>(() => ({
     projectName: "",
     workType: "",
     captureDate: new Date().toLocaleDateString("ja-JP"),
     measurement: "",
     photographer: "",
-  });
+    weather: "",
+    location: searchParams.get("location") || "",
+    gpsLat: undefined,
+    gpsLng: undefined,
+  }));
+
+  // 撮影者を自動入力（ログインユーザー名）
+  useEffect(() => {
+    if (user?.name) {
+      setBbData((prev) =>
+        prev.photographer === "" ? { ...prev, photographer: user.name } : prev,
+      );
+    }
+  }, [user]);
+
+  // GPSを自動取得（位置情報許可されてればワンタップで地点を黒板に焼き込む）
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setBbData((prev) => ({
+          ...prev,
+          gpsLat: pos.coords.latitude,
+          gpsLng: pos.coords.longitude,
+          // location が QR で既に入ってる場合は上書きしない
+          location:
+            prev.location ||
+            `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`,
+        }));
+      },
+      () => {
+        // 位置情報拒否時は何もしない（手入力にフォールバック）
+      },
+      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 5000 },
+    );
+  }, []);
+
+  // 天候を自動取得（気象庁中継 /api/weather/today）
+  useEffect(() => {
+    if (!token) return;
+    let aborted = false;
+    apiFetch<{ morning?: string; afternoon?: string; text?: string }>(
+      `/api/weather/today`,
+      { token },
+    )
+      .then((res) => {
+        if (aborted) return;
+        // 撮影時刻に応じて午前/午後を選択
+        const hour = new Date().getHours();
+        const w =
+          (hour < 12 ? res.morning : res.afternoon) || res.morning || res.afternoon;
+        if (w) {
+          setBbData((prev) =>
+            prev.weather ? prev : { ...prev, weather: w },
+          );
+        }
+      })
+      .catch(() => {
+        // 気象庁API失敗時は無視（ネットなしでも撮影は止めない）
+      });
+    return () => {
+      aborted = true;
+    };
+  }, [token]);
 
   // Upload queue
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
@@ -196,6 +253,19 @@ export default function CapturePage() {
     }
   }, [selectedProject, projects]);
 
+  // QRからの自動起動: 案件・工程プリフィル済みなら一定時間後にカメラ起動
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (autoStart && selectedProject && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      // 1秒後にカメラ起動（プリフィルUIをユーザーが確認できる時間を確保）
+      const timer = setTimeout(() => {
+        fileInputRef.current?.click();
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [autoStart, selectedProject]);
+
   // Sync work type to blackboard
   useEffect(() => {
     const wt = workTypes.find((w) => w.id === workTypeId);
@@ -207,7 +277,7 @@ export default function CapturePage() {
   // ─── Upload mutation ──────────────────────────────────────────
 
   const uploadMutation = useMutation({
-    mutationFn: async ({ file, id, compositedDataUrl }: { file: File; id: string; compositedDataUrl?: string }) => {
+    mutationFn: async ({ file, compositedDataUrl }: { file: File; id: string; compositedDataUrl?: string }) => {
       let uploadFile = file;
 
       // If blackboard is visible and we have a composited version, use that
@@ -224,16 +294,83 @@ export default function CapturePage() {
       if (caption) formData.append("caption", caption);
       if (workTypeId) formData.append("work_type_id", workTypeId);
       if (photoCategoryId) formData.append("photo_category_id", photoCategoryId);
-      return apiFetch(`/api/projects/${selectedProject}/photos`, {
-        token: token!,
-        method: "POST",
-        body: formData,
-      });
+      // 電子黒板に測定値が入っていれば、検査記録に自動転記される
+      if (bbData.measurement) formData.append("measurement", bbData.measurement);
+
+      const url = `/api/projects/${selectedProject}/photos`;
+      const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
+
+      // オフライン or 圏外: 写真を base64 でキューに保存（後で SW が再送）
+      if (!isOnline) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(uploadFile);
+        });
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
+        const { queueOfflineRequest } = await import("@/lib/sync-queue");
+        await queueOfflineRequest(`${apiBase}${url}`, "POST", {
+          _multipart: true,
+          file_base64: base64,
+          file_name: uploadFile.name,
+          file_type: uploadFile.type,
+          phase_id: selectedPhase || null,
+          requirement_id: selectedReq || null,
+          caption: caption || null,
+          work_type_id: workTypeId || null,
+          photo_category_id: photoCategoryId || null,
+          measurement: bbData.measurement || null,
+        });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("kk-offline-queued", { detail: { url } }));
+        }
+        return { _offline_queued: true } as const;
+      }
+
+      try {
+        return await apiFetch(url, {
+          token: token!,
+          method: "POST",
+          body: formData,
+        });
+      } catch (err) {
+        // ネットワーク系の失敗もキュー
+        if (err instanceof Error && /failed to fetch|network/i.test(err.message)) {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(uploadFile);
+          });
+          const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
+          const { queueOfflineRequest } = await import("@/lib/sync-queue");
+          await queueOfflineRequest(`${apiBase}${url}`, "POST", {
+            _multipart: true,
+            file_base64: base64,
+            file_name: uploadFile.name,
+            file_type: uploadFile.type,
+            phase_id: selectedPhase || null,
+            requirement_id: selectedReq || null,
+            caption: caption || null,
+            work_type_id: workTypeId || null,
+            photo_category_id: photoCategoryId || null,
+          });
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("kk-offline-queued", { detail: { url } }));
+          }
+          return { _offline_queued: true } as const;
+        }
+        throw err;
+      }
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      const queued = (data as { _offline_queued?: boolean })._offline_queued;
       setUploadQueue((prev) =>
         prev.map((item) =>
-          item.id === variables.id ? { ...item, status: "done" as const } : item
+          item.id === variables.id
+            ? { ...item, status: queued ? ("queued" as const) : ("done" as const) }
+            : item
         )
       );
       const uploaded = uploadQueue.find((q) => q.id === variables.id);
@@ -248,7 +385,7 @@ export default function CapturePage() {
       }
       queryClient.invalidateQueries({ queryKey: ["photos"] });
       queryClient.invalidateQueries({ queryKey: ["checklist"] });
-      showToast("写真をアップロードしました");
+      showToast(queued ? "オフライン保存しました（電波回復時に自動送信）" : "写真をアップロードしました");
     },
     onError: (err, variables) => {
       setUploadQueue((prev) =>
@@ -352,12 +489,16 @@ export default function CapturePage() {
     setUploadQueue([]);
   };
 
-  // Cleanup on unmount
+  // Cleanup on unmount: 最新の uploadQueue を ref で参照してクロージャ問題を回避
+  // (空配列依存だと mount 時の uploadQueue (=[]) しか revoke されない)
+  const uploadQueueRef = useRef(uploadQueue);
+  useEffect(() => {
+    uploadQueueRef.current = uploadQueue;
+  }, [uploadQueue]);
   useEffect(() => {
     return () => {
-      uploadQueue.forEach((item) => URL.revokeObjectURL(item.preview));
+      uploadQueueRef.current.forEach((item) => URL.revokeObjectURL(item.preview));
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ─── Derived state ────────────────────────────────────────────
@@ -871,7 +1012,7 @@ export default function CapturePage() {
           <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
-                <Image className="w-4 h-4 text-gray-500" />
+                <ImageIcon className="w-4 h-4 text-gray-500" />
                 最近のアップロード
               </h3>
               <span className="text-xs font-semibold text-green-700 bg-green-50 px-2.5 py-1 rounded-full">

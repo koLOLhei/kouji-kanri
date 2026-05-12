@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1e40af; padding: 6px 0; margin-bottom: 8px; letter-spacing: 2px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #dbeafe; font-weight: bold; white-space: nowrap; text-align: center; }
+.center { text-align: center; }
+.signature-block { margin-top: 20px; text-align: right; line-height: 1.9; }
+.stamp { display: inline-block; width: 46px; height: 46px; border: 1px solid #333; line-height: 46px; text-align: center; margin-left: 6px; }
+.doc-footer { margin-top: 14px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">全建統一様式 第6号</div>
+<div class="doc-title">工事用車両届</div>
+
+<table>
+  <tr><th style="width:120px">工事名称</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr><th>工事場所</th><td colspan="3">{{ project.location|default('') }}</td></tr>
+  <tr>
+    <th>会社名</th><td>{{ company_name|default('') }}</td>
+    <th style="width:120px">代表者</th><td>{{ representative|default('') }}</td>
+  </tr>
+</table>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>車種</th>
+      <th>登録番号</th>
+      <th>車台番号</th>
+      <th>所有者</th>
+      <th>使用者</th>
+      <th>運転者名</th>
+      <th>免許番号</th>
+      <th>車検満了</th>
+      <th>自賠責<br>満了</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for v in vehicles|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ v.type|default('') }}</td>
+      <td>{{ v.registration_no|default('') }}</td>
+      <td>{{ v.chassis_no|default('') }}</td>
+      <td>{{ v.owner|default('') }}</td>
+      <td>{{ v.user|default('') }}</td>
+      <td>{{ v.driver|default('') }}</td>
+      <td>{{ v.license_no|default('') }}</td>
+      <td class="center">{{ v.shaken_until|default('') }}</td>
+      <td class="center">{{ v.jibaiseki_until|default('') }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(10) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>　</td><td></td><td></td><td>　</td><td></td><td>　</td><td></td><td></td><td></td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<p style="font-size:9pt;color:#555;">※ 任意保険、車検証、運転免許証、自賠責保険証の写しを添付してください。</p>
+
+<div class="signature-block">
+  {{ submission_date|default('　　年　　月　　日') }}<br>
+  会社名: {{ company_name|default('') }}<br>
+  代表者: {{ representative|default('') }}<span class="stamp">㊞</span>
+</div>
+
+<div class="doc-footer">
+  <span>工事用車両届（全建統一様式 第6号）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

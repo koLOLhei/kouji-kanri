@@ -5,12 +5,25 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Building2, User, Truck, Package, MapPin, Lightbulb,
-  Clock, Camera, ClipboardCheck, Users as UsersIcon, AlertTriangle,
-  Flag, FileText, Wrench, ChevronDown, ChevronRight, Calendar,
-  DollarSign, Shield, HardHat,
+  ArrowLeft,
+  Building2,
+  User,
+  Truck,
+  Package,
+  MapPin,
+  Lightbulb,
+  Clock,
+  Camera,
+  ClipboardCheck,
+  Users as UsersIcon,
+  AlertTriangle,
+  Flag,
+  FileText,
+  Calendar,
+  Shield,
+  HardHat,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+
 import { apiFetch, formatDate, formatAmount } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
@@ -120,12 +133,12 @@ const TYPE_FILTERS = ['all', 'daily_report', 'inspection', 'meeting', 'photo', '
 /* ------------------------------------------------------------------ */
 
 export default function ProjectHistoryPage() {
-  const { user } = useAuth();
+  
   const params = useParams();
   const projectId = params.id as string;
 
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [expandedEntity, setExpandedEntity] = useState<string | null>(null);
+  const [_expandedEntity, _setExpandedEntity] = useState<string | null>(null);
 
   /* ---- Queries ---- */
 

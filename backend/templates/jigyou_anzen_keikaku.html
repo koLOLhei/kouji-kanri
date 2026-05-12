@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1e40af; padding: 6px 0; margin-bottom: 8px; letter-spacing: 2px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 5px 7px; font-size: 9.5pt; vertical-align: top; }
+th { background: #dbeafe; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #1e40af; padding: 2px 7px; margin: 14px 0 5px; background: #eff6ff; }
+.center { text-align: center; }
+.signature-block { margin-top: 22px; text-align: right; line-height: 2; }
+.stamp { display: inline-block; width: 46px; height: 46px; border: 1px solid #333; line-height: 46px; text-align: center; margin-left: 6px; }
+.doc-footer { margin-top: 14px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">全建統一様式 第10号</div>
+<div class="doc-title">事業所安全衛生管理計画書</div>
+
+<table>
+  <tr><th style="width:120px">工事名称</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr><th>工事場所</th><td colspan="3">{{ project.location|default('') }}</td></tr>
+  <tr><th>工期</th><td>{{ project.start_date|default('') }} ～ {{ project.end_date|default('') }}</td>
+      <th style="width:120px">作成会社</th><td>{{ company_name|default('') }}</td></tr>
+</table>
+
+<h2>1. 安全衛生管理目標</h2>
+<table>
+  <tr><th style="width:140px">目標</th><td>{{ safety_goal|default('労働災害ゼロ、休業災害ゼロ、不休災害　　件以下') }}</td></tr>
+  <tr><th>重点課題</th><td>{{ priority_issues|default('') }}</td></tr>
+  <tr><th>スローガン</th><td>{{ slogan|default('') }}</td></tr>
+</table>
+
+<h2>2. 安全衛生管理体制</h2>
+<table>
+  <thead>
+    <tr><th style="width:30px">No.</th><th>役職</th><th>氏名</th><th>主な業務</th></tr>
+  </thead>
+  <tbody>
+    {% for r in roles|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ r.title|default('') }}</td>
+      <td>{{ r.name|default('') }}</td>
+      <td>{{ r.duties|default('') }}</td>
+    </tr>
+    {% else %}
+    <tr><td class="center">1</td><td>統括安全衛生責任者</td><td>　</td><td>事業所全体の安全衛生統括</td></tr>
+    <tr><td class="center">2</td><td>元方安全衛生管理者</td><td>　</td><td>統括の補佐</td></tr>
+    <tr><td class="center">3</td><td>店社安全衛生管理者</td><td>　</td><td>店社からの巡視</td></tr>
+    <tr><td class="center">4</td><td>安全衛生責任者</td><td>　</td><td>下請会社内の安全衛生</td></tr>
+    <tr><td class="center">5</td><td>作業主任者</td><td>　</td><td>各種作業の指揮監督</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>3. 月間・週間活動計画</h2>
+<table>
+  <thead>
+    <tr><th style="width:80px">時期</th><th>活動内容</th><th>担当</th></tr>
+  </thead>
+  <tbody>
+    {% for a in activities|default([]) %}
+    <tr><td class="center">{{ a.period|default('') }}</td><td>{{ a.content|default('') }}</td><td>{{ a.owner|default('') }}</td></tr>
+    {% else %}
+    <tr><td class="center">毎日</td><td>朝礼・KY活動・終業時点検</td><td>職長</td></tr>
+    <tr><td class="center">毎週</td><td>安全衛生協議会・現場巡視</td><td>統括安全衛生責任者</td></tr>
+    <tr><td class="center">毎月</td><td>安全衛生委員会・全体ミーティング</td><td>所長</td></tr>
+    <tr><td class="center">随時</td><td>新規入場者教育・送り出し教育</td><td>安全衛生責任者</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>4. リスクアセスメント</h2>
+<table>
+  <thead>
+    <tr><th>作業</th><th>危険有害要因</th><th>リスクレベル</th><th>対策</th></tr>
+  </thead>
+  <tbody>
+    {% for r in risks|default([]) %}
+    <tr><td>{{ r.work|default('') }}</td><td>{{ r.hazard|default('') }}</td><td class="center">{{ r.level|default('') }}</td><td>{{ r.measure|default('') }}</td></tr>
+    {% else %}
+    {% for i in range(5) %}
+    <tr><td>　</td><td></td><td></td><td></td></tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>5. 緊急時の措置</h2>
+<table>
+  <tr><th style="width:140px">緊急連絡先</th><td>{{ emergency_contact|default('消防: 119  警察: 110  最寄病院:') }}</td></tr>
+  <tr><th>避難場所・経路</th><td>{{ evacuation|default('') }}</td></tr>
+  <tr><th>救護用具設置場所</th><td>{{ first_aid_location|default('') }}</td></tr>
+</table>
+
+<div class="signature-block">
+  {{ submission_date|default('　　年　　月　　日') }}<br>
+  作成会社: {{ company_name|default('') }}<br>
+  作成者: {{ author|default('') }}<span class="stamp">㊞</span>
+</div>
+
+<div class="doc-footer">
+  <span>事業所安全衛生管理計画書（全建統一様式 第10号）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

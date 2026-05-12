@@ -270,6 +270,7 @@ export default function PhotoAlbumPage() {
                 key={photo.id}
                 className="group relative aspect-square rounded-lg overflow-hidden bg-gray-100"
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photo.thumbnail_url}
                   alt={photo.caption}

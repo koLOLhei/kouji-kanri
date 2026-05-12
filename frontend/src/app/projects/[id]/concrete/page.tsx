@@ -123,9 +123,10 @@ export default function ConcretePage() {
     },
   });
 
+  // 現在時刻はマウント時に1回だけ計算（lazy initializer は impure 許可）
+  const [now] = useState<number>(() => Date.now());
   const getCuringProgress = (placement: ConcretePlacement) => {
     const start = new Date(placement.placement_date).getTime();
-    const now = Date.now();
     const elapsed = Math.floor((now - start) / (1000 * 60 * 60 * 24));
     const progress = Math.min(100, (elapsed / placement.curing_days_required) * 100);
     return { elapsed, progress };

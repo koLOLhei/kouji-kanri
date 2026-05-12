@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1e40af; padding: 6px 0; margin-bottom: 8px; letter-spacing: 2px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #dbeafe; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #1e40af; padding: 2px 7px; margin: 12px 0 5px; background: #eff6ff; }
+.center { text-align: center; }
+.signature-block { margin-top: 20px; text-align: right; line-height: 1.9; }
+.stamp { display: inline-block; width: 46px; height: 46px; border: 1px solid #333; line-height: 46px; text-align: center; margin-left: 6px; }
+.doc-footer { margin-top: 14px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">全建統一様式 第3号</div>
+<div class="doc-title">持込機械等(車両系建設機械等)使用届</div>
+
+<table>
+  <tr><th style="width:120px">工事名称</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr><th>工事場所</th><td colspan="3">{{ project.location|default('') }}</td></tr>
+  <tr>
+    <th>持込会社</th><td>{{ company_name|default('') }}</td>
+    <th style="width:120px">代表者</th><td>{{ representative|default('') }}</td>
+  </tr>
+</table>
+
+<h2>クレーン等の概要</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>機械名称</th>
+      <th>形式・型式</th>
+      <th>製造番号</th>
+      <th>定格荷重</th>
+      <th>製造年月</th>
+      <th>持込予定日</th>
+      <th>搬出予定日</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in machines|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ m.name|default('') }}</td>
+      <td>{{ m.model|default('') }}</td>
+      <td>{{ m.serial_no|default('') }}</td>
+      <td class="center">{{ m.capacity|default('') }}</td>
+      <td class="center">{{ m.manufactured|default('') }}</td>
+      <td class="center">{{ m.bring_in|default('') }}</td>
+      <td class="center">{{ m.take_out|default('') }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(5) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>　</td><td></td><td></td><td></td><td></td><td></td><td></td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>検査・運転資格者</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>機械名称</th>
+      <th>性能検査年月日</th>
+      <th>有効期間</th>
+      <th>運転者氏名</th>
+      <th>免許等</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in machines|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ m.name|default('') }}</td>
+      <td class="center">{{ m.last_inspection|default('') }}</td>
+      <td class="center">{{ m.valid_until|default('') }}</td>
+      <td>{{ m.operator_name|default('') }}</td>
+      <td>{{ m.license|default('') }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(5) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>　</td><td></td><td></td><td>　</td><td></td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="signature-block">
+  {{ submission_date|default('　　年　　月　　日') }}<br>
+  持込会社: {{ company_name|default('') }}<br>
+  代表者: {{ representative|default('') }}<span class="stamp">㊞</span>
+</div>
+
+<div class="doc-footer">
+  <span>持込機械等(車両系建設機械等)使用届（全建統一様式 第3号）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

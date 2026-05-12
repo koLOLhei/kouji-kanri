@@ -67,6 +67,7 @@ from models.recycling import RecyclingNotice
 from models.green_file import GreenFile
 from models.invite_token import InviteToken
 from models.background_job import BackgroundJob
+from models.external_api import WebhookConfig, ApiKey
 
 __all__ = [
     "Tenant", "User", "Project", "Phase", "PhaseRequirement",
@@ -105,4 +106,5 @@ __all__ = [
     "RetirementMutualAidRecord", "CcusRecord", "RecyclingNotice",
     "GreenFile",
     "BackgroundJob",
+    "WebhookConfig", "ApiKey",
 ]

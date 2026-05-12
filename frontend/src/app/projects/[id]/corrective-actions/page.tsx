@@ -7,6 +7,7 @@ import { apiFetch, formatDate } from "@/lib/utils";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, AlertOctagon, Plus } from "lucide-react";
+import { VoiceTextarea } from "@/components/voice-input";
 
 interface CorrectiveAction {
   id: string;
@@ -159,8 +160,9 @@ export default function CorrectiveActionsPage() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">内容</label>
-            <textarea value={form.description}
+            <VoiceTextarea value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
+              placeholder="不適合の内容・原因・対策... (マイクボタンで音声入力)"
               className="w-full border rounded px-3 py-2 h-24" required />
           </div>
           <div className="flex gap-2">

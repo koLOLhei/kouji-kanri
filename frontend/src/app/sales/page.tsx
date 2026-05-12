@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Briefcase, Plus, X, TrendingUp } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+
 import { apiFetch, formatAmount } from '@/lib/utils';
 
 interface SalesPipeline {
@@ -41,7 +41,7 @@ const PROB_COLORS: Record<string, string> = {
 };
 
 export default function SalesPage() {
-  const { user } = useAuth();
+  
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({

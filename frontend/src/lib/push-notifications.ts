@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 
 /* ============================================================
    Push Notification Helpers
@@ -17,18 +17,29 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return result === "granted";
 }
 
+function _subscribePermission(): () => void {
+  // Notification.permission has no native event. Polling at 1s would be wasteful.
+  // We rely on the user calling requestNotificationPermission() which triggers a
+  // re-render via state update at the call site.
+  return () => {};
+}
+
+function _getPermissionSnapshot(): "granted" | "denied" | "default" {
+  if (typeof window === "undefined") return "default";
+  if (!("Notification" in window)) return "default";
+  return Notification.permission;
+}
+
+function _getPermissionServerSnapshot(): "granted" | "denied" | "default" {
+  return "default";
+}
+
 export function useNotificationPermission(): "granted" | "denied" | "default" {
-  const [permission, setPermission] = useState<
-    "granted" | "denied" | "default"
-  >("default");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!("Notification" in window)) return;
-    setPermission(Notification.permission);
-  }, []);
-
-  return permission;
+  return useSyncExternalStore(
+    _subscribePermission,
+    _getPermissionSnapshot,
+    _getPermissionServerSnapshot,
+  );
 }
 
 export function showLocalNotification(

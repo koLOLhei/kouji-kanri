@@ -357,6 +357,8 @@ async def quick_incident_report(
 
     if file:
         file_data = await file.read()
+        from services.upload_limits import enforce_max_size, MAX_PHOTO_BYTES
+        enforce_max_size(file_data, MAX_PHOTO_BYTES, "ヒヤリハット写真")
 
         # extract_exif + upload_file はブロッキングI/O → スレッドプールで実行
         def _process_incident_file():

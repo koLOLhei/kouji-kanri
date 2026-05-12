@@ -11,6 +11,7 @@ from database import get_db
 from models.facility import Facility, FacilityZone, InfraElement, InfraInspectionLog, MaintenanceContract
 from models.user import User
 from services.auth_service import get_current_user, require_role
+from services.project_access import verify_facility_access
 from services.timezone_utils import today_jst
 
 router = APIRouter(tags=["facilities"])
@@ -152,10 +153,12 @@ def update_facility(facility_id: str, req: FacilityCreate, user: User = Depends(
 
 @router.get("/api/facilities/{facility_id}/zones")
 def list_zones(facility_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    verify_facility_access(facility_id, user, db)
     return db.query(FacilityZone).filter(FacilityZone.facility_id == facility_id).order_by(FacilityZone.sort_order).all()
 
 @router.post("/api/facilities/{facility_id}/zones")
 def create_zone(facility_id: str, req: ZoneCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    verify_facility_access(facility_id, user, db)
     z = FacilityZone(facility_id=facility_id, **req.model_dump())
     db.add(z)
     db.commit()
@@ -173,6 +176,7 @@ def list_elements(
     condition: str | None = None,
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    verify_facility_access(facility_id, user, db)
     q = db.query(InfraElement).filter(InfraElement.facility_id == facility_id, InfraElement.is_active == True)
     if category:
         q = q.filter(InfraElement.category == category)
@@ -184,6 +188,7 @@ def list_elements(
 
 @router.post("/api/facilities/{facility_id}/elements")
 def create_element(facility_id: str, req: InfraElementCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    verify_facility_access(facility_id, user, db)
     el = InfraElement(
         facility_id=facility_id,
         discovered_date=today_jst() if not req.installation_date else None,
@@ -196,6 +201,7 @@ def create_element(facility_id: str, req: InfraElementCreate, user: User = Depen
 
 @router.get("/api/facilities/{facility_id}/elements/{element_id}")
 def get_element(facility_id: str, element_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    verify_facility_access(facility_id, user, db)
     el = db.query(InfraElement).filter(InfraElement.id == element_id, InfraElement.facility_id == facility_id).first()
     if not el:
         raise HTTPException(status_code=404, detail="インフラ要素が見つかりません")
@@ -207,6 +213,7 @@ def get_element(facility_id: str, element_id: str, user: User = Depends(get_curr
 
 @router.put("/api/facilities/{facility_id}/elements/{element_id}")
 def update_element(facility_id: str, element_id: str, req: InfraElementCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    verify_facility_access(facility_id, user, db)
     el = db.query(InfraElement).filter(InfraElement.id == element_id, InfraElement.facility_id == facility_id).first()
     if not el:
         raise HTTPException(status_code=404, detail="インフラ要素が見つかりません")
@@ -221,6 +228,7 @@ def update_element(facility_id: str, element_id: str, req: InfraElementCreate, u
 
 @router.get("/api/facilities/{facility_id}/logs")
 def list_logs(facility_id: str, element_id: str | None = None, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    verify_facility_access(facility_id, user, db)
     q = db.query(InfraInspectionLog).filter(InfraInspectionLog.facility_id == facility_id)
     if element_id:
         q = q.filter(InfraInspectionLog.element_id == element_id)
@@ -228,11 +236,15 @@ def list_logs(facility_id: str, element_id: str | None = None, user: User = Depe
 
 @router.post("/api/facilities/{facility_id}/logs")
 def create_log(facility_id: str, req: InspectionLogCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    verify_facility_access(facility_id, user, db)
     log = InfraInspectionLog(facility_id=facility_id, **req.model_dump())
     db.add(log)
     # Update element condition
     if req.condition_after:
-        el = db.query(InfraElement).filter(InfraElement.id == req.element_id).first()
+        el = db.query(InfraElement).filter(
+            InfraElement.id == req.element_id,
+            InfraElement.facility_id == facility_id,
+        ).first()
         if el:
             el.condition = req.condition_after
             el.last_inspected = req.log_date
@@ -302,9 +314,7 @@ def get_shared_data(
     user: User = Depends(get_current_user), db: Session = Depends(get_db),
 ):
     """保守契約先に提供するデータ。契約内容に応じてフィルタリング。"""
-    facility = db.query(Facility).filter(Facility.id == facility_id).first()
-    if not facility:
-        raise HTTPException(status_code=404, detail="施設が見つかりません")
+    facility = verify_facility_access(facility_id, user, db)
 
     # 契約を確認
     contract = db.query(MaintenanceContract).filter(

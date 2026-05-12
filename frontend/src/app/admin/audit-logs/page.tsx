@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { apiFetch, formatDate } from "@/lib/utils";
+import { apiFetch } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, ScrollText, Search } from "lucide-react";
+import { ArrowLeft, ScrollText } from "lucide-react";
 
 interface AuditLog {
   id: string;

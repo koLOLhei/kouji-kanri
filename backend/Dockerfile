@@ -7,7 +7,12 @@ RUN apt-get update -qq && \
     libgdk-pixbuf-2.0-0 \
     libffi-dev \
     libcairo2 \
-    libglib2.0-0 && \
+    libglib2.0-0 \
+    fonts-noto-cjk \
+    fonts-noto-cjk-extra \
+    fonts-ipafont-gothic \
+    fonts-ipafont-mincho && \
+    fc-cache -fv && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

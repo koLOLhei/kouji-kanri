@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #d97706; padding: 6px 0; margin-bottom: 8px; letter-spacing: 2px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #fef3c7; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #d97706; padding: 2px 7px; margin: 12px 0 5px; background: #fffbeb; }
+.center { text-align: center; }
+.signature-block { margin-top: 20px; text-align: right; line-height: 1.9; }
+.stamp { display: inline-block; width: 46px; height: 46px; border: 1px solid #333; line-height: 46px; text-align: center; margin-left: 6px; }
+.doc-footer { margin-top: 14px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+.judge-ok { color: #047857; font-weight: bold; }
+.judge-ng { color: #dc2626; font-weight: bold; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">作業前点検</div>
+<div class="doc-title">足場作業前点検チェックリスト</div>
+
+<table>
+  <tr>
+    <th style="width:120px">工事名</th><td colspan="3">{{ project.name }}</td>
+  </tr>
+  <tr>
+    <th>点検年月日</th><td>{{ inspection_date|default('　　年　　月　　日') }}</td>
+    <th style="width:120px">天候</th><td>{{ weather|default('') }}</td>
+  </tr>
+  <tr>
+    <th>足場の種類</th><td>{{ scaffold_type|default('□枠組  □単管  □くさび緊結式  □吊り  □移動式') }}</td>
+    <th>足場高さ</th><td>{{ scaffold_height|default('') }}m</td>
+  </tr>
+  <tr>
+    <th>点検者</th><td>{{ inspector|default('') }}</td>
+    <th>所属会社</th><td>{{ company_name|default('') }}</td>
+  </tr>
+</table>
+
+<h2>点検項目（労安則第567条 / 第568条 準拠）</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>点検項目</th>
+      <th style="width:60px">良</th>
+      <th style="width:60px">否</th>
+      <th>処置・備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set default_items = [
+      "床材の損傷・取付け状況",
+      "床材の隙間 (3cm以下)",
+      "床材と建地との隙間 (12cm未満)",
+      "建地・布・腕木材の損傷・取付け状況",
+      "緊結部の緩み・脱落",
+      "幅木 (10cm以上) の取付け状況",
+      "中桟 (高さ35～50cm) の取付け状況",
+      "手すり (85cm以上) の取付け状況",
+      "メッシュシート・防音シートの破損",
+      "壁つなぎ・控えの取付け状況",
+      "昇降設備の状況",
+      "脚部の沈下・滑動防止",
+      "ジャッキベース・敷板の状況",
+      "悪天候 (強風・大雨・大雪) 後の点検",
+      "地震後・改造変更後の点検"
+    ] %}
+    {% for item in items|default(default_items) %}
+    {% set is_obj = item is mapping %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ item.name if is_obj else item }}</td>
+      <td class="center">{% if is_obj and item.judge == 'ok' %}<span class="judge-ok">○</span>{% else %}□{% endif %}</td>
+      <td class="center">{% if is_obj and item.judge == 'ng' %}<span class="judge-ng">×</span>{% else %}□{% endif %}</td>
+      <td>{% if is_obj %}{{ item.note|default('') }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>是正状況</h2>
+<table>
+  <tr><th style="width:140px">不良箇所</th><td>{{ defects|default('') }}</td></tr>
+  <tr><th>是正処置</th><td>{{ correction|default('') }}</td></tr>
+  <tr><th>是正完了日</th><td>{{ correction_date|default('') }}</td></tr>
+  <tr><th>是正確認者</th><td>{{ correction_confirmer|default('') }}</td></tr>
+</table>
+
+<h2>判定</h2>
+<table>
+  <tr>
+    <th style="width:140px">作業可否判定</th>
+    <td>{{ work_judgement|default('□作業可  □一部不可  □作業不可') }}</td>
+  </tr>
+  <tr><th>備考</th><td>{{ notes|default('') }}</td></tr>
+</table>
+
+<div class="signature-block">
+  {{ submission_date|default('　　年　　月　　日') }}<br>
+  点検者: {{ inspector|default('') }}<span class="stamp">㊞</span>
+  確認者: {{ confirmer|default('') }}<span class="stamp">㊞</span>
+</div>
+
+<div class="doc-footer">
+  <span>足場作業前点検チェックリスト（労安則第567条/第568条）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

@@ -4,10 +4,17 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
-  Users, UserPlus, TrendingUp, Bell, Plus, X, Building2, Tag,
-  Phone, Mail, Globe, ChevronRight, ArrowRightLeft,
+  Users,
+  UserPlus,
+  TrendingUp,
+  Bell,
+  Plus,
+  X,
+  Tag,
+  ChevronRight,
+  ArrowRightLeft,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+
 import { apiFetch, formatAmount } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
@@ -104,7 +111,7 @@ const LEAD_SOURCES = ['紹介', 'Web', '電話', 'イベント', '飛込み', '�
 /* ------------------------------------------------------------------ */
 
 export default function CRMPage() {
-  const { user } = useAuth();
+  
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('顧客一覧');
 

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
-import { ArrowLeft, Camera, AlertTriangle, CheckCircle2, X } from "lucide-react";
+import { ArrowLeft, Camera, AlertTriangle, CheckCircle2, X, WifiOff } from "lucide-react";
+import { queueOfflineRequest } from "@/lib/sync-queue";
+import { VoiceTextarea } from "@/components/voice-input";
 
 const SEVERITY_OPTIONS = [
   { key: "low", label: "軽微", desc: "注意が必要", color: "bg-blue-100 text-blue-700 border-blue-300", activeColor: "bg-blue-600 text-white border-blue-600" },
@@ -26,6 +28,7 @@ export default function QuickReportPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [queued, setQueued] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,8 +36,20 @@ export default function QuickReportPage() {
 
   const handleFile = useCallback((file: File) => {
     setPhoto(file);
-    const url = URL.createObjectURL(file);
-    setPhotoPreview(url);
+    setPhotoPreview((prev) => {
+      // 直前のプレビューがあれば revoke してメモリリークを防ぐ
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }, []);
+
+  // unmount 時に最後のプレビュー URL を revoke (戻るボタンで戻った時のリーク防止)
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+    // photoPreview を依存に入れると毎回 revoke してしまうので空配列
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,13 +74,56 @@ export default function QuickReportPage() {
     setSubmitting(true);
     setError(null);
 
+    const url = `http://127.0.0.1:8001/api/projects/${id}/safety/quick-incident`;
+    const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
+
+    // オフライン: ヒヤリハットは命にかかわるので必ずキューに保存（写真は base64 でキュー）
+    if (!isOnline) {
+      try {
+        let photoBase64: string | null = null;
+        let photoName: string | null = null;
+        let photoType: string | null = null;
+        if (photo) {
+          photoBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(photo);
+          });
+          photoName = photo.name;
+          photoType = photo.type;
+        }
+        await queueOfflineRequest(url, "POST", {
+          _multipart: true,
+          description: description.trim(),
+          severity,
+          photo_base64: photoBase64,
+          photo_name: photoName,
+          photo_type: photoType,
+        });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("kk-offline-queued", { detail: { url } }));
+        }
+        setQueued(true);
+        setSuccess(true);
+        setTimeout(() => {
+          router.push(`/projects/${id}/safety`);
+        }, 2500);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "オフライン保存に失敗しました");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     try {
       const form = new FormData();
       form.append("description", description.trim());
       form.append("severity", severity);
       if (photo) form.append("file", photo);
 
-      const res = await fetch(`http://127.0.0.1:8001/api/projects/${id}/safety/quick-incident`, {
+      const res = await fetch(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: form,
@@ -81,6 +139,24 @@ export default function QuickReportPage() {
         router.push(`/projects/${id}/safety`);
       }, 2000);
     } catch (err) {
+      // ネットワーク落ち系もキューに保存
+      if (err instanceof Error && /failed to fetch|network/i.test(err.message)) {
+        try {
+          await queueOfflineRequest(url, "POST", {
+            _multipart: true,
+            description: description.trim(),
+            severity,
+          });
+          setQueued(true);
+          setSuccess(true);
+          setTimeout(() => {
+            router.push(`/projects/${id}/safety`);
+          }, 2500);
+          return;
+        } catch {
+          // fallthrough to error display
+        }
+      }
       setError(err instanceof Error ? err.message : "送信に失敗しました");
     } finally {
       setSubmitting(false);
@@ -91,10 +167,20 @@ export default function QuickReportPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-green-50 p-8 text-center">
         <div className="animate-bounce mb-6">
-          <CheckCircle2 className="w-24 h-24 text-green-500" />
+          {queued ? (
+            <WifiOff className="w-24 h-24 text-amber-500" />
+          ) : (
+            <CheckCircle2 className="w-24 h-24 text-green-500" />
+          )}
         </div>
-        <h2 className="text-2xl font-bold text-green-700 mb-2">報告完了！</h2>
-        <p className="text-green-600 mb-6">ヒヤリハット報告を受け付けました</p>
+        <h2 className="text-2xl font-bold text-green-700 mb-2">
+          {queued ? "オフライン保存しました" : "報告完了！"}
+        </h2>
+        <p className="text-green-600 mb-6">
+          {queued
+            ? "電波回復時に自動送信されます"
+            : "ヒヤリハット報告を受け付けました"}
+        </p>
         <p className="text-sm text-gray-500">安全管理ページへ戻ります...</p>
       </div>
     );
@@ -199,10 +285,10 @@ export default function QuickReportPage() {
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
             3. 内容を入力
           </p>
-          <textarea
+          <VoiceTextarea
             value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder="何が起きたか、どこで起きたか、どんな危険があったかを簡潔に..."
+            placeholder="何が起きたか、どこで起きたか、どんな危険があったか... (マイクボタンで音声入力)"
             rows={3}
             maxLength={500}
             className="w-full border-2 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-blue-500 resize-none"

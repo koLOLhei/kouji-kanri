@@ -5,11 +5,25 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Building2, Phone, Mail, User, Star, ChevronDown, ChevronRight,
-  Plus, X, PhoneCall, MailIcon, Users as UsersIcon, MapPin,
-  Calendar, Clock, FileText, MessageSquare, Link2, Briefcase,
+  ArrowLeft,
+  Building2,
+  Phone,
+  Mail,
+  User,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  X,
+  PhoneCall,
+  MailIcon,
+  Users as UsersIcon,
+  MapPin,
+  Clock,
+  MessageSquare,
+  Link2,
+  Briefcase,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+
 import { apiFetch, formatDate, formatAmount } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
@@ -114,7 +128,7 @@ const INTERACTION_COLOR: Record<string, string> = {
 /* ------------------------------------------------------------------ */
 
 export default function CustomerDetailPage() {
-  const { user } = useAuth();
+  
   const params = useParams();
   const customerId = params.id as string;
   const queryClient = useQueryClient();

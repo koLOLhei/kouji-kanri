@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.user import User
-from services.auth_service import get_current_user
+from services.auth_service import get_current_user, require_role
 from services.project_access import verify_project_access
 
 router = APIRouter(tags=["automation"])
@@ -97,19 +97,15 @@ def download_warranty(
 # ─── バックアップ ───
 
 @router.post("/api/admin/backup")
-def run_backup(user: User = Depends(get_current_user)):
+def run_backup(user: User = Depends(require_role("admin", "super_admin"))):
     """DB + ファイルの完全バックアップを実行（adminのみ）。"""
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="管理者のみ実行可能です")
     from services.backup_service import run_full_backup
     return run_full_backup()
 
 
 @router.post("/api/admin/backup/database")
-def backup_db_only(user: User = Depends(get_current_user)):
+def backup_db_only(user: User = Depends(require_role("admin", "super_admin"))):
     """DBダンプのみ実行。"""
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="管理者のみ実行可能です")
     from services.backup_service import backup_database_to_s3
     return backup_database_to_s3()
 
@@ -178,11 +174,18 @@ def get_today_weather(
     area: str = "神奈川県東部",
     user: User = Depends(get_current_user),
 ):
-    """気象庁から今日の天気を自動取得。日報の天候欄の手入力を省略。"""
+    """気象庁から今日の天気を自動取得。日報の天候欄の手入力を省略。
+
+    気象庁API失敗時もキャッシュまたは「不明」のフォールバック値を返すため、
+    フロントの職人体験は止まらない。
+    """
     from services.weather_auto import fetch_today_weather
+    # weather_auto は失敗時もフォールバック辞書を返すので 503 にしない
     result = fetch_today_weather(area)
-    if not result:
-        raise HTTPException(status_code=503, detail="天気情報を取得できませんでした")
+    if result is None:
+        # 想定外: weather_auto が None を返すことは _stale_or_default 経由で無いはずだが、
+        # 万が一に備えてフロントが扱える形で 200 を返す
+        return {"morning": "不明", "afternoon": "不明", "area": area, "source": "fallback"}
     return result
 
 

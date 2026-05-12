@@ -83,7 +83,7 @@ def receive_chat_lead(req: ChatLeadRequest, db: Session = Depends(get_db)):
                 title=f"新規リード: {req.contact_name}様 ({meta.get('service_type', '問い合わせ')})",
                 message=f"電話: {req.contact_phone} / 経路: {req.source_detail} / 優先度: {req.priority}",
                 notification_type="lead",
-                link=f"/leads",
+                link_url="/leads",
             )
             db.add(notif)
         db.commit()

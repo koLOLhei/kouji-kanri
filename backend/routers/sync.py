@@ -1,5 +1,6 @@
 """Offline sync conflict resolution router."""
 
+import logging
 from datetime import datetime
 from typing import Any, Optional
 
@@ -11,6 +12,8 @@ from sqlalchemy import text
 from database import get_db
 from models.user import User
 from services.auth_service import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 
@@ -103,8 +106,8 @@ def check_conflict(
     if isinstance(server_updated_raw, str):
         try:
             server_updated_at = datetime.fromisoformat(server_updated_raw)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug(f"[sync] cannot parse server_updated_raw={server_updated_raw!r}: {e}")
     elif isinstance(server_updated_raw, datetime):
         server_updated_at = server_updated_raw
 

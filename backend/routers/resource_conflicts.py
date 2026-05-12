@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
 from services.auth_service import get_current_user
-from services.project_access import verify_project_access
+from services.project_access import verify_project_access, verify_worker_access
 from services.resource_conflict import (
     get_all_conflicts,
     get_conflicts_for_range,
@@ -58,6 +58,7 @@ def get_worker_conflicts(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Get schedule conflicts for a worker in a given month (YYYY-MM)."""
+    verify_worker_access(worker_id, user, db)
     try:
         year_str, month_str = month.split("-")
         year = int(year_str)

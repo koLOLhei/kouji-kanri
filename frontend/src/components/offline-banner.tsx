@@ -27,6 +27,28 @@ export function OfflineBanner() {
     return () => clearTimeout(id);
   }, [syncResult]);
 
+  // ページ起動時とオンライン復帰時に自動ドレイン
+  // (Background Sync 非対応ブラウザ — Safari iOS / 古いAndroid — の対策)
+  useEffect(() => {
+    if (!online) return;
+    const timer = setTimeout(() => {
+      syncOfflineQueue().catch(() => {});
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [online]);
+
+  // visibilitychange: バックグラウンドから復帰した時にもドレイン
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const handler = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        syncOfflineQueue().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, []);
+
   const handleSync = async () => {
     setSyncing(true);
     try {

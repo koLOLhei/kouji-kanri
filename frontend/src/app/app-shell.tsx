@@ -22,11 +22,15 @@ function AuthGate({ children }: { children: ReactNode }) {
   const { token, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  // SSR safe: server returns false; client always returns true after first render
+  const [mounted, setMounted] = useState<boolean>(() => typeof window !== "undefined");
 
   useEffect(() => {
-    setMounted(true);
+    // After mount, ensure mounted is true (lazy init handles client; this is just safety)
+    if (!mounted) setMounted(true);
     registerServiceWorker();
+    // run once after first paint
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

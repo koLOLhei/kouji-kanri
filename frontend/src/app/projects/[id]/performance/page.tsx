@@ -5,11 +5,8 @@ import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Award,
-  TrendingUp,
-  TrendingDown,
   Clock,
   Plus,
-  BarChart3,
   CloudRain,
   Package,
   Users,

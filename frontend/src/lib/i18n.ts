@@ -433,28 +433,31 @@ export function t(key: string, locale?: Locale): string {
 }
 
 // React hooks — only import from components, not from server code
-import { useState, useEffect } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import React from "react";
 
-export function useLocale(): [Locale, (l: Locale) => void] {
-  const [locale, setLocaleState] = useState<Locale>("ja");
-
-  useEffect(() => {
-    setLocaleState(getLocale());
-    const handler = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
-        setLocaleState(e.newValue as Locale);
-      }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, []);
-
-  const updateLocale = (l: Locale) => {
-    setLocale(l);
-    setLocaleState(l);
+function _subscribeLocale(callback: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY) callback();
   };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}
 
+function _getLocaleClient(): Locale {
+  return getLocale();
+}
+
+function _getLocaleServer(): Locale {
+  return "ja";
+}
+
+export function useLocale(): [Locale, (l: Locale) => void] {
+  const locale = useSyncExternalStore(_subscribeLocale, _getLocaleClient, _getLocaleServer);
+  const updateLocale = useCallback((l: Locale) => {
+    setLocale(l);
+  }, []);
   return [locale, updateLocale];
 }
 

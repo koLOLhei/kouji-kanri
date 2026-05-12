@@ -7,6 +7,10 @@
        Depends(ProjectAccessChecker())
 3. 任意モデルへのテナントフィルタ:
        db.query(Material).filter(tenant_filter(Material, user)).all()
+4. 施設アクセス検証:
+       facility = verify_facility_access(facility_id, user, db)
+5. 作業員アクセス検証:
+       worker = verify_worker_access(worker_id, user, db)
 """
 
 from fastapi import Depends, HTTPException
@@ -61,3 +65,37 @@ def tenant_filter(model_class, user: User):
         SQLAlchemy フィルタ条件（``BinaryExpression``）。
     """
     return model_class.tenant_id == user.tenant_id
+
+
+def verify_facility_access(facility_id: str, user: User, db: Session):
+    """ユーザーが所属するテナントの施設かを検証。
+
+    Raises:
+        HTTPException(404): 施設が存在しないか、別テナントの場合。
+    """
+    from models.facility import Facility
+
+    facility = db.query(Facility).filter(
+        Facility.id == facility_id,
+        Facility.tenant_id == user.tenant_id,
+    ).first()
+    if not facility:
+        raise HTTPException(status_code=404, detail="施設が見つかりません")
+    return facility
+
+
+def verify_worker_access(worker_id: str, user: User, db: Session):
+    """ユーザーが所属するテナントの作業員かを検証。
+
+    Raises:
+        HTTPException(404): 作業員が存在しないか、別テナントの場合。
+    """
+    from models.worker import Worker
+
+    worker = db.query(Worker).filter(
+        Worker.id == worker_id,
+        Worker.tenant_id == user.tenant_id,
+    ).first()
+    if not worker:
+        raise HTTPException(status_code=404, detail="作業員が見つかりません")
+    return worker

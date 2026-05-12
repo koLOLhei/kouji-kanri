@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A3 landscape; margin: 10mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 8pt; color: #1a1a1a; margin: 0; line-height: 1.25; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #1e40af; padding: 4px 0; margin-bottom: 6px; letter-spacing: 4px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 3px; }
+.head-table, .body-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+.head-table th, .head-table td { border: 1px solid #333; padding: 3px 5px; font-size: 8.5pt; vertical-align: top; }
+.head-table th { background: #dbeafe; font-weight: bold; white-space: nowrap; text-align: center; }
+.body-table th, .body-table td { border: 1px solid #333; padding: 2px 3px; font-size: 7.5pt; vertical-align: top; line-height: 1.15; }
+.body-table th { background: #dbeafe; font-weight: bold; text-align: center; }
+.center { text-align: center; }
+.small { font-size: 6.5pt; color: #555; }
+.sub { font-size: 7pt; color: #444; }
+.doc-footer { margin-top: 6px; border-top: 1px solid #999; padding-top: 3px; font-size: 7pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">全建統一様式 第2号</div>
+<div class="doc-title">作　業　員　名　簿</div>
+
+<table class="head-table">
+  <tr>
+    <th style="width:90px">事業所の名称</th><td colspan="3">{{ project.name }}</td>
+    <th style="width:90px">提出年月日</th><td>{{ submission_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>所属会社名<br>（一次会社）</th><td>{{ company_name|default('　') }}</td>
+    <th>代表者</th><td>{{ representative|default('　') }}　㊞</td>
+    <th>連絡先(TEL)</th><td>{{ contact|default('　') }}</td>
+  </tr>
+  <tr>
+    <th>元請会社名</th><td>{{ general_contractor|default('　') }}</td>
+    <th>所長氏名</th><td>{{ site_manager|default('　') }}</td>
+    <th>住所</th><td>{{ company_address|default('　') }}</td>
+  </tr>
+</table>
+
+<table class="body-table">
+  <thead>
+    <tr>
+      <th rowspan="2" style="width:18px">番号</th>
+      <th rowspan="2" style="width:55px">職種</th>
+      <th rowspan="2" style="width:80px">ふりがな<br>氏名</th>
+      <th rowspan="2" style="width:18px"><span class="small">※職長等</span></th>
+      <th colspan="2" style="width:120px">雇入年月日 / 経験年数</th>
+      <th colspan="2" style="width:110px">生年月日 / 年齢</th>
+      <th rowspan="2" style="width:120px">現住所<br><span class="small">(TEL)</span></th>
+      <th rowspan="2" style="width:90px">家族<br>緊急連絡先<br><span class="small">(TEL)</span></th>
+      <th rowspan="2" style="width:80px">最近の<br>健康診断日<br><span class="small">血圧</span></th>
+      <th rowspan="2" style="width:30px">血液型</th>
+      <th rowspan="2" style="width:80px">特殊<br>健康診断日<br><span class="small">種類</span></th>
+      <th colspan="3" style="width:140px">社会保険(被保険者番号)</th>
+      <th rowspan="2" style="width:60px">建退共<br>加入</th>
+      <th rowspan="2" style="width:60px">雇用契約<br>区分</th>
+      <th rowspan="2" style="width:80px">雇入時・職長<br>特別教育</th>
+      <th rowspan="2" style="width:60px">技能講習</th>
+      <th rowspan="2" style="width:80px">免許</th>
+      <th rowspan="2" style="width:70px">受入教育<br>実施年月日</th>
+    </tr>
+    <tr>
+      <th class="small">雇入</th><th class="small">経験</th>
+      <th class="small">生年</th><th class="small">年齢</th>
+      <th class="small">①健保</th><th class="small">②年金</th><th class="small">③雇用</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for w in workers|default([]) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ w.job_type|default('') }}</td>
+      <td><span class="sub">{{ w.furigana|default('') }}</span><br>{{ w.name|default('') }}</td>
+      <td class="center">{{ w.foreman_mark|default('') }}</td>
+      <td class="center">{{ w.entry_date|default('') }}</td>
+      <td class="center">{{ w.experience_years|default('') }}年</td>
+      <td class="center">{{ w.birthdate|default('') }}</td>
+      <td class="center">{{ w.age|default('') }}歳</td>
+      <td>{{ w.address|default('') }}<br><span class="sub">{{ w.phone|default('') }}</span></td>
+      <td>{{ w.emergency_contact|default('') }}</td>
+      <td class="center">{{ w.health_check_date|default('') }}<br><span class="sub">{{ w.blood_pressure|default('') }}</span></td>
+      <td class="center">{{ w.blood_type|default('') }}</td>
+      <td class="center">{{ w.special_health_check_date|default('') }}<br><span class="sub">{{ w.special_health_check_type|default('') }}</span></td>
+      <td class="center">{{ w.health_insurance_no|default('') }}</td>
+      <td class="center">{{ w.pension_no|default('') }}</td>
+      <td class="center">{{ w.employment_insurance_no|default('') }}</td>
+      <td class="center">{{ '加入' if w.taishokukin_kyosai else '未加入' }}</td>
+      <td class="center">{{ w.contract_type|default('') }}</td>
+      <td class="center">{{ w.special_education|default('') }}</td>
+      <td class="center">{{ w.skill_training|default('') }}</td>
+      <td class="center">{{ w.license|default('') }}</td>
+      <td class="center">{{ w.entry_education_date|default('') }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(15) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>　</td><td>　</td><td></td>
+      <td></td><td></td><td></td><td></td>
+      <td>　</td><td>　</td><td></td><td></td><td></td>
+      <td></td><td></td><td></td>
+      <td></td><td></td>
+      <td></td><td></td><td></td><td></td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<p class="small" style="margin:6px 0;">
+※ 「職長等」欄: 職=職長、安=安全衛生責任者、女=女性、年=年少者(18歳未満)、高=高年齢者(65歳以上)、外=外国人、危=危険有害業務従事者<br>
+※ 雇用契約区分: 直=直接雇用、派=派遣、一人=一人親方<br>
+※ 社会保険欄: 被保険者番号を記入。未加入の場合は「未」と記入し、その理由を備考に記載すること。
+</p>
+
+<div class="doc-footer">
+  <span>作業員名簿（全建統一様式 第2号）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

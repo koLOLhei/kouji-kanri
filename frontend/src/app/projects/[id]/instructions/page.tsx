@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, X, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+
 import { apiFetch, formatDate } from '@/lib/utils';
 
 interface Instruction {
@@ -30,7 +30,7 @@ const TABS = ['全て', '指示', '連絡', '依頼', '注意'] as const;
 
 export default function InstructionsPage() {
   const { id: projectId } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string>('全て');
   const [showForm, setShowForm] = useState(false);

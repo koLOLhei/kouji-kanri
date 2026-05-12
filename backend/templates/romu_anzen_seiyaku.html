@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 18mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10.5pt; color: #1a1a1a; margin: 0; line-height: 1.7; }
+.doc-title { font-size: 16pt; font-weight: bold; text-align: center; padding: 8px 0; margin-bottom: 14px; letter-spacing: 4px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 4px; }
+.preamble { margin: 10px 0 18px; }
+.pledge-list { margin: 0 0 16px 1.5em; padding: 0; }
+.pledge-list li { margin-bottom: 8px; }
+.signature-block { margin-top: 36px; text-align: right; line-height: 2; }
+.stamp { display: inline-block; width: 50px; height: 50px; border: 1px solid #333; line-height: 50px; text-align: center; margin-left: 8px; }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+th, td { border: 1px solid #333; padding: 5px 8px; font-size: 10pt; }
+th { background: #dbeafe; font-weight: bold; text-align: center; }
+.doc-footer { margin-top: 22px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">全建統一様式 TSK第1号</div>
+<div class="doc-title">労務安全等に関する誓約書</div>
+
+<p class="preamble">
+{{ general_contractor|default('元請会社') }} 殿
+</p>
+
+<p>
+{{ project.name }} の施工に当たり、当社は下記事項を遵守することを誓約いたします。
+</p>
+
+<ol class="pledge-list">
+  <li>労働基準法、労働安全衛生法、その他関係法令を遵守し、災害発生の防止に努めます。</li>
+  <li>当社の作業員は、すべて健康診断を受診させ、健康管理を徹底します。</li>
+  <li>新規入場者に対しては、入場前に必ず安全衛生教育を実施します。</li>
+  <li>作業員は適正な服装、保護具を着用させます。</li>
+  <li>作業に際しては、KY活動を実施し、危険予知に努めます。</li>
+  <li>飲酒、薬物、暴力行為等の禁止を徹底します。</li>
+  <li>労働時間の適正管理及び賃金の適正な支払いを行います。</li>
+  <li>社会保険(雇用保険・健康保険・厚生年金保険)に加入し、加入状況を元請に報告します。</li>
+  <li>暴力団、その他の反社会的勢力との関係は一切ありません。</li>
+  <li>万一、事故・災害が発生した場合は速やかに元請に報告し、当社の責任において対応します。</li>
+</ol>
+
+<table>
+  <tr><th style="width:140px">事業所名</th><td>{{ project.name }}</td></tr>
+  <tr><th>所在地</th><td>{{ project.location|default('') }}</td></tr>
+  <tr><th>工期</th><td>{{ project.start_date|default('') }} ～ {{ project.end_date|default('') }}</td></tr>
+</table>
+
+<div class="signature-block">
+  {{ submission_date|default('　　年　　月　　日') }}<br>
+  会社名: {{ company_name|default('') }}<br>
+  所在地: {{ company_address|default('') }}<br>
+  代表者: {{ representative|default('') }}<span class="stamp">㊞</span>
+</div>
+
+<div class="doc-footer">
+  <span>労務安全等に関する誓約書（全建統一様式 TSK第1号）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

@@ -63,6 +63,8 @@ async def upload_report(
         raise HTTPException(status_code=404, detail="案件が見つかりません")
 
     file_data = await file.read()
+    from services.upload_limits import enforce_max_size, MAX_REPORT_BYTES
+    enforce_max_size(file_data, MAX_REPORT_BYTES, "報告書")
     # upload_file はブロッキングI/O → スレッドプールで実行
     file_key = generate_upload_key(user.tenant_id, project_id, "reports", file.filename or "report.pdf")
     await asyncio.to_thread(upload_file, file_data, file_key, file.content_type or "application/pdf")

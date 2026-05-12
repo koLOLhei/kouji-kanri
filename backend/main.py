@@ -11,7 +11,7 @@
 # currently use cookie-based authentication.
 
 import os
-import re
+import logging
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -28,159 +28,40 @@ from database import Base, engine, SessionLocal
 from models import *  # noqa: F401,F403
 from routers import discover_routers
 from middleware.rate_limit import RateLimitMiddleware
+from middleware.security_headers import SecurityHeadersMiddleware
 from services.seed import seed_initial_data
 from services.tolerance_seed import seed_tolerance_standards
 from services.storage_service import ensure_bucket
 from services.logger import setup_logging
 
-
-# C19: SQL identifier whitelist — table/column names used in _run_migrations are
-# all hardcoded constants, but we validate them anyway to guard against future
-# accidental dynamic values being introduced.
-def _validate_identifier(name: str) -> bool:
-    """Return True only if `name` is a safe SQL identifier (lowercase letters, digits, underscores)."""
-    return bool(re.match(r'^[a-z_][a-z0-9_]*$', name))
-
-
-def _run_migrations(engine):
-    """Add missing columns to existing tables (safe to run repeatedly, idempotent).
-
-    Uses a PostgreSQL advisory lock (pg_advisory_lock) to prevent race
-    conditions when multiple workers start simultaneously.
-    Each column is handled independently so one failure does not abort others.
-
-    TODO: Migrate to Alembic for full schema management.
-    The ``alembic/`` directory already exists (with an empty ``versions/``
-    folder) but ``alembic.ini`` and ``alembic/env.py`` have not been created
-    yet.  Steps to adopt Alembic:
-      1. ``pip install alembic`` (add to requirements.txt)
-      2. ``alembic init alembic`` from the backend directory
-      3. Edit ``alembic/env.py``:
-         - Set ``target_metadata = Base.metadata``
-         - Import all models (``from models import *``)  # noqa: F401
-         - Point ``sqlalchemy.url`` at the DATABASE_URL env var
-      4. ``alembic revision --autogenerate -m "initial"``
-      5. ``alembic upgrade head``
-      6. Replace this function and the ``Base.metadata.create_all`` call in
-         ``lifespan`` with ``alembic upgrade head`` (subprocess or via
-         ``alembic.config.main``).
-    """
-    from sqlalchemy import text, inspect
-    insp = inspect(engine)
-    migrations = [
-        ("phases", "duration_days", "INTEGER"),
-        ("phases", "depends_on", "JSONB"),
-        ("phases", "progress_percent", "INTEGER DEFAULT 0"),
-        ("photos", "work_type", "VARCHAR(100)"),
-        ("photos", "work_subtype", "VARCHAR(100)"),
-        ("photos", "work_detail", "VARCHAR(100)"),
-        ("photos", "photo_category", "VARCHAR(50)"),
-        ("photos", "photo_number", "INTEGER"),
-        ("photos", "checksum", "VARCHAR(64)"),
-        ("reports", "checksum", "VARCHAR(64)"),
-        ("submissions", "checksum", "VARCHAR(64)"),
-        ("submissions", "current_version", "INTEGER"),
-        ("audit_logs", "old_values", "JSONB"),
-        ("audit_logs", "new_values", "JSONB"),
-        # C21: IP address + user-agent in audit logs for forensic traceability
-        ("audit_logs", "ip_address", "VARCHAR(50)"),
-        ("audit_logs", "user_agent", "VARCHAR(500)"),
-        ("users", "token_version", "INTEGER DEFAULT 0 NOT NULL"),
-        # Cost approval columns
-        ("cost_actuals", "approval_required", "BOOLEAN DEFAULT FALSE"),
-        ("cost_actuals", "approved", "BOOLEAN DEFAULT FALSE"),
-        ("cost_actuals", "approved_by", "VARCHAR(36)"),
-        ("cost_actuals", "approved_at", "TIMESTAMP"),
-        # E43: GreenFile extra columns (table itself is created by metadata.create_all)
-        ("green_files", "rejection_reason", "TEXT"),
-        ("green_files", "due_date", "TIMESTAMP"),
-        # F46: Drawing approval workflow columns
-        ("drawings", "drawing_category", "VARCHAR(50)"),
-        ("drawings", "approval_status", "VARCHAR(30) DEFAULT 'draft'"),
-        ("drawings", "approved_by", "VARCHAR(36)"),
-        ("drawings", "approved_at", "TIMESTAMP"),
-        ("drawings", "rejection_reason", "TEXT"),
-    ]
-    with engine.connect() as conn:
-        # Advisory lock prevents race conditions in multi-worker deployments.
-        # Released automatically when the connection closes.
-        conn.execute(text("SELECT pg_advisory_lock(12345)"))
-        try:
-            for table, col, col_type in migrations:
-                # C19: Validate identifier before interpolating into SQL
-                if not _validate_identifier(table) or not _validate_identifier(col):
-                    print(f"[migrate] REJECTED unsafe identifier '{table}'.'{col}'", flush=True)
-                    continue
-                if table in insp.get_table_names():
-                    existing = [c["name"] for c in insp.get_columns(table)]
-                    if col not in existing:
-                        try:
-                            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
-                            conn.commit()
-                            print(f"[migrate] Added {table}.{col}", flush=True)
-                        except Exception as e:
-                            conn.rollback()
-                            print(f"[migrate] Skipped {table}.{col}: {e}", flush=True)
-                    else:
-                        print(f"[migrate] {table}.{col} already exists, skipping", flush=True)
-            # A6: Performance indexes — run after column migrations
-            index_migrations = [
-                "CREATE INDEX IF NOT EXISTS idx_photos_project_id ON photos(project_id)",
-                # photos.tenant_id は存在しない（project_id経由で間接参照）ため削除
-                "CREATE INDEX IF NOT EXISTS idx_daily_reports_project_id ON daily_reports(project_id)",
-                "CREATE INDEX IF NOT EXISTS idx_daily_reports_report_date ON daily_reports(report_date)",
-                "CREATE INDEX IF NOT EXISTS idx_phases_project_id ON phases(project_id)",
-                "CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant_id ON audit_logs(tenant_id)",
-                "CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)",
-                "CREATE INDEX IF NOT EXISTS idx_cost_actuals_project_id ON cost_actuals(project_id)",
-                "CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)",
-                "CREATE INDEX IF NOT EXISTS idx_submissions_project_id ON submissions(project_id)",
-            ]
-            for idx_sql in index_migrations:
-                try:
-                    conn.execute(text(idx_sql))
-                    conn.commit()
-                except Exception as e:
-                    conn.rollback()
-                    print(f"[migrate] Index skipped: {e}", flush=True)
-        finally:
-            conn.execute(text("SELECT pg_advisory_unlock(12345)"))
-            conn.commit()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # G55: Structured JSON logging
     setup_logging()
-    # DB初期化: Alembic → create_all(新テーブル補完) → 手動マイグレーション(レガシー)
+    # DB初期化: Alembicに統一済み (旧 _run_migrations は廃止)
     try:
-        # Alembic migration (primary)
-        try:
-            from alembic.config import Config
-            from alembic import command
-            alembic_cfg = Config(str(Path(__file__).parent / "alembic.ini"))
-            alembic_cfg.set_main_option("script_location", str(Path(__file__).parent / "alembic"))
-            command.upgrade(alembic_cfg, "head")
-            print("[init] Alembic migrations applied", flush=True)
-        except Exception as e:
-            print(f"[init] Alembic migration skipped: {e}", flush=True)
-        # Fallback: create_all for any tables not yet in Alembic
-        Base.metadata.create_all(bind=engine)
-        # Legacy column migrations (will be removed once fully migrated to Alembic)
-        _run_migrations(engine)
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config(str(Path(__file__).parent / "alembic.ini"))
+        alembic_cfg.set_main_option("script_location", str(Path(__file__).parent / "alembic"))
+        command.upgrade(alembic_cfg, "head")
+        logger.info("[init] Alembic migrations applied")
         db = SessionLocal()
         try:
             seed_initial_data(db)
             seed_tolerance_standards(db)
         finally:
             db.close()
-        print("[init] DB setup complete", flush=True)
+        logger.info("[init] DB setup complete")
     except Exception as e:
-        print(f"[Warning] DB setup failed: {e}", flush=True)
+        logger.error(f"[init] DB setup failed: {e}", exc_info=True)
     try:
         ensure_bucket()
     except Exception as e:
-        print(f"[Warning] S3 bucket setup failed: {e}", flush=True)
+        logger.warning(f"[init] S3 bucket setup failed: {e}")
     yield
 
 
@@ -194,11 +75,19 @@ if _sentry_dsn:
     except ImportError:
         print("[init] sentry-sdk not installed, skipping", flush=True)
 
+# 本番では /docs /redoc /openapi.json を無効化（情報漏洩防止）
+# 開発時は環境変数 ENABLE_DOCS=1 で明示的に有効化
+_is_prod = bool(os.environ.get("RENDER") or os.environ.get("PRODUCTION"))
+_enable_docs = os.environ.get("ENABLE_DOCS") == "1" or not _is_prod
+
 app = FastAPI(
     title="工事管理SaaS",
     description="公共建築工事 案件管理・写真管理・書類自動生成プラットフォーム",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if _enable_docs else None,
+    redoc_url="/redoc" if _enable_docs else None,
+    openapi_url="/openapi.json" if _enable_docs else None,
 )
 
 # CORS
@@ -218,6 +107,9 @@ app.add_middleware(
 
 # Rate limiting (applied after CORS so CORS headers are still set on 429 responses)
 app.add_middleware(RateLimitMiddleware)
+
+# Security headers (OWASP set: X-Frame-Options, CSP, HSTS, etc.)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # API Versioning (E38):
 # Current API is v1. All routes are served at /api/* which corresponds to /api/v1/*.

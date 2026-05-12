@@ -243,8 +243,9 @@ export default function DashboardPage() {
     }
   };
 
-  const SortHeader = ({ k, label }: { k: SortKey; label: string }) => (
+  const renderSortHeader = (k: SortKey, label: string) => (
     <th
+      key={k}
       className="px-3 py-2 text-left text-xs font-semibold text-gray-500 cursor-pointer hover:text-gray-800 whitespace-nowrap"
       onClick={() => toggleSort(k)}
     >
@@ -353,14 +354,14 @@ export default function DashboardPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <SortHeader k="project_name" label="案件名" />
-                <SortHeader k="status" label="ステータス" />
-                <SortHeader k="progress" label="進捗" />
-                <SortHeader k="budget" label="予算" />
-                <SortHeader k="actual_cost" label="実績" />
-                <SortHeader k="cost_rate" label="消化率" />
-                <SortHeader k="incident_count" label="安全事故" />
-                <SortHeader k="document_completion_rate" label="書類完了率" />
+                {renderSortHeader("project_name", "案件名")}
+                {renderSortHeader("status", "ステータス")}
+                {renderSortHeader("progress", "進捗")}
+                {renderSortHeader("budget", "予算")}
+                {renderSortHeader("actual_cost", "実績")}
+                {renderSortHeader("cost_rate", "消化率")}
+                {renderSortHeader("incident_count", "安全事故")}
+                {renderSortHeader("document_completion_rate", "書類完了率")}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useMemo, useCallback } from "react";
-import { ChevronRight, ChevronDown, AlertTriangle, Move } from "lucide-react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -279,6 +279,9 @@ export default function GanttChart({
       }
     }
     return result;
+    // barX/barWidth はモジュールレベル定数 chartStart/pxPerDay に依存する純粋関数なので
+    // それらの引数だけ deps に入れれば十分（React Compiler の自動再計算と互換）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visiblePhases, phases, chartStart, pxPerDay]);
 
   const svgHeight = HEADER_HEIGHT + visiblePhases.length * ROW_HEIGHT + 40;
@@ -311,7 +314,7 @@ export default function GanttChart({
   );
 
   const handleSvgMouseUp = useCallback(
-    (e: React.MouseEvent<SVGSVGElement>) => {
+    (_e: React.MouseEvent<SVGSVGElement>) => {
       if (!dragState || !onPhaseMove) {
         setDragState(null);
         return;

@@ -33,10 +33,20 @@ def get_db():
         db.close()
 
 
+import re as _re
+_SCHEMA_NAME_RE = _re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
+
+
 def get_tenant_db(schema_name: str):
-    """Get a DB session scoped to a tenant's schema."""
+    """Get a DB session scoped to a tenant's schema.
+
+    schema_name は SQL identifier として安全な形式に限定（SQLi 防止）。
+    """
+    if not _SCHEMA_NAME_RE.match(schema_name):
+        raise ValueError(f"Unsafe schema_name: {schema_name!r}")
     db = SessionLocal()
     try:
+        # validation を通っているので識別子として安全に補間できる
         db.execute(text(f"SET search_path TO {schema_name}, public"))
         yield db
     finally:

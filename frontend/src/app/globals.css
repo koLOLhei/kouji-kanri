@@ -125,10 +125,13 @@ html { scroll-behavior: smooth; }
 
 /* ====================================
    Outdoor Mode - larger touch targets,
-   higher contrast, bigger fonts
+   higher contrast, bigger fonts, bolder weights
+   太陽光下の現場で読めるように、コントラスト・文字サイズ・ウェイト全部を強化
    ==================================== */
 .outdoor-mode {
   font-size: 18px;
+  /* 全体を太字寄りに（手袋した職人の指でも読みやすく） */
+  font-weight: 500;
 }
 .outdoor-mode button,
 .outdoor-mode a,
@@ -136,34 +139,75 @@ html { scroll-behavior: smooth; }
 .outdoor-mode select {
   min-height: 60px;
   min-width: 60px;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  /* タップ判定領域を広げる */
+  padding: 0.65rem 1rem;
 }
 .outdoor-mode textarea {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  font-weight: 500;
+  min-height: 6rem;
 }
 .outdoor-mode .text-sm {
-  font-size: 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 .outdoor-mode .text-xs {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 .outdoor-mode .text-base {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 .outdoor-mode .text-lg {
-  font-size: 1.3rem;
+  font-size: 1.4rem;
+  font-weight: 700;
 }
 .outdoor-mode .text-xl {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
+  font-weight: 700;
 }
 .outdoor-mode .text-2xl {
-  font-size: 1.75rem;
+  font-size: 1.85rem;
+  font-weight: 700;
 }
-/* Higher contrast text */
-.outdoor-mode .text-gray-400 { color: #4b5563; }
-.outdoor-mode .text-gray-500 { color: #374151; }
-.outdoor-mode .text-slate-400 { color: #475569; }
-.outdoor-mode .text-slate-500 { color: #334155; }
+.outdoor-mode .text-3xl {
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+/* グレー文字を黒寄りにして太陽光下でも読める */
+.outdoor-mode .text-gray-400 { color: #1f2937; font-weight: 600; }
+.outdoor-mode .text-gray-500 { color: #111827; font-weight: 600; }
+.outdoor-mode .text-gray-600 { color: #000000; font-weight: 600; }
+.outdoor-mode .text-slate-400 { color: #1e293b; font-weight: 600; }
+.outdoor-mode .text-slate-500 { color: #0f172a; font-weight: 600; }
+/* 主要ボタンのコントラスト強化 */
+.outdoor-mode .bg-blue-600 { background-color: #1d4ed8; box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+.outdoor-mode .bg-blue-500 { background-color: #1e40af; box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+.outdoor-mode .bg-green-600 { background-color: #047857; box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+.outdoor-mode .bg-red-600 { background-color: #b91c1c; box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+.outdoor-mode .bg-amber-500 { background-color: #c2410c; box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+/* 入力枠を太く */
+.outdoor-mode input[type="text"],
+.outdoor-mode input[type="number"],
+.outdoor-mode input[type="email"],
+.outdoor-mode input[type="tel"],
+.outdoor-mode input[type="password"],
+.outdoor-mode input[type="date"],
+.outdoor-mode input[type="time"],
+.outdoor-mode select,
+.outdoor-mode textarea {
+  border-width: 2px !important;
+  border-color: #1f2937 !important;
+}
+.outdoor-mode input:focus,
+.outdoor-mode select:focus,
+.outdoor-mode textarea:focus {
+  outline: 3px solid #1d4ed8 !important;
+  outline-offset: 1px;
+}
 
 /* ===== Print Styles ===== */
 @media print {

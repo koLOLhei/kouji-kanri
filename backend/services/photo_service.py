@@ -1,9 +1,12 @@
 """Photo processing service (EXIF, thumbnails)."""
 
+import logging
 from io import BytesIO
 from datetime import datetime
 
 from PIL import Image, ExifTags
+
+logger = logging.getLogger(__name__)
 
 
 def extract_exif(image_data: bytes) -> dict:
@@ -31,16 +34,16 @@ def extract_exif(image_data: bytes) -> dict:
         if date_str and isinstance(date_str, str):
             try:
                 result["taken_at"] = datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S")
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug(f"[photo] EXIF date parse failed for {date_str!r}: {e}")
 
         # GPS
         gps_info = exif.get("GPSInfo")
         if gps_info:
             result["gps_lat"] = _convert_gps(gps_info.get(2), gps_info.get(1))
             result["gps_lng"] = _convert_gps(gps_info.get(4), gps_info.get(3))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[photo] EXIF extraction failed: {e}")
 
     return result
 
@@ -95,5 +98,5 @@ def create_optimized_version(image_data: bytes, max_width: int = 1920) -> bytes:
         img.save(buf, format="WEBP", quality=85)
         return buf.getvalue()
     except Exception as e:
-        print(f"[photo_service] create_optimized_version failed: {e}", flush=True)
+        logger.warning(f"[photo_service] create_optimized_version failed: {e}")
         return image_data

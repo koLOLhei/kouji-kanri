@@ -15,7 +15,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { apiFetch, formatAmount, formatDate } from "@/lib/utils";
+import { apiFetch, formatAmount } from "@/lib/utils";
 
 const BUILDING_TYPES = [
   "オフィス",

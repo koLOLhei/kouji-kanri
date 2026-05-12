@@ -18,7 +18,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { apiFetch, formatDate, statusLabel, statusColor } from "@/lib/utils";
+import { apiFetch, statusLabel, statusColor } from "@/lib/utils";
 
 interface DashboardData {
   fulfillment_rate: number;

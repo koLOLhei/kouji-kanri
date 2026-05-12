@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 12mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #dc2626; padding: 4px 0; margin-bottom: 5px; letter-spacing: 4px; }
+.subtitle { text-align: center; font-size: 9pt; color: #555; margin-bottom: 6px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 9pt; vertical-align: top; }
+th { background: #fee2e2; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #dc2626; padding: 2px 7px; margin: 8px 0 4px; background: #fff1f1; }
+.center { text-align: center; }
+.legend-box { border: 1px solid #999; padding: 6px 8px; font-size: 8pt; margin: 4px 0; background: #fafafa; }
+.legend-table { width: auto; }
+.legend-table th, .legend-table td { padding: 2px 6px; font-size: 8pt; }
+.risk-small { background: #d1fae5; color: #047857; font-weight: bold; }
+.risk-mid { background: #fef3c7; color: #b45309; font-weight: bold; }
+.risk-large { background: #fee2e2; color: #b91c1c; font-weight: bold; }
+.check-list { font-size: 9pt; margin: 6px 0; padding-left: 6px; }
+.signature-row { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
+.sign-box { border: 1px solid #333; width: 90px; height: 32px; text-align: center; padding-top: 6px; font-size: 8pt; }
+.doc-footer { margin-top: 8px; border-top: 1px solid #999; padding-top: 3px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="doc-title">KY活動表（リスク見積足し算式）</div>
+<div class="subtitle">作業開始前に必ず実施すること</div>
+
+<table>
+  <tr>
+    <th style="width:60px">月　日</th><td style="width:80px" class="center">{{ activity_date|default('　月　日') }}（{{ day_of_week|default('') }}）</td>
+    <th style="width:50px">天候</th><td style="width:60px" class="center">{{ weather|default('') }}</td>
+    <th style="width:60px">社　名</th><td>{{ company_name|default('') }}</td>
+    <th style="width:50px">元請</th><td>{{ general_contractor|default('') }}</td>
+    <th style="width:50px">職長</th><td>{{ leader|default('') }}</td>
+  </tr>
+  <tr>
+    <th>作業内容</th><td colspan="7">{{ work_content|default('') }}</td>
+  </tr>
+</table>
+
+<div class="legend-box">
+  <strong>リスク見積（足し算式）</strong>　可能性 ＋ 重大性 ＝ 評価
+  <table class="legend-table" style="margin-top:3px;">
+    <tr>
+      <th>可能性</th><td>1: ごくまれ</td><td>2: ときには</td><td>3: ありがち</td>
+      <th>重大性</th><td>1: 軽傷</td><td>2: 中度</td><td>3: 重度</td>
+      <th>評価</th>
+      <td class="risk-small">3以下: 小さい</td>
+      <td class="risk-mid">4: 中程度</td>
+      <td class="risk-large">5以上: 大きい</td>
+    </tr>
+  </table>
+</div>
+
+<h2>潜在危険・リスク評価・対策</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="width:25px">No.</th>
+      <th>この作業の潜在危険</th>
+      <th style="width:50px">可能性<br>(1-3)</th>
+      <th style="width:50px">重大性<br>(1-3)</th>
+      <th style="width:55px">評価</th>
+      <th style="width:65px">リスクの<br>大きさ</th>
+      <th>だから私たちはこうする（対策）</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for h in hazards|default([], true) %}
+    {% set total = (h.possibility|default(0))|int + (h.severity|default(0))|int %}
+    {% set risk_class = 'risk-small' if total <= 3 else ('risk-mid' if total == 4 else 'risk-large') %}
+    {% set risk_label = '小さい' if total <= 3 else ('中程度' if total == 4 else '大きい') %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ h.description|default('') }}</td>
+      <td class="center">{{ h.possibility|default('') }}</td>
+      <td class="center">{{ h.severity|default('') }}</td>
+      <td class="center {{ risk_class }}">{{ total if total > 0 else '' }}</td>
+      <td class="center {{ risk_class }}">{{ risk_label if total > 0 else '' }}</td>
+      <td>{{ h.countermeasure|default('') }}</td>
+    </tr>
+    {% else %}
+    {% for i in range(3) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>　</td><td></td><td></td><td></td><td></td><td>　</td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>朝礼確認事項（作業前チェック）</h2>
+<div class="check-list">
+  <div>{% if check_site_safety %}✓{% else %}□{% endif %} 現地の安全確認は実施したか</div>
+  <div>{% if check_health %}✓{% else %}□{% endif %} 体調不良者はいないか（無し / 対処済）</div>
+  <div>{% if check_clothing %}✓{% else %}□{% endif %} 服装・装備は万全か</div>
+  <div>{% if check_weather %}✓{% else %}□{% endif %} 天候・視界に問題はないか</div>
+  <div>{% if check_schedule %}✓{% else %}□{% endif %} 事前の予定と異なった要素はないか（無し / 対処済）</div>
+</div>
+
+<h2>コメント・特記事項</h2>
+<div style="border:1px solid #999; min-height:30px; padding:4px; font-size:9pt;">{{ comment|default('') }}</div>
+
+<h2>参加作業員名・サイン</h2>
+<table>
+  <thead>
+    <tr>
+      <th colspan="2">作業員名</th>
+      <th>サイン</th>
+      <th colspan="2">作業員名</th>
+      <th>サイン</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set workers_list = workers|default([], true) %}
+    {% set rows = (workers_list|length // 2) + (1 if workers_list|length % 2 else 0) %}
+    {% set min_rows = 6 if rows < 6 else rows %}
+    {% for i in range(min_rows) %}
+    <tr>
+      <td class="center" style="width:25px">{{ (i*2)+1 }}</td>
+      <td>{{ workers_list[i*2].name if (i*2) < workers_list|length else '' }}</td>
+      <td style="width:80px"></td>
+      <td class="center" style="width:25px">{{ (i*2)+2 }}</td>
+      <td>{{ workers_list[(i*2)+1].name if (i*2+1) < workers_list|length else '' }}</td>
+      <td style="width:80px"></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="signature-row">
+  <div class="sign-box">職長　㊞</div>
+  <div class="sign-box">元請　㊞</div>
+</div>
+
+<div class="doc-footer">
+  <span>KY活動表（リスク見積足し算式）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }}</span>
+</div>
+</body>
+</html>

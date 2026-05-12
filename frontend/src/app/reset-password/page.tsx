@@ -5,7 +5,7 @@
  * Sends POST /api/auth/reset-password with token + new password.
  */
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Building2, ArrowLeft, KeyRound, CheckCircle, Eye, EyeOff } from "lucide-react";

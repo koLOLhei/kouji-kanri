@@ -139,6 +139,7 @@ const FEATURE_GROUPS = [
       { key: "waste",              label: "廃棄物",   subtitle: "廃棄物マニフェストの管理",    icon: AlertTriangle, bg: "bg-stone-50",  ring: "ring-stone-200",   iconColor: "text-stone-600" },
       { key: "invoices",          label: "請求・支払", subtitle: "請求書・支払通知書の管理",   icon: DollarSign,   bg: "bg-emerald-50", ring: "ring-emerald-200", iconColor: "text-emerald-600" },
       { key: "filings",           label: "届出",     subtitle: "官公庁届出の管理",            icon: FileImage,    bg: "bg-cyan-50",    ring: "ring-cyan-200",    iconColor: "text-cyan-600" },
+      { key: "green-file",        label: "書類生成",  subtitle: "作業員名簿・施工計画書・見積書等の自動生成",   icon: FileImage,    bg: "bg-lime-50",    ring: "ring-lime-200",    iconColor: "text-lime-600" },
       { key: "environment",       label: "環境測定",  subtitle: "騒音・振動・WBGT測定",        icon: AlertTriangle, bg: "bg-orange-50", ring: "ring-orange-200",  iconColor: "text-orange-600" },
       { key: "handover",          label: "引渡品",    subtitle: "鍵・取説・保証書の管理",       icon: Package,      bg: "bg-blue-50",    ring: "ring-blue-200",    iconColor: "text-blue-600" },
       { key: "traceability",      label: "トレーサビリティ", subtitle: "材料の使用箇所追跡",    icon: Search,       bg: "bg-violet-50",  ring: "ring-violet-200",  iconColor: "text-violet-600" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   syncOfflineQueue as _syncOfflineQueue,
   getOfflineQueueCount as _getOfflineQueueCount,
@@ -25,28 +25,30 @@ export {
    Hooks
    ============================================================ */
 
+function _subscribeOnline(callback: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handleOnline = () => {
+    _syncOfflineQueue().catch(() => {});
+    callback();
+  };
+  window.addEventListener("online", handleOnline);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", handleOnline);
+    window.removeEventListener("offline", callback);
+  };
+}
+
+function _getOnlineSnapshot(): boolean {
+  return typeof navigator !== "undefined" ? navigator.onLine : true;
+}
+
+function _getOnlineServerSnapshot(): boolean {
+  return true;
+}
+
 export function useOnlineStatus(): boolean {
-  const [online, setOnline] = useState<boolean>(
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
-
-  useEffect(() => {
-    const handleOnline = () => {
-      setOnline(true);
-      // Auto-sync when back online
-      _syncOfflineQueue().catch(() => {});
-    };
-    const handleOffline = () => setOnline(false);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
-
-  return online;
+  return useSyncExternalStore(_subscribeOnline, _getOnlineSnapshot, _getOnlineServerSnapshot);
 }
 
 export function useOfflineQueueCount(): number {
@@ -58,7 +60,10 @@ export function useOfflineQueueCount(): number {
     setCount(c);
   }, []);
 
+  // refresh() is intentionally called from effects when online state flips —
+  // it updates the count via setState, but only because online state actually changed.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
   }, [online, refresh]);
 

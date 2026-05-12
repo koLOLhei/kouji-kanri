@@ -1,6 +1,6 @@
 """Corrective action / NCR (是正処置) router."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -56,7 +56,7 @@ class VerifyRequest(BaseModel):
 # ---------- Endpoints ----------
 
 def _next_ncr_number(db: Session, project_id: str) -> str:
-    verify_project_access(project_id, user, db)
+    """Generate next NCR number. Caller must call verify_project_access first."""
     max_num = db.query(func.count(CorrectiveAction.id)).filter(
         CorrectiveAction.project_id == project_id
     ).scalar()

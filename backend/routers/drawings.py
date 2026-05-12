@@ -110,7 +110,18 @@ def get_drawing(
     revisions = db.query(DrawingRevision).filter(
         DrawingRevision.drawing_id == drawing_id
     ).order_by(DrawingRevision.revision_number.desc()).all()
-    return {"drawing": drawing, "revisions": revisions}
+
+    # 各 revision に署名付きURLを付与（フロントの PDF ビューアが直接読める）
+    from services.storage_service import generate_presigned_url
+    rev_dicts = []
+    for rev in revisions:
+        d = {c.name: getattr(rev, c.name) for c in rev.__table__.columns}
+        d["download_url"] = generate_presigned_url(rev.file_key) if rev.file_key else None
+        d["thumbnail_url"] = (
+            generate_presigned_url(rev.thumbnail_key) if rev.thumbnail_key else None
+        )
+        rev_dicts.append(d)
+    return {"drawing": drawing, "revisions": rev_dicts}
 
 
 @router.put("/{drawing_id}")

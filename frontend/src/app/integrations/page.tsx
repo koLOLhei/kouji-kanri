@@ -11,15 +11,12 @@ import {
   Check,
   Globe,
   Key,
-  Link2,
   Loader2,
   Plus,
   Shield,
   Trash2,
   Webhook,
   X,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import Link from "next/link";
 

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.5; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #dc2626; padding: 6px 0; margin-bottom: 8px; letter-spacing: 2px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+th, td { border: 1px solid #333; padding: 4px 6px; font-size: 9.5pt; vertical-align: top; }
+th { background: #fee2e2; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10.5pt; font-weight: bold; border-left: 4px solid #dc2626; padding: 2px 7px; margin: 12px 0 5px; background: #fff1f1; }
+.center { text-align: center; }
+.permit-block { border: 2px solid #dc2626; padding: 8px; margin-top: 14px; }
+.signature-block { margin-top: 20px; text-align: right; line-height: 1.9; }
+.stamp { display: inline-block; width: 46px; height: 46px; border: 1px solid #333; line-height: 46px; text-align: center; margin-left: 6px; }
+.doc-footer { margin-top: 14px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">全建統一様式 第8号</div>
+<div class="doc-title">火気使用願</div>
+
+<table>
+  <tr><th style="width:120px">工事名称</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr><th>工事場所</th><td colspan="3">{{ project.location|default('') }}</td></tr>
+  <tr>
+    <th>申請会社</th><td>{{ company_name|default('') }}</td>
+    <th style="width:120px">作業責任者</th><td>{{ responsible_person|default('') }}</td>
+  </tr>
+</table>
+
+<h2>火気使用作業の概要</h2>
+<table>
+  <tr>
+    <th style="width:120px">使用日時</th><td>{{ start_datetime|default('　　年　　月　　日　　時 ～') }} {{ end_datetime|default('　　月　　日　　時') }}</td>
+  </tr>
+  <tr>
+    <th>使用場所</th><td>{{ location|default('') }}</td>
+  </tr>
+  <tr>
+    <th>作業内容</th><td>{{ work_description|default('') }}</td>
+  </tr>
+  <tr>
+    <th>使用火気の種類</th>
+    <td>
+      {{ fire_types|default('□ガス溶接  □アーク溶接  □ガスバーナー  □酸素アセチレン  □はんだ  □その他') }}
+    </td>
+  </tr>
+  <tr>
+    <th>取扱者氏名</th><td>{{ operators|default('') }}</td>
+  </tr>
+  <tr>
+    <th>取扱者資格</th><td>{{ operator_qualifications|default('') }}</td>
+  </tr>
+</table>
+
+<h2>火災防止対策</h2>
+<table>
+  <tr><th style="width:140px">可燃物の除去</th><td>{{ flammable_removal|default('□実施  □養生  □半径　　ｍ以内') }}</td></tr>
+  <tr><th>不燃シートの設置</th><td>{{ noncombustible_sheet|default('□有  □無') }}</td></tr>
+  <tr><th>消火器の設置</th><td>{{ extinguisher|default('種類:        本数:    本') }}</td></tr>
+  <tr><th>監視員</th><td>{{ watchman|default('氏名:                立会場所:') }}</td></tr>
+  <tr><th>作業後の点検</th><td>{{ post_check|default('作業終了後30分以上、火種・残熱の有無を点検する') }}</td></tr>
+  <tr><th>消防署への届出</th><td>{{ fire_dept_notice|default('□必要  □不要') }}</td></tr>
+  <tr><th>その他特記事項</th><td>{{ notes|default('') }}</td></tr>
+</table>
+
+<div class="permit-block">
+  <div style="display: flex; justify-content: space-around; align-items: center;">
+    <div style="text-align:center;">
+      <div style="font-weight:bold;margin-bottom:6px;">許可印</div>
+      <div style="border:1px solid #333;width:80px;height:80px;display:inline-block;line-height:80px;">㊞</div>
+      <div style="font-size:9pt;margin-top:4px;">元方安全衛生管理者</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-weight:bold;margin-bottom:6px;">承認印</div>
+      <div style="border:1px solid #333;width:80px;height:80px;display:inline-block;line-height:80px;">㊞</div>
+      <div style="font-size:9pt;margin-top:4px;">所長</div>
+    </div>
+  </div>
+</div>
+
+<div class="signature-block">
+  {{ submission_date|default('　　年　　月　　日') }}<br>
+  申請会社: {{ company_name|default('') }}<br>
+  作業責任者: {{ responsible_person|default('') }}<span class="stamp">㊞</span>
+</div>
+
+<div class="doc-footer">
+  <span>火気使用願（全建統一様式 第8号）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, Plus, X, Info } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+
 import { apiFetch } from '@/lib/utils';
 
 interface SpecialSpec {
@@ -31,7 +31,7 @@ const PRIORITY_ORDER = [
 
 export default function SpecialSpecsPage() {
   const { id: projectId } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -46,7 +46,7 @@ export default function SpecialSpecsPage() {
     queryFn: () => apiFetch(`/api/projects/${projectId}/special-specs`),
   });
 
-  const { data: priorityList } = useQuery<PriorityItem[]>({
+  const { data: _priorityList } = useQuery<PriorityItem[]>({
     queryKey: ['special-specs-priority', projectId],
     queryFn: () => apiFetch(`/api/projects/${projectId}/special-specs/priority-list`),
   });

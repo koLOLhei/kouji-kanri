@@ -67,6 +67,21 @@ export default function ScanPage() {
       });
       setResult(checkin);
       setStatus("success");
+
+      // 1タップ撮影フローへ自動遷移（職人がQR→即撮影できるように）
+      // 現場に「写真撮影」用QRが多いことを想定し、QRに `next=capture` 指定があれば自動で撮影画面へ
+      const next = qrData?.label?.includes("撮影") || qrData?.label?.includes("photo")
+        ? "capture"
+        : null;
+      if (next === "capture" && checkin.project_id) {
+        const params = new URLSearchParams({
+          project_id: checkin.project_id,
+          ...(checkin.phase_id ? { phase_id: checkin.phase_id } : {}),
+          ...(checkin.location ? { location: checkin.location } : {}),
+          autostart: "1",
+        });
+        setTimeout(() => router.push(`/capture?${params.toString()}`), 800);
+      }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "チェックインに失敗しました");
       setStatus("error");
@@ -186,15 +201,19 @@ export default function ScanPage() {
                 </button>
               )}
               <button
-                onClick={() =>
-                  router.push(
-                    `/capture?project_id=${result.project_id}${result.phase_id ? `&phase_id=${result.phase_id}` : ""}`
-                  )
-                }
-                className="bg-white rounded-xl shadow-sm p-4 text-center hover:bg-gray-50 transition-colors"
+                onClick={() => {
+                  const params = new URLSearchParams({
+                    project_id: result.project_id,
+                    autostart: "1",
+                    ...(result.phase_id ? { phase_id: result.phase_id } : {}),
+                    ...(result.location ? { location: result.location } : {}),
+                  });
+                  router.push(`/capture?${params.toString()}`);
+                }}
+                className="bg-blue-600 text-white rounded-xl shadow-sm p-4 text-center hover:bg-blue-700 transition-colors"
               >
                 <div className="text-xl mb-1">📷</div>
-                <div className="text-xs font-semibold text-gray-700">写真撮影</div>
+                <div className="text-xs font-semibold">写真撮影</div>
               </button>
               <button
                 onClick={handleReset}

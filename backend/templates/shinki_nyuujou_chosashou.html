@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 12mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9pt; color: #1a1a1a; margin: 0; line-height: 1.35; }
+.doc-title { font-size: 14pt; font-weight: bold; text-align: center; border: 2px solid #dc2626; padding: 5px 0; margin-bottom: 6px; letter-spacing: 3px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 3px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+th, td { border: 1px solid #333; padding: 3px 5px; font-size: 9pt; vertical-align: top; }
+th { background: #fee2e2; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 10pt; font-weight: bold; border-left: 4px solid #dc2626; padding: 2px 7px; margin: 10px 0 4px; background: #fff1f1; }
+.center { text-align: center; }
+.choice { display: inline-block; margin-right: 12px; }
+.pledge-box { border: 2px solid #333; padding: 8px 12px; margin-top: 8px; font-size: 9pt; }
+.pledge-box ul { margin: 4px 0; padding-left: 20px; }
+.pledge-box li { margin: 3px 0; }
+.signature-area { display: flex; justify-content: flex-end; gap: 14px; margin-top: 12px; }
+.stamp-box { width: 60px; height: 60px; border: 1px solid #333; line-height: 60px; text-align: center; font-size: 8pt; }
+.doc-footer { margin-top: 10px; border-top: 1px solid #999; padding-top: 3px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">全建統一参考様式 第4号</div>
+<div class="doc-title">新規入場者調査票</div>
+
+<table>
+  <tr>
+    <th style="width:100px">新規入場日</th><td>{{ entry_date|default('　　年　　月　　日') }}</td>
+    <th style="width:80px">作業所</th><td>{{ project.name }}</td>
+    <th style="width:60px">元請</th><td>{{ general_contractor|default('') }}</td>
+  </tr>
+</table>
+
+<h2>本人情報</h2>
+<table>
+  <tr>
+    <th rowspan="2" style="width:90px">ふりがな<br>氏　名</th>
+    <td rowspan="2">{{ furigana|default('') }}<br><strong>{{ name|default('') }}</strong></td>
+    <th style="width:90px">生年月日</th><td>{{ birthdate|default('　　年　　月　　日') }}（{{ age|default('') }}歳）</td>
+    <th style="width:60px">血液型</th><td>{{ blood_type|default('') }} 型</td>
+  </tr>
+  <tr>
+    <th>性別</th><td colspan="3">{{ gender|default('□男　□女') }}</td>
+  </tr>
+  <tr>
+    <th>現住所</th><td colspan="5">{{ address|default('') }}</td>
+  </tr>
+  <tr>
+    <th>TEL</th><td colspan="5">{{ phone|default('') }}</td>
+  </tr>
+</table>
+
+<h2>緊急連絡先</h2>
+<table>
+  <tr>
+    <th style="width:80px">氏　名</th><td>{{ emergency_name|default('') }}</td>
+    <th style="width:60px">続柄</th><td>{{ emergency_relation|default('') }}</td>
+    <th style="width:80px">電話番号</th><td>{{ emergency_phone|default('') }}</td>
+  </tr>
+  <tr>
+    <th>現住所</th><td colspan="5">{{ emergency_address|default('') }}</td>
+  </tr>
+</table>
+
+<h2>雇用情報</h2>
+<table>
+  <tr>
+    <th style="width:90px">事業者名</th><td colspan="3">{{ employer_name|default('') }}（{{ employer_tier|default('一') }}次）</td>
+    <th style="width:80px">雇用年月日</th><td>{{ employment_date|default('　　年　　月　　日') }}</td>
+  </tr>
+  <tr>
+    <th>所属会社</th><td colspan="5">{{ affiliated_company|default('') }}</td>
+  </tr>
+  <tr>
+    <th>雇用契約書</th>
+    <td>
+      <span class="choice">{% if employment_contract %}■{% else %}□{% endif %} 取り交わし済み</span>
+      <span class="choice">{% if not employment_contract %}■{% else %}□{% endif %} 未　だ</span>
+    </td>
+    <th style="width:60px">職　種</th><td colspan="3">{{ job_type|default('') }}　工</td>
+  </tr>
+</table>
+
+<h2>アンケート</h2>
+<table>
+  <tr>
+    <td style="width:55%">あなたは一人親方・中小事業主ですか</td>
+    <td>
+      <span class="choice">{% if is_owner %}■{% else %}□{% endif %} はい</span>
+      <span class="choice">{% if not is_owner %}■{% else %}□{% endif %} いいえ</span>
+    </td>
+  </tr>
+  <tr>
+    <td>上記「はい」の方は、労災保険の特別加入していますか</td>
+    <td>
+      <span class="choice">{% if rosai_special %}■{% else %}□{% endif %} している</span>
+      <span class="choice">{% if not rosai_special %}■{% else %}□{% endif %} 未加入</span>
+    </td>
+  </tr>
+  <tr>
+    <td>建設現場で働きはじめてどのくらいになりますか</td>
+    <td>{{ work_years|default('□ 1年以内　□ 1〜3年　□ 3年以上') }}</td>
+  </tr>
+  <tr>
+    <td>健康診断を受けましたか</td>
+    <td>{{ health_check|default('□ 受けた（　　年　　月）　□ 受けていない') }}</td>
+  </tr>
+  <tr>
+    <td>最近の健康状態はどうですか</td>
+    <td>{{ health_status|default('□ よい　□ まあまあである　□ あまりよくない') }}</td>
+  </tr>
+  <tr>
+    <td>この現場へ来る前に事業主から送り出し教育を受けてきましたか</td>
+    <td>
+      <span class="choice">{% if received_dispatch_edu %}■{% else %}□{% endif %} はい</span>
+      <span class="choice">{% if not received_dispatch_edu %}■{% else %}□{% endif %} いいえ</span>
+    </td>
+  </tr>
+  <tr>
+    <td>建設業退職金共済手帳等を持っていますか</td>
+    <td>
+      <span class="choice">{% if has_taishokukin %}■{% else %}□{% endif %} 持っている</span>
+      <span class="choice">{% if not has_taishokukin %}■{% else %}□{% endif %} いない</span>
+    </td>
+  </tr>
+</table>
+<p style="font-size:8pt;color:#666;">☆持っていない方は、会社を通じて、共済手帳の発行を受けてください。</p>
+
+<h2>資格</h2>
+<table>
+  <tr>
+    <th style="width:130px">免許</th>
+    <td>{{ licenses|default('□ クレーン運転士(5t以上)　□ 移動式クレーン運転士　□ その他（　　　　　）') }}</td>
+  </tr>
+  <tr>
+    <th>技能講習（作業主任者）</th>
+    <td>{{ skill_training_supervisor|default('') }}</td>
+  </tr>
+  <tr>
+    <th>技能講習（就業制限業務）</th>
+    <td>{{ skill_training_restricted|default('') }}</td>
+  </tr>
+  <tr>
+    <th>特別教育及び準ずる教育等</th>
+    <td>{{ special_education|default('') }}</td>
+  </tr>
+</table>
+
+<div class="pledge-box">
+  <strong>【 誓約書 】</strong>
+  <ul>
+    <li>私は、送出し教育、当作業所入場時教育を受けました。</li>
+    <li>作業所の遵守事項や安全基準を遵守し、自分の身を守り、また周囲の人の安全にも気を配り作業します。</li>
+    <li>上記教育訓練にて受講したISOに関する内容（社長方針、作業所目標等）を理解し作業します。</li>
+    <li>どんな小さなケガでも、必ず当日に報告します。危険箇所や有害箇所を発見したときは、直ちに安全衛生責任者もしくは元請職員等に連絡します。</li>
+    <li>個人情報の取扱いについて、了承しました。</li>
+  </ul>
+</div>
+
+<div class="signature-area">
+  <div style="text-align:center;">
+    <div>回答者自筆サイン</div>
+    <div style="border-bottom:1px solid #333; width:160px; height:30px; margin:4px 0;">{{ signature|default('') }}</div>
+  </div>
+  <div style="text-align:center;">
+    <div class="stamp-box">㊞</div>
+  </div>
+</div>
+
+<div class="doc-footer">
+  <span>新規入場者調査票（全建統一参考様式 第4号）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }}</span>
+</div>
+</body>
+</html>

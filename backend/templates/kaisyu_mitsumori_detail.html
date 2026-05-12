@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 14mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 9.5pt; color: #1a1a1a; margin: 0; line-height: 1.4; }
+.doc-title { font-size: 16pt; font-weight: bold; text-align: center; padding: 8px 0; margin-bottom: 8px; letter-spacing: 6px; }
+.doc-subtitle { text-align: center; font-size: 10pt; margin-bottom: 14px; color: #555; }
+.cover-info { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.cover-info th, .cover-info td { border: 1px solid #333; padding: 5px 8px; font-size: 9.5pt; vertical-align: top; }
+.cover-info th { background: #e8eaf0; width: 110px; text-align: center; font-weight: bold; }
+.amount-row { background: #fef3c7; }
+.amount-row th, .amount-row td { padding: 8px 10px; font-size: 11pt; font-weight: bold; }
+table.detail { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 8.5pt; }
+table.detail th, table.detail td { border: 1px solid #333; padding: 3px 5px; vertical-align: top; }
+table.detail th { background: #dbeafe; font-weight: bold; text-align: center; white-space: nowrap; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.right { text-align: right; }
+.center { text-align: center; }
+h2 { font-size: 11pt; font-weight: bold; border-left: 5px solid #1e40af; padding: 3px 8px; margin: 14px 0 5px; background: #eff6ff; }
+.subtotal-row td { background: #f1f5f9; font-weight: bold; }
+.section-row td { background: #1e40af; color: white; font-weight: bold; }
+.page-break { page-break-before: always; }
+.doc-footer { margin-top: 14px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<!-- ── 大表紙 ── -->
+<div class="doc-title">御　見　積　書</div>
+<div class="doc-subtitle">{{ project.name }}</div>
+
+<table class="cover-info">
+  <tr>
+    <th>御中</th><td colspan="3">{{ client_name|default(project.client_name|default('')) }} 様</td>
+  </tr>
+  <tr>
+    <th>工事名称</th><td colspan="3">{{ project.name }}</td>
+  </tr>
+  <tr>
+    <th>工事場所</th><td colspan="3">{{ project.location|default('') }}</td>
+  </tr>
+  <tr>
+    <th>工期</th><td>{{ project.start_date|default('') }} ～ {{ project.end_date|default('') }}</td>
+    <th>見積有効期限</th><td>{{ valid_until|default('発行日より3ヶ月') }}</td>
+  </tr>
+  <tr>
+    <th>支払条件</th><td colspan="3">{{ payment_terms|default('') }}</td>
+  </tr>
+  <tr class="amount-row">
+    <th>合計金額</th><td colspan="3">¥{{ '{:,}'.format(total_amount|default(0)) }} (税抜)　／　消費税 ¥{{ '{:,}'.format(tax_amount|default(0)) }}　／　<strong>税込 ¥{{ '{:,}'.format(grand_total|default(0)) }}</strong></td>
+  </tr>
+</table>
+
+<table class="cover-info" style="margin-top:30px;">
+  <tr>
+    <th>会社名</th><td>{{ company_name|default('') }}</td>
+  </tr>
+  <tr>
+    <th>所在地</th><td>{{ company_address|default('') }}</td>
+  </tr>
+  <tr>
+    <th>代表者</th><td>{{ representative|default('') }} ㊞</td>
+  </tr>
+  <tr>
+    <th>担当</th><td>{{ sales_contact|default('') }}</td>
+  </tr>
+  <tr>
+    <th>発行日</th><td>{{ issue_date|default('') }}</td>
+  </tr>
+</table>
+
+<!-- ── 見積条件 ── -->
+<div class="page-break"></div>
+<h2>見積条件</h2>
+<ol style="padding-left:20px;line-height:1.7;">
+{% for cond in conditions|default([
+  '本見積は現地調査結果に基づき作成しています。',
+  '見積有効期限は発行日より3ヶ月とします。',
+  '工事範囲は別紙仕様書記載の範囲とします。',
+  '建物所有者の都合による工程変更が生じた場合、別途協議とします。',
+  '駐車場・電気・水道の使用は管理組合と協議の上、無償使用とさせていただきたく存じます。',
+  '産業廃棄物処分は当社負担とします。マニフェスト写しを工事完了時にお渡しします。',
+  '工事に伴う近隣対策は当社で実施します（事前挨拶・苦情対応）。',
+  '不可抗力（天災・労使紛争等）による工期延長は別途協議とします。',
+  '隠れた部位の不具合発見時は、別途追加費用にて協議させていただきます。',
+  '工事完了後の保証期間は別紙保証書のとおりとします。',
+], true) %}
+  <li>{{ cond }}</li>
+{% endfor %}
+</ol>
+
+<!-- ── 内訳書 ── -->
+<div class="page-break"></div>
+<h2>工事内訳書</h2>
+<table class="detail">
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>名　称</th>
+      <th>仕　様</th>
+      <th style="width:50px">数量</th>
+      <th style="width:40px">単位</th>
+      <th style="width:80px">単価</th>
+      <th style="width:80px">金額</th>
+      <th style="width:90px">摘要</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set ns = namespace(idx=1) %}
+    {% for section in sections|default([], true) %}
+    <tr class="section-row">
+      <td colspan="8">{{ loop.index }}. {{ section.title }}</td>
+    </tr>
+    {% for item in section.items|default([], true) %}
+    <tr>
+      <td class="center">{{ ns.idx }}</td>
+      <td>{{ item.name|default('') }}</td>
+      <td>{{ item.spec|default('') }}</td>
+      <td class="num">{{ item.qty|default('') }}</td>
+      <td class="center">{{ item.unit|default('') }}</td>
+      <td class="num">{{ '{:,}'.format(item.unit_price|default(0)) if item.unit_price else '' }}</td>
+      <td class="num">{{ '{:,}'.format(item.amount|default(0)) if item.amount else '' }}</td>
+      <td>{{ item.note|default('') }}</td>
+    </tr>
+    {% set ns.idx = ns.idx + 1 %}
+    {% endfor %}
+    <tr class="subtotal-row">
+      <td colspan="6" class="right">{{ loop.index }} の計</td>
+      <td class="num">{{ '{:,}'.format(section.subtotal|default(0)) }}</td>
+      <td></td>
+    </tr>
+    {% else %}
+    <tr class="section-row"><td colspan="8">1. 共通仮設工事</td></tr>
+    <tr><td class="center">1</td><td>仮設現場事務所</td><td></td><td class="num">1</td><td class="center">式</td><td class="num">別途協議</td><td class="num"></td><td></td></tr>
+    <tr><td class="center">2</td><td>仮設トイレ</td><td></td><td class="num">1</td><td class="center">式</td><td class="num">別途協議</td><td class="num"></td><td></td></tr>
+    <tr><td class="center">3</td><td>養生・仮囲い</td><td>養生シート・コンパネ・ガードフェンス等</td><td class="num">1</td><td class="center">式</td><td class="num">30,000</td><td class="num">30,000</td><td></td></tr>
+    <tr><td class="center">4</td><td>安全設備費</td><td>バリケード・カラーコーン・工事看板等</td><td class="num">1</td><td class="center">式</td><td class="num">30,000</td><td class="num">30,000</td><td></td></tr>
+    <tr><td class="center">5</td><td>廃材処分費</td><td>産業廃棄物運搬処分</td><td class="num">2</td><td class="center">㎥</td><td class="num">18,000</td><td class="num">36,000</td><td></td></tr>
+    <tr class="subtotal-row"><td colspan="6" class="right">1 の計</td><td class="num">96,000</td><td></td></tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="amount-row">
+      <td colspan="6" class="right">小計（税抜）</td>
+      <td class="num">¥{{ '{:,}'.format(total_amount|default(0)) }}</td>
+      <td></td>
+    </tr>
+    <tr class="amount-row">
+      <td colspan="6" class="right">消費税（10%）</td>
+      <td class="num">¥{{ '{:,}'.format(tax_amount|default(0)) }}</td>
+      <td></td>
+    </tr>
+    <tr class="amount-row">
+      <td colspan="6" class="right"><strong>合計（税込）</strong></td>
+      <td class="num"><strong>¥{{ '{:,}'.format(grand_total|default(0)) }}</strong></td>
+      <td></td>
+    </tr>
+  </tfoot>
+</table>
+
+{% if show_progress %}
+<!-- ── 出来高調書 ── -->
+<div class="page-break"></div>
+<h2>出来高調書（月次進捗管理表）</h2>
+<table class="detail">
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>工事項目</th>
+      <th style="width:40px">単位</th>
+      <th style="width:50px">契約数量</th>
+      <th style="width:70px">契約金額</th>
+      {% for month in progress_months|default(['6月','7月','8月','9月'], true) %}
+        <th colspan="2" style="width:80px">{{ month }}</th>
+      {% endfor %}
+    </tr>
+    <tr>
+      <th colspan="5"></th>
+      {% for month in progress_months|default(['6月','7月','8月','9月'], true) %}
+        <th style="width:40px">数量</th><th style="width:50px">金額</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in progress_rows|default([], true) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ row.name }}</td>
+      <td class="center">{{ row.unit }}</td>
+      <td class="num">{{ row.contract_qty }}</td>
+      <td class="num">{{ '{:,}'.format(row.contract_amount|default(0)) }}</td>
+      {% for m in row.months|default([], true) %}
+        <td class="num">{{ m.qty|default('') }}</td>
+        <td class="num">{{ '{:,}'.format(m.amount|default(0)) if m.amount else '' }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<div class="doc-footer">
+  <span>大規模改修工事 見積書（出来高調書付き）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }}</span>
+</div>
+</body>
+</html>

@@ -334,8 +334,10 @@ def act_on_step(
                     f"{flow.title} - {step.step_name}",
                     req.action,
                 )
-    except Exception:
-        pass  # 通知失敗しても承認処理は完了させる
+    except Exception as e:
+        # 通知失敗しても承認処理は完了させる（ログだけ残す）
+        import logging
+        logging.getLogger(__name__).warning(f"[approval-notify] failed: {e}")
 
     db.refresh(flow)
     steps = db.query(ApprovalStep).filter(ApprovalStep.flow_id == flow.id).order_by(ApprovalStep.step_order).all()

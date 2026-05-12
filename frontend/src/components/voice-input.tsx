@@ -57,23 +57,18 @@ const VOICE_TIMEOUT_MS = 30_000;
 
 export function VoiceInput({
   onResult,
-  mode = "append",
+  mode: _mode = "append",
   className,
   disabled = false,
 }: VoiceInputProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [interim, setInterim] = useState("");
-  // D32: Check support before rendering the button at all
-  const [supported, setSupported] = useState(false);
+  // D32: Check support before rendering the button at all (SSR-safe lazy init)
+  const [supported] = useState<boolean>(() => !!getSpeechRecognition());
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const finalTextRef = useRef("");
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    // D32: Only set supported=true after confirming the API is available
-    setSupported(!!getSpeechRecognition());
-  }, []);
 
   // D32: Clear auto-stop timer on unmount
   useEffect(() => {

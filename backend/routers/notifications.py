@@ -53,7 +53,9 @@ def mark_read(
     db: Session = Depends(get_db),
 ):
     n = db.query(Notification).filter(
-        Notification.id == notification_id, Notification.user_id == user.id
+        Notification.id == notification_id,
+        Notification.user_id == user.id,
+        Notification.tenant_id == user.tenant_id,
     ).first()
     if not n:
         raise HTTPException(status_code=404, detail="通知が見つかりません")
@@ -84,7 +86,9 @@ def delete_notification(
     db: Session = Depends(get_db),
 ):
     n = db.query(Notification).filter(
-        Notification.id == notification_id, Notification.user_id == user.id
+        Notification.id == notification_id,
+        Notification.user_id == user.id,
+        Notification.tenant_id == user.tenant_id,
     ).first()
     if not n:
         raise HTTPException(status_code=404, detail="通知が見つかりません")

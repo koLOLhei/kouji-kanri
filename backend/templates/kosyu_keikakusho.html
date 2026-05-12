@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; line-height: 1.55; }
+.cover-title { font-size: 12pt; text-align: center; color: #555; margin-top: 30mm; letter-spacing: 4px; }
+.doc-title { font-size: 20pt; font-weight: bold; text-align: center; padding: 20px 0; margin: 16px 0 40px; letter-spacing: 8px; border-top: 3px double #1a1a1a; border-bottom: 3px double #1a1a1a; }
+.cover-date { text-align: center; font-size: 11pt; margin-bottom: 60px; }
+.cover-info-block { border: 1px solid #333; padding: 20px; max-width: 480px; margin: 30px auto; }
+.cover-info-block table { width: 100%; }
+.cover-info-block th, .cover-info-block td { padding: 8px; font-size: 10pt; vertical-align: top; }
+.cover-info-block th { width: 110px; text-align: left; background: #f1f5f9; }
+.stamp-row { display: flex; justify-content: space-around; margin-top: 30px; }
+.stamp-row .stamp { text-align: center; }
+.stamp-row .stamp-box { width: 60px; height: 60px; border: 1px solid #333; margin: 0 auto; }
+.stamp-row .stamp-label { font-size: 9pt; margin-top: 4px; }
+.page-break { page-break-before: always; }
+h2 { font-size: 13pt; font-weight: bold; border-left: 6px solid #1e40af; padding: 4px 10px; margin: 18px 0 8px; background: #eff6ff; color: #1e40af; }
+h3 { font-size: 11pt; font-weight: bold; margin: 12px 0 4px; color: #333; border-bottom: 1px solid #999; padding-bottom: 2px; }
+table.content { width: 100%; border-collapse: collapse; margin: 8px 0; }
+table.content th, table.content td { border: 1px solid #333; padding: 5px 8px; font-size: 9.5pt; vertical-align: top; }
+table.content th { background: #dbeafe; font-weight: bold; white-space: nowrap; text-align: center; }
+.callout { background: #fffbeb; border-left: 4px solid #d97706; padding: 8px 12px; margin: 6px 0; font-size: 9.5pt; }
+.toc-list { list-style: none; padding: 0; }
+.toc-list li { padding: 4px 0; border-bottom: 1px dotted #999; }
+.toc-list .sub { padding-left: 24px; font-size: 9.5pt; color: #555; }
+.center { text-align: center; }
+.num { text-align: right; }
+.doc-footer { margin-top: 14px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<!-- ── 表紙 ── -->
+<div class="cover-title">改修工事</div>
+<div class="doc-title">{{ work_type|default('外壁改修') }} 工事施工計画書</div>
+<div class="cover-date">{{ submission_date|default('令和　　年　　月') }}</div>
+
+<div class="cover-info-block">
+  <table>
+    <tr><th>工事名称</th><td>{{ project.name }}</td></tr>
+    <tr><th>工事場所</th><td>{{ project.location|default('') }}</td></tr>
+    <tr><th>工期</th><td>{{ project.start_date|default('') }} ～ {{ project.end_date|default('') }}</td></tr>
+    <tr><th>発注者</th><td>{{ project.client_name|default('') }}</td></tr>
+    <tr><th>請負者</th><td>{{ company_name|default('') }}</td></tr>
+  </table>
+</div>
+
+<div class="stamp-row">
+  <div class="stamp"><div class="stamp-box"></div><div class="stamp-label">現場代理人</div></div>
+  <div class="stamp"><div class="stamp-box"></div><div class="stamp-label">監理技術者</div></div>
+  <div class="stamp"><div class="stamp-box"></div><div class="stamp-label">工事担当者</div></div>
+  <div class="stamp"><div class="stamp-box"></div><div class="stamp-label">協力会社</div></div>
+</div>
+
+<!-- ── 目次 ── -->
+<div class="page-break"></div>
+<h2>目　次</h2>
+<ul class="toc-list">
+  <li>1. 総則</li>
+  <li class="sub">1.1 適用範囲　1.2 適用図書　1.3 疑義・変更　1.4 その他</li>
+  <li>2. 工事概要</li>
+  <li class="sub">2.1 工事概要　2.2 {{ work_type|default('外壁改修') }}工事概要</li>
+  <li>3. 工程表</li>
+  <li>4. 施工管理体制</li>
+  <li>5. 施工要領</li>
+  <li class="sub">5.1 使用材料　5.2 施工フロー　5.3 施工方法　5.4 発生材の処理　5.5 計画図　5.6 検査</li>
+  <li>6. 安全・衛生管理</li>
+  <li class="sub">6.1 安全衛生管理方針　6.2 体制　6.3 入場ルート　6.4 火気使用</li>
+  <li>7. その他</li>
+  <li class="sub">7.1 有資格者一覧　7.2 カタログ類　7.3 参考資料</li>
+</ul>
+
+<!-- ── 1. 総則 ── -->
+<div class="page-break"></div>
+<h2>1. 総則</h2>
+
+<h3>1.1 適用範囲</h3>
+<p>本施工計画書は{{ project.name }}における {{ work_type|default('外壁改修') }}工事 の現場施工管理方針として適用する。</p>
+
+<h3>1.2 適用図書</h3>
+<p>本工事は下記の仕様書及び設計図に基づいて施工する。その施工に当たっての優先順位は、下記による。</p>
+<ol>
+  <li>質問回答書、現場説明書、現場説明事項及び追加変更指示書</li>
+  <li>本工事の建築設計図書及び特記仕様書</li>
+  <li>国土交通省大臣官房官庁営繕部監修 公共建築改修工事標準仕様書（建築工事編）（{{ public_spec_year|default('令和7') }}年版）</li>
+  <li>国土交通省大臣官房官庁営繕部監修 建築改修工事監理指針　上巻（{{ kanri_shishin_year|default('令和元') }}年版）</li>
+  <li>日本建築学会 建築工事標準仕様書・同解説</li>
+</ol>
+
+<h3>1.3 疑義、変更</h3>
+<p>本施工計画書に記載なき事項や、記載事項の質疑変更に関しては監理者・工事担当者と協議の上で承諾を得て施工する。</p>
+
+<h3>1.4 その他</h3>
+<p>本施工計画書に基づき主たる工事の詳細については、施工要領書を作成し、工事内容及び作業の進め方等について協力会社及び作業員に周知徹底させて施工品質の確保に用いる。</p>
+
+<!-- ── 2. 工事概要 ── -->
+<div class="page-break"></div>
+<h2>2. 工事概要</h2>
+
+<h3>2.1 工事概要</h3>
+<table class="content">
+  <tr><th style="width:120px">工事名</th><td colspan="3">{{ project.name }}</td></tr>
+  <tr><th>工事場所</th><td colspan="3">{{ project.location|default('') }}</td></tr>
+  <tr><th>工期</th><td>{{ project.start_date|default('') }} ～ {{ project.end_date|default('') }}</td>
+      <th>発注者</th><td>{{ project.client_name|default('') }}</td></tr>
+  <tr><th>請負者</th><td colspan="3">{{ company_name|default('') }}</td></tr>
+  <tr><th>建物概要</th><td colspan="3">{{ building_overview|default('構造：RC造　階数：　階建　延床面積：　㎡') }}</td></tr>
+</table>
+
+<h3>2.2 {{ work_type|default('外壁改修') }}工事概要</h3>
+<table class="content">
+  <tr><th style="width:120px">工事内容</th><td>{{ work_content|default('') }}</td></tr>
+  <tr><th>施工範囲</th><td>{{ work_scope|default('') }}</td></tr>
+  <tr><th>施工数量</th><td>{{ work_quantity|default('') }}</td></tr>
+  <tr><th>主要工法</th><td>{{ main_method|default('') }}</td></tr>
+</table>
+
+<!-- ── 3. 工程表 ── -->
+<div class="page-break"></div>
+<h2>3. 工程表</h2>
+{% if schedule_items %}
+<table class="content">
+  <thead>
+    <tr>
+      <th style="width:30px">No.</th>
+      <th>作業項目</th>
+      <th>開始日</th>
+      <th>完了日</th>
+      <th>備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in schedule_items %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ s.name|default('') }}</td>
+      <td class="center">{{ s.start|default('') }}</td>
+      <td class="center">{{ s.end|default('') }}</td>
+      <td>{{ s.note|default('') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="callout">別紙工程表のとおり</div>
+{% endif %}
+
+<!-- ── 4. 施工管理体制 ── -->
+<div class="page-break"></div>
+<h2>4. 施工管理体制</h2>
+<table class="content">
+  <thead>
+    <tr><th style="width:30px">No.</th><th>役職</th><th>氏名</th><th>資格</th><th>連絡先</th></tr>
+  </thead>
+  <tbody>
+    {% for r in management_team|default([], true) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ r.role|default('') }}</td>
+      <td>{{ r.name|default('') }}</td>
+      <td>{{ r.qualification|default('') }}</td>
+      <td>{{ r.contact|default('') }}</td>
+    </tr>
+    {% else %}
+    <tr><td class="center">1</td><td>現場代理人</td><td>　</td><td>1級建築施工管理技士</td><td></td></tr>
+    <tr><td class="center">2</td><td>監理技術者</td><td>　</td><td>1級建築施工管理技士</td><td></td></tr>
+    <tr><td class="center">3</td><td>専門技術者</td><td>　</td><td></td><td></td></tr>
+    <tr><td class="center">4</td><td>安全衛生責任者</td><td>　</td><td></td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- ── 5. 施工要領 ── -->
+<div class="page-break"></div>
+<h2>5. 施工要領</h2>
+
+<h3>5.1 使用材料</h3>
+<table class="content">
+  <thead>
+    <tr><th style="width:30px">No.</th><th>材料名</th><th>規格・仕様</th><th>製造メーカー</th><th>使用箇所</th></tr>
+  </thead>
+  <tbody>
+    {% for m in materials|default([], true) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ m.name|default('') }}</td>
+      <td>{{ m.spec|default('') }}</td>
+      <td>{{ m.manufacturer|default('') }}</td>
+      <td>{{ m.location|default('') }}</td>
+    </tr>
+    {% else %}
+    <tr><td class="center">1</td><td>　</td><td></td><td></td><td></td></tr>
+    <tr><td class="center">2</td><td>　</td><td></td><td></td><td></td></tr>
+    <tr><td class="center">3</td><td>　</td><td></td><td></td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>5.2 施工フロー</h3>
+{% if construction_flow %}
+<ol>
+  {% for step in construction_flow %}
+    <li>{{ step }}</li>
+  {% endfor %}
+</ol>
+{% else %}
+<div class="callout">工種別の標準施工フローを記載すること（事前調査 → 養生 → 下地処理 → 施工 → 検査 → 清掃）。</div>
+{% endif %}
+
+<h3>5.3 施工方法</h3>
+<p>{{ construction_method|default('別紙施工要領書のとおり') }}</p>
+
+<h3>5.4 発生材の処理</h3>
+<p>{{ waste_handling|default('産業廃棄物として法令に基づき適正に処理する。マニフェスト(産業廃棄物管理票)を発行し、写しを工事完了時に発注者へ提出する。') }}</p>
+
+<h3>5.5 検査</h3>
+<table class="content">
+  <thead>
+    <tr><th style="width:30px">No.</th><th>検査項目</th><th>検査方法</th><th>判定基準</th><th>検査者</th></tr>
+  </thead>
+  <tbody>
+    {% for c in inspection_items|default([], true) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ c.name|default('') }}</td>
+      <td>{{ c.method|default('') }}</td>
+      <td>{{ c.criteria|default('') }}</td>
+      <td>{{ c.inspector|default('') }}</td>
+    </tr>
+    {% else %}
+    <tr><td class="center">1</td><td>材料受入検査</td><td>納品書照合・目視</td><td>承諾品と一致</td><td>現場代理人</td></tr>
+    <tr><td class="center">2</td><td>下地処理検査</td><td>目視・打診</td><td>仕様書による</td><td>現場代理人</td></tr>
+    <tr><td class="center">3</td><td>施工後検査</td><td>目視・寸法測定</td><td>仕様書による</td><td>監理技術者</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- ── 6. 安全・衛生管理 ── -->
+<div class="page-break"></div>
+<h2>6. 安全・衛生管理</h2>
+
+<h3>6.1 安全衛生管理方針</h3>
+<p>{{ safety_policy|default('労働災害ゼロを目標とし、関係法令を遵守して安全衛生管理を徹底する。新規入場者教育・KY活動・現場巡視を計画的に実施する。') }}</p>
+
+<h3>6.2 安全衛生管理体制</h3>
+<table class="content">
+  <thead>
+    <tr><th>役職</th><th>氏名</th><th>主な業務</th></tr>
+  </thead>
+  <tbody>
+    {% for s in safety_team|default([], true) %}
+    <tr><td>{{ s.role|default('') }}</td><td>{{ s.name|default('') }}</td><td>{{ s.duties|default('') }}</td></tr>
+    {% else %}
+    <tr><td>統括安全衛生責任者</td><td>　</td><td>事業所全体の統括</td></tr>
+    <tr><td>元方安全衛生管理者</td><td>　</td><td>統括の補佐</td></tr>
+    <tr><td>安全衛生責任者</td><td>　</td><td>下請会社の安全衛生</td></tr>
+    <tr><td>作業主任者</td><td>　</td><td>作業の指揮監督</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>6.3 現場入場ルート</h3>
+<p>{{ entry_route|default('別紙入場経路図のとおり') }}</p>
+
+<h3>6.4 火気使用</h3>
+<p>{{ fire_use|default('火気使用作業は事前に「火気使用願」を提出し、所長の承認を得てから実施する。消火器の配置・監視員の配置・作業後30分以上の火種点検を徹底する。') }}</p>
+
+<!-- ── 7. その他 ── -->
+<div class="page-break"></div>
+<h2>7. その他</h2>
+
+<h3>7.1 有資格者一覧</h3>
+<table class="content">
+  <thead>
+    <tr><th>No.</th><th>氏名</th><th>所属</th><th>資格</th><th>取得年月日</th></tr>
+  </thead>
+  <tbody>
+    {% for q in qualified_persons|default([], true) %}
+    <tr>
+      <td class="center">{{ loop.index }}</td>
+      <td>{{ q.name|default('') }}</td>
+      <td>{{ q.company|default('') }}</td>
+      <td>{{ q.qualification|default('') }}</td>
+      <td>{{ q.acquired_date|default('') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>7.2 カタログ類</h3>
+<p>{{ catalogs|default('別紙のとおり') }}</p>
+
+<h3>7.3 参考資料</h3>
+<p>{{ references|default('別紙のとおり') }}</p>
+
+<div class="doc-footer">
+  <span>{{ work_type|default('外壁改修') }}工事 施工計画書</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }}</span>
+</div>
+</body>
+</html>

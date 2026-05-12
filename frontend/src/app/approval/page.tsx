@@ -8,7 +8,6 @@ import {
   FileText,
   ClipboardList,
   Loader2,
-  Inbox,
   Check,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";

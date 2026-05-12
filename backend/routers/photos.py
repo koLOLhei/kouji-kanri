@@ -40,12 +40,14 @@ from services.auth_service import get_current_user
 from services.storage_service import generate_upload_key, upload_file, generate_presigned_url, compute_checksum, read_file
 from services.photo_service import extract_exif, create_thumbnail, create_optimized_version
 from services.submission_engine import auto_generate_if_ready
+from services.photo_inspection_link import link_photo_to_inspection, link_photo_to_corrective_action
 from services.project_access import verify_project_access
 from services.errors import AppError
 
 router = APIRouter(prefix="/api/projects/{project_id}/photos", tags=["photos"])
 
 MAX_BULK_PHOTOS = 200
+MAX_PHOTO_BYTES = 50 * 1024 * 1024  # 50 MB / 写真
 
 
 @router.get("/download-zip")
@@ -117,6 +119,9 @@ async def upload_photo(
     phase_id: str | None = Form(None),
     requirement_id: str | None = Form(None),
     caption: str | None = Form(None),
+    measurement: str | None = Form(None),
+    work_type_id: str | None = Form(None),
+    photo_category_id: str | None = Form(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -129,6 +134,14 @@ async def upload_photo(
 
     # ファイル読込 (async - UploadFile requires await)
     file_data = await file.read()
+
+    # サイズ上限チェック (DOS / ストレージ攻撃防止)
+    if len(file_data) > MAX_PHOTO_BYTES:
+        raise AppError(
+            413,
+            f"ファイルサイズが上限 ({MAX_PHOTO_BYTES // (1024 * 1024)}MB) を超えています",
+            "FILE_TOO_LARGE",
+        )
 
     # C17: Validate file magic bytes before any processing
     if not _validate_file_magic(file_data):
@@ -177,6 +190,26 @@ async def upload_photo(
     # 自動書類生成チェック
     if phase_id:
         await asyncio.to_thread(auto_generate_if_ready, db, phase_id, user.tenant_id)
+
+    # 写真→検査レコードへの自動リンク
+    # （職人スマホで撮った検査写真が、建築士の検査調書に自動でぶら下がる）
+    if phase_id or requirement_id:
+        try:
+            await asyncio.to_thread(link_photo_to_inspection, db, photo, measurement)
+        except Exception as e:
+            # リンク失敗で写真アップロード自体は失敗させない
+            import logging
+            logging.getLogger(__name__).warning(
+                f"[photo-inspection-link] failed for photo {photo.id}: {e}"
+            )
+        # 是正措置 (NCR) への自動リンク（再施工写真の証跡として）
+        try:
+            await asyncio.to_thread(link_photo_to_corrective_action, db, photo)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"[photo-ncr-link] failed for photo {photo.id}: {e}"
+            )
 
     resp = PhotoResponse.model_validate(photo)
     resp.url = generate_presigned_url(photo.file_key)

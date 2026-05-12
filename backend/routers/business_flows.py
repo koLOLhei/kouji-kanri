@@ -1,7 +1,7 @@
 """業務フローAPI: 出来高→請求書変換、瑕疵点検リマインド、テナント停止"""
 from config import app_settings
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel

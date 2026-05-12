@@ -85,7 +85,8 @@ def get_login_history(
     db: Session = Depends(get_db),
 ):
     records = db.query(LoginHistory).filter(
-        LoginHistory.user_id == user.id
+        LoginHistory.user_id == user.id,
+        LoginHistory.tenant_id == user.tenant_id,
     ).order_by(LoginHistory.login_at.desc()).limit(limit).all()
     return [
         {
@@ -134,6 +135,8 @@ async def upload_file_attachment(
 ):
     verify_project_access(project_id, user, db)
     data = await file.read()
+    from services.upload_limits import enforce_max_size, MAX_FILE_ATTACHMENT_BYTES
+    enforce_max_size(data, MAX_FILE_ATTACHMENT_BYTES, "添付ファイル")
     key = generate_upload_key(user.tenant_id, project_id, "files", file.filename or "file")
     # upload_file はブロッキングI/O → スレッドプールで実行
     await asyncio.to_thread(upload_file, data, key, file.content_type or "application/octet-stream")

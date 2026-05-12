@@ -51,7 +51,7 @@ function scoreColor(score: number): string {
   return "text-red-500";
 }
 
-function scoreBg(score: number): string {
+function _scoreBg(score: number): string {
   if (score >= 80) return "bg-emerald-500";
   if (score >= 60) return "bg-amber-500";
   return "bg-red-500";

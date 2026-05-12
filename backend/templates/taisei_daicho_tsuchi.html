@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: A4 portrait; margin: 18mm; }
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans JP","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif; font-size: 10.5pt; color: #1a1a1a; margin: 0; line-height: 1.6; }
+.doc-title { font-size: 15pt; font-weight: bold; text-align: center; border: 2px solid #1e40af; padding: 6px 0; margin-bottom: 12px; letter-spacing: 2px; }
+.form-no { text-align: right; font-size: 9pt; margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+th, td { border: 1px solid #333; padding: 5px 7px; font-size: 10pt; vertical-align: top; }
+th { background: #dbeafe; font-weight: bold; white-space: nowrap; text-align: center; }
+h2 { font-size: 11pt; font-weight: bold; border-left: 4px solid #1e40af; padding: 2px 8px; margin: 14px 0 5px; background: #eff6ff; }
+.note { font-size: 9pt; color: #555; margin: 6px 0; }
+.signature-block { margin-top: 22px; text-align: right; line-height: 2; }
+.stamp { display: inline-block; width: 48px; height: 48px; border: 1px solid #333; line-height: 48px; text-align: center; margin-left: 8px; }
+.doc-footer { margin-top: 16px; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; color: #666; display: flex; justify-content: space-between; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<div class="form-no">全建統一様式 TSK第2号</div>
+<div class="doc-title">施工体制台帳作成建設工事の通知</div>
+
+<p>{{ subcontractor_name|default('下請会社名') }} 殿</p>
+
+<p>
+当社が請け負う下記建設工事は、建設業法第24条の8の規定に基づき
+施工体制台帳を作成すべき工事に該当しますので通知いたします。
+</p>
+
+<h2>1. 工事の名称・場所・期間</h2>
+<table>
+  <tr>
+    <th style="width:140px">工事名称</th><td colspan="3">{{ project.name }}</td>
+  </tr>
+  <tr>
+    <th>工事場所</th><td colspan="3">{{ project.location|default('') }}</td>
+  </tr>
+  <tr>
+    <th>工期</th>
+    <td>{{ project.start_date|default('') }}</td>
+    <th style="width:60px">～</th>
+    <td>{{ project.end_date|default('') }}</td>
+  </tr>
+  <tr>
+    <th>発注者</th><td colspan="3">{{ project.client_name|default('') }}</td>
+  </tr>
+</table>
+
+<h2>2. 通知事項</h2>
+<p class="note">下請会社は、自社で締結した下請契約について以下の事項を遵守してください。</p>
+<ul>
+  <li>建設業法第24条の8に基づき、再下請通知書を元請会社へ提出してください。</li>
+  <li>再下請契約を締結する場合は、当社へ事前に通知してください。</li>
+  <li>施工体制台帳に記載すべき事項に変更があった場合は、速やかに通知してください。</li>
+  <li>下請業者の建設業許可証の写しを添付してください。</li>
+  <li>社会保険加入状況を元請に報告してください。</li>
+</ul>
+
+<div class="signature-block">
+  {{ submission_date|default('　　年　　月　　日') }}<br>
+  元請会社名: {{ company_name|default('') }}<br>
+  所在地: {{ company_address|default('') }}<br>
+  代表者: {{ representative|default('') }}<span class="stamp">㊞</span>
+</div>
+
+<div class="doc-footer">
+  <span>施工体制台帳作成建設工事の通知（全建統一様式 TSK第2号）</span>
+  <span>自動生成: {{ generated_at.strftime('%Y-%m-%d %H:%M') if generated_at else '' }} | 版: {{ doc_version|default('1.0') }}</span>
+</div>
+</body>
+</html>

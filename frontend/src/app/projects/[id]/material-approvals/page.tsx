@@ -15,13 +15,12 @@ import {
   ArrowRight,
   Factory,
   MapPin,
-  Hash,
   ChevronDown,
   ChevronUp,
   Package,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { apiFetch, formatDate } from "@/lib/utils";
+import { apiFetch } from "@/lib/utils";
 
 interface MaterialApproval {
   id: string;
@@ -443,7 +442,7 @@ export default function MaterialApprovalsPage() {
                           (approval.status === "却下" &&
                             (status === "下書き" || status === "提出")) ||
                           (approval.status === "提出" && status === "下書き");
-                        const isCurrent = status === approval.status;
+                        const _isCurrent = status === approval.status;
                         const isRejected =
                           status === "却下" && approval.status === "却下";
                         const conf = STATUS_CONFIG[status];

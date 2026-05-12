@@ -215,10 +215,51 @@ export async function syncOfflineQueue(): Promise<{
     }
 
     try {
+      // multipart 疑似リクエスト判定: body が { _multipart: true, ... } の JSON ならば
+      // FormData に再構築してから送信する。base64 でエンコードされたファイルは Blob に戻す。
+      const bodyStr = typeof item.body === "string" ? item.body : JSON.stringify(item.body);
+      let bodyForRequest: BodyInit = bodyStr;
+      const reqHeaders: Record<string, string> = { ...item.headers };
+      try {
+        const parsed = JSON.parse(bodyStr) as Record<string, unknown>;
+        if (parsed && parsed._multipart === true) {
+          const fd = new FormData();
+          for (const [k, v] of Object.entries(parsed)) {
+            if (k === "_multipart") continue;
+            if (k === "file_base64" && typeof v === "string") {
+              const fname = String(parsed.file_name ?? "upload.bin");
+              const ftype = String(parsed.file_type ?? "application/octet-stream");
+              const bin = atob(v);
+              const arr = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+              fd.append("file", new Blob([arr], { type: ftype }), fname);
+              continue;
+            }
+            if (k === "photo_base64" && typeof v === "string") {
+              const fname = String(parsed.photo_name ?? "photo.jpg");
+              const ftype = String(parsed.photo_type ?? "image/jpeg");
+              const bin = atob(v);
+              const arr = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+              fd.append("file", new Blob([arr], { type: ftype }), fname);
+              continue;
+            }
+            if (k === "file_name" || k === "file_type" || k === "photo_name" || k === "photo_type") continue;
+            if (v === null || v === undefined) continue;
+            fd.append(k, typeof v === "string" ? v : JSON.stringify(v));
+          }
+          bodyForRequest = fd;
+          // FormData: ブラウザに boundary を付けさせるため Content-Type を消す
+          delete reqHeaders["Content-Type"];
+          delete reqHeaders["content-type"];
+        }
+      } catch {
+        // body が JSON で無ければ通常の文字列ボディとして送信
+      }
       const response = await fetch(item.url, {
         method: item.method,
-        headers: item.headers,
-        body: item.body as string,
+        headers: reqHeaders,
+        body: bodyForRequest,
       });
 
       if (response.status === 409) {

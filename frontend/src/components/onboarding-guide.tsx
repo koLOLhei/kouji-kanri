@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X, ChevronRight, ChevronLeft, Check } from "lucide-react";
 
 const STEPS = [
@@ -51,16 +51,12 @@ const STEPS = [
 const STORAGE_KEY = "onboarding_complete";
 
 export function OnboardingGuide() {
-  const [visible, setVisible] = useState(false);
+  // SSR-safe initial: server returns false, client lazy-initialises from localStorage
+  const [visible, setVisible] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem(STORAGE_KEY);
+  });
   const [step, setStep] = useState(0);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const done = localStorage.getItem(STORAGE_KEY);
-    if (!done) {
-      setVisible(true);
-    }
-  }, []);
 
   function complete() {
     localStorage.setItem(STORAGE_KEY, "1");

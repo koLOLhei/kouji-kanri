@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { VoiceTextarea } from "@/components/voice-input";
 import ResourceConflictAlert from "@/components/resource-conflict-alert";
+import { useOfflineMutation } from "@/lib/offline-mutation";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -199,17 +200,25 @@ export default function DailyReportsPage() {
     enabled: !!token,
   });
 
+  const offlineMutate = useOfflineMutation();
+
   const createMutation = useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      apiFetch(`/api/projects/${id}/daily-reports`, {
-        token: token!,
+    mutationFn: async (body: Record<string, unknown>) => {
+      const res = await offlineMutate(`/api/projects/${id}/daily-reports`, {
         method: "POST",
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
+        body,
+      });
+      if (!res.ok) throw new Error(res.error ?? "送信に失敗しました");
+      return res;
+    },
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["daily-reports", id] });
       setShowForm(false);
       setForm(initialForm());
+      if (res.queued) {
+        // フォーム閉じてオフラインキューに保留したことをユーザーに伝える
+        // (UI 上は「保留中」バナーが offline-banner.tsx で表示される)
+      }
     },
   });
 

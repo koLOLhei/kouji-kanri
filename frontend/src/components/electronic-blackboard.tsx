@@ -1,14 +1,18 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
-import { X, GripHorizontal, Eye, EyeOff } from "lucide-react";
+import { GripHorizontal, Eye, EyeOff } from "lucide-react";
 
 export interface BlackboardData {
   projectName: string;    // 工事名
   workType: string;       // 工種
-  captureDate: string;    // 撮影日
-  measurement: string;    // 測定値
-  photographer: string;   // 撮影者
+  captureDate: string;    // 撮影日（自動: 現在日時）
+  measurement: string;    // 測定値（職人が入れる唯一のフィールド）
+  photographer: string;   // 撮影者（自動: ログインユーザー名）
+  weather?: string;       // 天候（自動: 気象庁API or 当日日報の値）
+  location?: string;      // 場所（自動: GPS逆ジオコーディング or QR位置）
+  gpsLat?: number;        // GPS緯度（自動）
+  gpsLng?: number;        // GPS経度（自動）
 }
 
 interface Position {
@@ -38,7 +42,10 @@ export function drawBlackboard(
 ) {
   const lineHeight = 26;
   const padding = 12;
-  const rows = 5;
+  // 天候・場所がある場合は7行、ない場合は5行
+  const hasWeather = !!(data.weather && data.weather.length > 0);
+  const hasLocation = !!(data.location && data.location.length > 0);
+  const rows = 5 + (hasWeather ? 1 : 0) + (hasLocation ? 1 : 0);
   const height = rows * lineHeight + padding * 2;
 
   // Semi-transparent dark background
@@ -71,6 +78,8 @@ export function drawBlackboard(
     { label: "工事名", value: data.projectName },
     { label: "工種", value: data.workType },
     { label: "撮影日", value: data.captureDate },
+    ...(hasLocation ? [{ label: "場所", value: data.location || "" }] : []),
+    ...(hasWeather ? [{ label: "天候", value: data.weather || "" }] : []),
     { label: "測定値", value: data.measurement },
     { label: "撮影者", value: data.photographer },
   ];

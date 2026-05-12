@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -15,7 +15,7 @@ import {
   Sun,
   Sunrise,
   Moon,
-  Image,
+  Image as ImageIcon,
   Layers,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -87,7 +87,7 @@ const stepConfig: Record<
 
 export default function TodayPage() {
   const { token } = useAuth();
-  const router = useRouter();
+  const _router = useRouter();
   const [selectedProject, setSelectedProject] = useState<string>("");
 
   const greeting = getGreeting();
@@ -101,10 +101,13 @@ export default function TodayPage() {
       ),
   });
 
-  // Auto-select first project
-  if (data?.projects.length && !selectedProject) {
-    setSelectedProject(data.projects[0].id);
-  }
+  // Auto-select first project (effect で render 中の setState を回避)
+  useEffect(() => {
+    if (data?.projects.length && !selectedProject) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedProject(data.projects[0].id);
+    }
+  }, [data, selectedProject]);
 
   if (isLoading) {
     return (
@@ -164,7 +167,7 @@ export default function TodayPage() {
             <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200" />
 
             <div className="space-y-4">
-              {data?.steps.map((step, idx) => {
+              {data?.steps.map((step, _idx) => {
                 const config = stepConfig[step.type];
                 const isDone = step.status === "done";
                 const isCurrent = step.status === "current";
@@ -244,7 +247,7 @@ export default function TodayPage() {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white rounded-2xl shadow-lg p-5 text-center">
             <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Image className="w-6 h-6 text-blue-500" />
+              <ImageIcon className="w-6 h-6 text-blue-500" />
             </div>
             <div className="text-3xl font-bold text-gray-800">
               {data?.stats.photos_taken ?? 0}

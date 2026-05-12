@@ -4,17 +4,21 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "kk_theme";
 
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "light";
-  const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
+function readStoredTheme(): Theme | null {
+  if (typeof window === "undefined") return null;
+  const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === "light" || stored === "dark") return stored;
-  // System preference fallback
+  return null;
+}
+
+function getSystemTheme(): Theme {
+  if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -27,21 +31,38 @@ function applyTheme(theme: Theme) {
   }
 }
 
-export function useTheme(): [Theme, (t: Theme) => void] {
-  const [theme, setThemeState] = useState<Theme>("light");
-
-  // Initialise from localStorage after hydration
-  useEffect(() => {
-    const initial = getInitialTheme();
-    setThemeState(initial);
-    applyTheme(initial);
-  }, []);
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem(STORAGE_KEY, newTheme);
-    applyTheme(newTheme);
+function subscribe(callback: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY) callback();
   };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}
+
+function getClientSnapshot(): Theme {
+  return readStoredTheme() ?? getSystemTheme();
+}
+
+function getServerSnapshot(): Theme {
+  return "light";
+}
+
+export function useTheme(): [Theme, (t: Theme) => void] {
+  const theme = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
+
+  // Apply class whenever theme changes (DOM is an external system, fine in effect)
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  const setTheme = useCallback((newTheme: Theme) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, newTheme);
+      // Trigger storage event manually for same-tab subscribers
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: newTheme }));
+    }
+  }, []);
 
   return [theme, setTheme];
 }
