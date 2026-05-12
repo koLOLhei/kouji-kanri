@@ -20,8 +20,9 @@ def test_create_task(client, admin_a_token, auth):
 
 
 def test_today_tasks(client, admin_a_token, auth):
-    from datetime import date
-    today = date.today().isoformat()
+    # endpoint は today_jst() を使うので、UTC環境でも JST 日付で作成する
+    from services.timezone_utils import today_jst
+    today = today_jst().isoformat()
     _create_task(client, admin_a_token, auth, title="今日のタスク", due_date=today)
     r = client.get("/api/tasks/today", headers=auth(admin_a_token))
     assert r.status_code == 200
@@ -29,8 +30,9 @@ def test_today_tasks(client, admin_a_token, auth):
 
 
 def test_overdue_tasks(client, admin_a_token, auth):
-    from datetime import date, timedelta
-    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    from datetime import timedelta
+    from services.timezone_utils import today_jst
+    yesterday = (today_jst() - timedelta(days=1)).isoformat()
     _create_task(client, admin_a_token, auth, title="期限切れ", due_date=yesterday)
     r = client.get("/api/tasks/overdue", headers=auth(admin_a_token))
     assert r.status_code == 200
