@@ -41,14 +41,13 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # G55: Structured JSON logging
     setup_logging()
-    # DB初期化: Alembicに統一済み (旧 _run_migrations は廃止)
+    # DB初期化:
+    #   - 本番DBは既存運用 (旧 _run_migrations の手動 ALTER で進化済)
+    #   - 新規テーブルは Base.metadata.create_all で「IF NOT EXISTS」相当で追加
+    #   - Alembic は既存DB履歴と整合しないため、本番ではスキップ (将来 alembic stamp で同期する)
     try:
-        from alembic.config import Config
-        from alembic import command
-        alembic_cfg = Config(str(Path(__file__).parent / "alembic.ini"))
-        alembic_cfg.set_main_option("script_location", str(Path(__file__).parent / "alembic"))
-        command.upgrade(alembic_cfg, "head")
-        logger.info("[init] Alembic migrations applied")
+        Base.metadata.create_all(bind=engine)
+        logger.info("[init] Base.metadata.create_all applied (idempotent)")
         db = SessionLocal()
         try:
             seed_initial_data(db)
