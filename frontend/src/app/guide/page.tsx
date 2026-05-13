@@ -14,6 +14,14 @@ export const metadata: Metadata = {
 
 const GUIDES = [
   {
+    href: "/guide/how-to-use",
+    title: "システムの使い方｜管理者・作業員別の操作手順",
+    description:
+      "デモアカウントで誰でもログイン可能。管理者・作業員それぞれの目線で全機能の使い方を解説します。",
+    tags: ["使い方", "操作手順", "デモ"],
+    readTime: "約5分",
+  },
+  {
     href: "/guide/public-works-bidding",
     title: "公共工事の入札方法を完全解説",
     description:
