@@ -70,12 +70,17 @@ def _record_email_failure(email: str) -> None:
 
 @router.post("/login", response_model=TokenResponse)
 def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    client_ip = request.client.host if request.client else "unknown"
-    # Check both IP-level and per-email lockouts before touching the DB
-    _check_rate_limit(client_ip)
-    _check_email_lockout(req.email)  # C18
-
-    user = db.query(User).filter(User.email == req.email, User.is_active == True).first()
+    import traceback, sys
+    try:
+        client_ip = request.client.host if request.client else "unknown"
+        _check_rate_limit(client_ip)
+        _check_email_lockout(req.email)
+        user = db.query(User).filter(User.email == req.email, User.is_active == True).first()
+    except HTTPException:
+        raise
+    except Exception as _e:
+        traceback.print_exc(file=sys.stderr); sys.stderr.flush()
+        raise HTTPException(status_code=500, detail=f"DBG2: {type(_e).__name__}: {str(_e)[:300]}")
     if not user or not verify_password(req.password, user.password_hash):
         # 失敗ログ記録 — メールの存在有無に関わらず必ず記録
         _record_failed_attempt(client_ip)
