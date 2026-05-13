@@ -6,7 +6,7 @@
    "オフライン" banner notification to clients
    ============================================================ */
 
-const CACHE_NAME = "kouji-kanri-v3";
+const CACHE_NAME = "kouji-kanri-v4";
 const OFFLINE_QUEUE_DB = "offline-queue";
 const OFFLINE_QUEUE_STORE = "requests";
 
@@ -102,6 +102,12 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Cross-origin (API on別ドメイン等) は SW で触らない。
+  // body 消費・CORS preflight 等の事故を防ぐためブラウザ標準動作に委ねる。
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   // Photo upload - special handling with queue on failure
   if (request.method === "POST" && url.pathname.includes("/photos")) {
     event.respondWith(handlePhotoUpload(request));
@@ -115,7 +121,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   // API calls: network-first, fall back to cache
-  if (url.pathname.startsWith("/api/") || url.hostname === "127.0.0.1") {
+  if (url.pathname.startsWith("/api/")) {
     event.respondWith(networkFirst(request));
     return;
   }
@@ -132,17 +138,20 @@ self.addEventListener("fetch", (event) => {
 });
 
 async function handlePhotoUpload(request) {
+  // clone before fetch — body は一度しか読めないため、失敗時に queue へ
+  // 入れる用の複製を先に確保しておく。
+  const clone = request.clone();
   try {
     return await fetch(request);
   } catch {
     // No network - store photo in IndexedDB queue
     try {
-      const body = await request.arrayBuffer();
+      const body = await clone.arrayBuffer();
       const headers = {};
-      request.headers.forEach((value, key) => {
+      clone.headers.forEach((value, key) => {
         headers[key] = value;
       });
-      await queueRequest(request.url, request.method, body, headers);
+      await queueRequest(clone.url, clone.method, body, headers);
 
       // Notify clients about queued upload
       const clients = await self.clients.matchAll();
@@ -203,17 +212,19 @@ async function cacheFirst(request) {
 }
 
 async function handleMutableRequest(request) {
+  // clone before fetch — fetch が body を消費すると queue に詰められない
+  const clone = request.clone();
   try {
     return await fetch(request);
   } catch {
     // Queue the request for later
     try {
-      const body = await request.text();
+      const body = await clone.text();
       const headers = {};
-      request.headers.forEach((value, key) => {
+      clone.headers.forEach((value, key) => {
         headers[key] = value;
       });
-      await queueRequest(request.url, request.method, body, headers);
+      await queueRequest(clone.url, clone.method, body, headers);
       return new Response(
         JSON.stringify({
           queued: true,
