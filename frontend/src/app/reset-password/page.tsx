@@ -34,11 +34,16 @@ function ResetPasswordForm() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, new_password: password }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(`${API_BASE}/api/auth/reset-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, new_password: password }),
+        });
+      } catch {
+        throw new Error("サーバーに接続できません。ネットワーク接続を確認してください。");
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail ?? "エラーが発生しました");
