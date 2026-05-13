@@ -37,17 +37,45 @@ from services.logger import setup_logging
 logger = logging.getLogger(__name__)
 
 
+def _add_missing_columns():
+    """既存テーブルに新規モデルで追加されたカラムを IF NOT EXISTS で追加。
+
+    Base.metadata.create_all は新規テーブルしか作らず既存テーブルへのカラム追加を行わない。
+    本番DBが旧来 _run_migrations 運用のため、Alembic履歴と不整合。
+    ここで明示的に「ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...」を発行する。
+    PostgreSQL 9.6+ で `IF NOT EXISTS` 構文がサポートされる。
+    """
+    from sqlalchemy import text
+    migrations = [
+        ("subcontractors", "contact_person", "VARCHAR(255)"),
+        ("subcontractors", "trade", "VARCHAR(100)"),
+        ("ky_activities", "tenant_id", "VARCHAR(36)"),
+        ("safety_patrols", "tenant_id", "VARCHAR(36)"),
+        ("incident_reports", "tenant_id", "VARCHAR(36)"),
+        ("safety_trainings", "tenant_id", "VARCHAR(36)"),
+        ("worker_orientations", "tenant_id", "VARCHAR(36)"),
+    ]
+    with engine.begin() as conn:
+        for table, col, col_type in migrations:
+            try:
+                conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS "{col}" {col_type}'))
+            except Exception as e:
+                logger.warning(f"[init] ADD COLUMN {table}.{col} failed: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # G55: Structured JSON logging
     setup_logging()
     # DB初期化:
-    #   - 本番DBは既存運用 (旧 _run_migrations の手動 ALTER で進化済)
-    #   - 新規テーブルは Base.metadata.create_all で「IF NOT EXISTS」相当で追加
-    #   - Alembic は既存DB履歴と整合しないため、本番ではスキップ (将来 alembic stamp で同期する)
+    #   - 既存テーブルへの新規カラム追加: _add_missing_columns() で ALTER TABLE ADD COLUMN IF NOT EXISTS
+    #   - 新規テーブルは Base.metadata.create_all で作成
+    #   - Alembic は既存DB履歴と整合しないため、本番ではスキップ
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("[init] Base.metadata.create_all applied (idempotent)")
+        _add_missing_columns()
+        logger.info("[init] _add_missing_columns applied")
         db = SessionLocal()
         try:
             seed_initial_data(db)
