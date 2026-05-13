@@ -10,34 +10,50 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from config import settings
 
 
-def _resolve_render_db_host(url: str) -> str:
-    """Render の内部DBホスト名 (dpg-xxx-a) が DNS 解決できない場合、
-    外部ホスト名 (dpg-xxx-a.{region}-postgres.render.com) に書き換える。
+def _try_connect(url: str, timeout: int = 5) -> bool:
+    """指定URLで実際にPostgreSQLに接続を試みる。成功でTrue。"""
+    import psycopg2
+    try:
+        conn = psycopg2.connect(url, connect_timeout=timeout)
+        conn.close()
+        return True
+    except Exception:
+        return False
 
-    サービスとDBが別リージョンに配置された場合に必要。
+
+def _resolve_render_db_host(url: str) -> str:
+    """Render の内部DBホスト名 (dpg-xxx-a) を、実際に接続可能な外部ホスト名に書き換える。
+
+    サービスとDBが別リージョン配置の場合に必要。
+    各リージョンの外部URLに sslmode=require を付けて実接続テストし、
+    最初に成功したURLを採用する。
     """
     m = re.search(r"@(dpg-[a-z0-9]+-a)(?::|/)", url)
     if not m:
         return url
     short_host = m.group(1)
-    # 内部ホスト名が解決できるか試す
-    try:
-        socket.gethostbyname(short_host)
-        return url  # 内部解決OK
-    except OSError:
-        pass
-    # 解決できない場合、各リージョンの外部URLを順に試す
-    # Oregon を最初に試す (Render free DB のデフォルトリージョン)
+
+    # まず内部ホストでそのまま接続できるか
+    if _try_connect(url, timeout=3):
+        return url
+
+    # 外部ホスト名で各リージョン試行 (sslmode=require 強制)
+    separator = "&" if "?" in url else "?"
     for region in ("oregon", "ohio", "virginia", "frankfurt", "singapore"):
         external = f"{short_host}.{region}-postgres.render.com"
         try:
             socket.gethostbyname(external)
-            new_url = url.replace(short_host, external, 1)
-            print(f"[database] Rewriting host: {short_host} → {external}", flush=True)
-            return new_url
         except OSError:
             continue
-    print(f"[database] WARNING: could not resolve {short_host} on any known region", flush=True)
+        candidate = url.replace(short_host, external, 1)
+        if "sslmode=" not in candidate:
+            candidate = f"{candidate}{separator}sslmode=require"
+        if _try_connect(candidate, timeout=8):
+            print(f"[database] Using external host: {external} (sslmode=require)", flush=True)
+            return candidate
+        print(f"[database] Attempt failed: {external}", flush=True)
+
+    print(f"[database] WARNING: no reachable host found, returning original URL", flush=True)
     return url
 
 

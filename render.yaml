@@ -3,6 +3,7 @@ databases:
     plan: free
     databaseName: kouji_kanri
     user: kouji
+    # region は既存DBの場所と一致させる。新規作成時のみ反映。
     region: oregon
 
 services:
@@ -10,6 +11,9 @@ services:
     name: kouji-kanri-api
     runtime: python
     plan: free
+    # region は既存サービスの再配置には影響しない。
+    # service/DB が別リージョンの場合は database.py の _resolve_render_db_host が
+    # 外部ホスト+sslmode=require で接続する。
     region: oregon
     rootDir: backend
     buildCommand: pip install -r requirements.txt
