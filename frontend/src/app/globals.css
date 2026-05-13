@@ -1,8 +1,23 @@
 @import "tailwindcss";
 
+/*
+ * カラーパレット方針:
+ *  - ベース: 白 / グレー / 黒のみ (色味を含めた装飾の最小化)
+ *  - 状態色は 4 色だけ:
+ *      success = emerald-600  (成功・完了)
+ *      warning = amber-600    (警告・期限間近)
+ *      danger  = red-600      (エラー・期限超過・緊急)
+ *      info    = blue-600     (情報・進行中)
+ *  - 上記以外のアクセント色 (purple, pink, violet, indigo 等) は使用禁止
+ */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #ffffff;
+  --foreground: #111827;
+  /* 状態色 (4色のみ) */
+  --color-success: #059669; /* emerald-600 */
+  --color-warning: #d97706; /* amber-600  */
+  --color-danger:  #dc2626; /* red-600    */
+  --color-info:    #2563eb; /* blue-600   */
 }
 
 /* D22: Dark mode CSS variables */

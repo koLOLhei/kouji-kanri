@@ -46,46 +46,48 @@ function getTodayJP(): string {
   return `${y}年${m}月${d}日 ${day}`;
 }
 
+// 状態色は 4 種類だけ:
+//   info (blue) = 進行中
+//   warning (amber) = 検査予定
+//   success (emerald) = 完了
+//   neutral (gray) = 計画中・その他
 function borderColorByStatus(status: string): string {
   switch (status) {
     case "active":
     case "in_progress":
-      return "border-l-blue-500";
+      return "border-l-blue-600";
     case "inspection":
-      return "border-l-amber-400";
+      return "border-l-amber-600";
     case "completed":
-      return "border-l-emerald-500";
-    case "planning":
-      return "border-l-purple-400";
+      return "border-l-emerald-600";
     default:
       return "border-l-gray-300";
   }
 }
 
 function progressBarColor(status: string): string {
+  // グラデーション廃止して単色に
   switch (status) {
     case "active":
     case "in_progress":
-      return "from-blue-500 to-blue-400";
+      return "bg-blue-600";
     case "inspection":
-      return "from-amber-500 to-amber-400";
+      return "bg-amber-600";
     case "completed":
-      return "from-emerald-500 to-emerald-400";
+      return "bg-emerald-600";
     default:
-      return "from-gray-400 to-gray-300";
+      return "bg-gray-400";
   }
 }
 
 function statusBadge(status: string): string {
   switch (status) {
     case "active":
-      return "bg-blue-100 text-blue-700 ring-blue-600/20";
+      return "bg-blue-50 text-blue-700 ring-blue-600/20";
     case "inspection":
-      return "bg-amber-100 text-amber-700 ring-amber-600/20";
+      return "bg-amber-50 text-amber-700 ring-amber-600/20";
     case "completed":
-      return "bg-emerald-100 text-emerald-700 ring-emerald-600/20";
-    case "planning":
-      return "bg-purple-100 text-purple-700 ring-purple-600/20";
+      return "bg-emerald-50 text-emerald-700 ring-emerald-600/20";
     default:
       return "bg-gray-100 text-gray-600 ring-gray-500/20";
   }
@@ -98,86 +100,25 @@ type FeatureGroup = {
   description: string;
   icon: React.ElementType;
   href: string;
-  gradient: string;
 };
 
 const DAILY_FEATURES: FeatureGroup[] = [
-  {
-    label: "日報",
-    description: "毎日の作業内容を記録",
-    icon: ClipboardList,
-    href: "/projects",
-    gradient: "from-blue-500 to-blue-600",
-  },
-  {
-    label: "写真撮影",
-    description: "工事写真をその場で記録",
-    icon: Camera,
-    href: "/capture",
-    gradient: "from-orange-500 to-orange-600",
-  },
-  {
-    label: "安全管理",
-    description: "KY・ヒヤリハット・巡回記録",
-    icon: ShieldCheck,
-    href: "/projects",
-    gradient: "from-red-500 to-red-600",
-  },
+  { label: "日報", description: "毎日の作業内容を記録", icon: ClipboardList, href: "/projects" },
+  { label: "写真撮影", description: "工事写真をその場で記録", icon: Camera, href: "/capture" },
+  { label: "安全管理", description: "KY・ヒヤリハット・巡回記録", icon: ShieldCheck, href: "/projects" },
 ];
 
 const PERIODIC_FEATURES: FeatureGroup[] = [
-  {
-    label: "検査管理",
-    description: "段階確認・完成検査の記録",
-    icon: Search,
-    href: "/projects",
-    gradient: "from-purple-500 to-purple-600",
-  },
-  {
-    label: "資材管理",
-    description: "発注・受入・試験成績書",
-    icon: Package,
-    href: "/projects",
-    gradient: "from-amber-500 to-amber-600",
-  },
-  {
-    label: "出来形管理",
-    description: "完成部分の寸法・品質を記録",
-    icon: BarChart2,
-    href: "/projects",
-    gradient: "from-teal-500 to-teal-600",
-  },
+  { label: "検査管理", description: "段階確認・完成検査の記録", icon: Search, href: "/projects" },
+  { label: "資材管理", description: "発注・受入・試験成績書", icon: Package, href: "/projects" },
+  { label: "出来形管理", description: "完成部分の寸法・品質を記録", icon: BarChart2, href: "/projects" },
 ];
 
 const OCCASIONAL_FEATURES: FeatureGroup[] = [
-  {
-    label: "案件管理",
-    description: "工事案件の一覧と作成",
-    icon: FolderKanban,
-    href: "/projects",
-    gradient: "from-indigo-500 to-indigo-600",
-  },
-  {
-    label: "作業員管理",
-    description: "人員・資格・出勤を管理",
-    icon: Users,
-    href: "/workers",
-    gradient: "from-purple-500 to-purple-600",
-  },
-  {
-    label: "仕様書",
-    description: "公共建築工事標準仕様書を参照",
-    icon: BookOpen,
-    href: "/specs",
-    gradient: "from-teal-500 to-teal-600",
-  },
-  {
-    label: "是正措置",
-    description: "品質不適合・NCRの管理",
-    icon: AlertTriangle,
-    href: "/projects",
-    gradient: "from-amber-500 to-amber-600",
-  },
+  { label: "案件管理", description: "工事案件の一覧と作成", icon: FolderKanban, href: "/projects" },
+  { label: "作業員管理", description: "人員・資格・出勤を管理", icon: Users, href: "/workers" },
+  { label: "仕様書", description: "公共建築工事標準仕様書を参照", icon: BookOpen, href: "/specs" },
+  { label: "是正措置", description: "品質不適合・NCRの管理", icon: AlertTriangle, href: "/projects" },
 ];
 
 function FeatureCard({ feature }: { feature: FeatureGroup }) {
@@ -185,20 +126,18 @@ function FeatureCard({ feature }: { feature: FeatureGroup }) {
   return (
     <Link
       href={feature.href}
-      className="group flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-gray-200 transition-all active:scale-[0.98]"
+      className="group flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-900 hover:shadow-sm transition-all active:scale-[0.98]"
     >
-      <div
-        className={`bg-gradient-to-br ${feature.gradient} p-2.5 rounded-xl shadow-sm flex-shrink-0 group-hover:scale-110 transition-transform`}
-      >
-        <Icon className="w-5 h-5 text-white" />
+      <div className="bg-gray-100 group-hover:bg-gray-900 p-2.5 rounded-lg flex-shrink-0 transition-colors">
+        <Icon className="w-5 h-5 text-gray-700 group-hover:text-white transition-colors" />
       </div>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-gray-800 group-hover:text-blue-700 transition-colors">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-gray-900">
           {feature.label}
         </p>
-        <p className="text-xs text-gray-400 truncate">{feature.description}</p>
+        <p className="text-xs text-gray-500 truncate">{feature.description}</p>
       </div>
-      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition-colors flex-shrink-0 ml-auto" />
+      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-900 transition-colors flex-shrink-0" />
     </Link>
   );
 }
@@ -227,18 +166,18 @@ function getTodayTasks(
       actionLabel: "日報を書く",
       href: `/projects/${activeProject.id}/daily-reports`,
       icon: FileText,
-      color: "text-blue-600 bg-blue-50",
+      color: "text-gray-700 bg-gray-100",
     });
   }
 
-  // Approval items pending
+  // Approval items pending (warning 系のため amber を残す)
   if (approvalCount > 0) {
     tasks.push({
       label: `${approvalCount}件の承認待ちがあります`,
       actionLabel: "承認する",
       href: "/approval",
       icon: Bell,
-      color: "text-amber-600 bg-amber-50",
+      color: "text-amber-700 bg-amber-50",
     });
   }
 
@@ -249,7 +188,7 @@ function getTodayTasks(
       actionLabel: "写真を撮る",
       href: `/capture?project=${activeProject.id}`,
       icon: Camera,
-      color: "text-orange-600 bg-orange-50",
+      color: "text-gray-700 bg-gray-100",
     });
   }
 
@@ -276,39 +215,13 @@ export default function DashboardPage() {
   const inspection = projects.filter((p) => p.status === "inspection").length;
   const completed = projects.filter((p) => p.status === "completed").length;
 
+  // 統計カードは「数字を見せること」が主役。色で各カードを区別しない (4色を
+  // バラバラに使うと注意が散る)。アイコン背景は統一グレー、ラベル色も統一。
   const stats = [
-    {
-      label: "総案件数",
-      value: projects.length,
-      icon: FolderKanban,
-      gradient: "from-blue-500 to-indigo-600",
-      bg: "bg-blue-50",
-      text: "text-blue-700",
-    },
-    {
-      label: "施工中",
-      value: active,
-      icon: HardHat,
-      gradient: "from-orange-500 to-amber-600",
-      bg: "bg-orange-50",
-      text: "text-orange-700",
-    },
-    {
-      label: "検査予定",
-      value: inspection,
-      icon: ClipboardList,
-      gradient: "from-yellow-500 to-amber-500",
-      bg: "bg-yellow-50",
-      text: "text-yellow-700",
-    },
-    {
-      label: "完了",
-      value: completed,
-      icon: CheckCircle2,
-      gradient: "from-emerald-500 to-green-600",
-      bg: "bg-green-50",
-      text: "text-green-700",
-    },
+    { label: "総案件数", value: projects.length, icon: FolderKanban },
+    { label: "施工中", value: active, icon: HardHat },
+    { label: "検査予定", value: inspection, icon: ClipboardList },
+    { label: "完了", value: completed, icon: CheckCircle2 },
   ];
 
   const activeProjects = projects.filter(
@@ -317,16 +230,16 @@ export default function DashboardPage() {
   const todayTasks = getTodayTasks(projects, approvalQueue.length);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
 
         {/* ─── Today's Summary Bar ─── */}
-        <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 rounded-2xl shadow-lg shadow-blue-500/20 p-5 sm:p-6 text-white">
+        <div className="bg-gray-900 rounded-xl p-5 sm:p-6 text-white">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <CalendarDays className="w-5 h-5 opacity-80" />
-                <span className="text-blue-200 text-sm font-medium">本日</span>
+                <CalendarDays className="w-5 h-5 text-gray-400" />
+                <span className="text-gray-400 text-sm font-medium">本日</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                 {getTodayJP()}
@@ -335,14 +248,14 @@ export default function DashboardPage() {
             <div className="flex gap-3 flex-wrap">
               <Link
                 href="/projects"
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm px-5 py-3 rounded-xl font-semibold text-sm transition-all active:scale-95 border border-white/20"
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 rounded-lg font-semibold text-sm transition-colors active:scale-95"
               >
                 <FileText className="w-5 h-5" />
                 <span>今日の日報を書く</span>
               </Link>
               <Link
                 href="/capture"
-                className="flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-amber-900 px-5 py-3 rounded-xl font-semibold text-sm transition-all active:scale-95 shadow-lg shadow-amber-400/30"
+                className="flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-900 px-5 py-3 rounded-lg font-semibold text-sm transition-colors active:scale-95"
               >
                 <Camera className="w-5 h-5" />
                 <span>写真を撮る</span>
@@ -355,9 +268,8 @@ export default function DashboardPage() {
         {todayTasks.length > 0 && (
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <Activity className="w-5 h-5 text-red-500" />
               <h2 className="text-base font-bold text-gray-900">今日やること</h2>
-              <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="bg-gray-900 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                 {todayTasks.length}
               </span>
             </div>
@@ -367,15 +279,15 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={task.label}
-                    className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3"
+                    className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 px-4 py-3"
                   >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${task.color}`}>
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${task.color}`}>
                       <Icon className="w-5 h-5" />
                     </div>
-                    <p className="flex-1 text-sm text-gray-700 font-medium">{task.label}</p>
+                    <p className="flex-1 text-sm text-gray-800 font-medium">{task.label}</p>
                     <Link
                       href={task.href}
-                      className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg"
+                      className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-white bg-gray-900 hover:bg-gray-700 transition-colors px-3 py-1.5 rounded-lg"
                     >
                       {task.actionLabel}
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -392,17 +304,17 @@ export default function DashboardPage() {
           {stats.map((s) => (
             <div
               key={s.label}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:shadow-md transition-shadow"
+              className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 hover:border-gray-900 transition-colors"
             >
               <div className="flex items-start justify-between mb-3">
-                <div className={`bg-gradient-to-br ${s.gradient} p-2.5 rounded-xl shadow-sm`}>
-                  <s.icon className="w-5 h-5 text-white" />
+                <div className="bg-gray-100 p-2.5 rounded-lg">
+                  <s.icon className="w-5 h-5 text-gray-700" />
                 </div>
               </div>
-              <p className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+              <p className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
                 {s.value}
               </p>
-              <p className={`text-sm font-medium mt-1 ${s.text}`}>{s.label}</p>
+              <p className="text-sm font-medium text-gray-500 mt-1">{s.label}</p>
             </div>
           ))}
         </div>
@@ -411,10 +323,9 @@ export default function DashboardPage() {
         <div className="grid md:grid-cols-3 gap-6">
           {/* 毎日 */}
           <section>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">📅</span>
-              <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">毎日の業務</h2>
-            </div>
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-3">
+              毎日の業務
+            </h2>
             <div className="space-y-2">
               {DAILY_FEATURES.map((f) => (
                 <FeatureCard key={f.label} feature={f} />
@@ -424,10 +335,9 @@ export default function DashboardPage() {
 
           {/* 定期 */}
           <section>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">📊</span>
-              <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">定期業務</h2>
-            </div>
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-3">
+              定期業務
+            </h2>
             <div className="space-y-2">
               {PERIODIC_FEATURES.map((f) => (
                 <FeatureCard key={f.label} feature={f} />
@@ -437,10 +347,9 @@ export default function DashboardPage() {
 
           {/* 必要時 */}
           <section>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🔧</span>
-              <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">必要時</h2>
-            </div>
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-3">
+              必要時に
+            </h2>
             <div className="space-y-2">
               {OCCASIONAL_FEATURES.map((f) => (
                 <FeatureCard key={f.label} feature={f} />
