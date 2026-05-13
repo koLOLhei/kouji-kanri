@@ -1,12 +1,46 @@
 """Database connection and session management for PostgreSQL multi-tenant."""
 
+import socket
+import sys
+import re
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from config import settings
 
-import sys
-_db_url = settings.database_url
+
+def _resolve_render_db_host(url: str) -> str:
+    """Render の内部DBホスト名 (dpg-xxx-a) が DNS 解決できない場合、
+    外部ホスト名 (dpg-xxx-a.{region}-postgres.render.com) に書き換える。
+
+    サービスとDBが別リージョンに配置された場合に必要。
+    """
+    m = re.search(r"@(dpg-[a-z0-9]+-a)(?::|/)", url)
+    if not m:
+        return url
+    short_host = m.group(1)
+    # 内部ホスト名が解決できるか試す
+    try:
+        socket.gethostbyname(short_host)
+        return url  # 内部解決OK
+    except OSError:
+        pass
+    # 解決できない場合、各リージョンの外部URLを順に試す
+    for region in ("singapore", "oregon", "frankfurt", "ohio", "virginia"):
+        external = f"{short_host}.{region}-postgres.render.com"
+        try:
+            socket.gethostbyname(external)
+            new_url = url.replace(short_host, external, 1)
+            print(f"[database] Rewriting host: {short_host} → {external}", flush=True)
+            return new_url
+        except OSError:
+            continue
+    print(f"[database] WARNING: could not resolve {short_host} on any known region", flush=True)
+    return url
+
+
+_db_url = _resolve_render_db_host(settings.database_url)
 print(f"[database] URL host: {_db_url.split('@')[-1].split('/')[0] if '@' in _db_url else 'N/A'}", flush=True)
 engine = create_engine(
     _db_url,
