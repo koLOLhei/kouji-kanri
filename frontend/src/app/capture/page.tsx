@@ -108,7 +108,9 @@ function CaptureInner() {
   // Electronic blackboard
   // 屋外現場では「測定値」だけ職人が打ち込めばよいよう、それ以外はすべて自動入力
   const { user } = useAuth();
-  const [bbVisible, setBbVisible] = useState(false);
+  // 公共工事では電子黒板付きの写真が原則必須。デフォルトを ON にして
+  // 不要時にユーザーが OFF にする運用にする (ON し忘れ事故を防ぐ)。
+  const [bbVisible, setBbVisible] = useState(true);
   const [bbData, setBbData] = useState<BlackboardData>(() => ({
     projectName: "",
     workType: "",
@@ -406,7 +408,9 @@ function CaptureInner() {
             : item
         )
       );
-      showToast("アップロードに失敗しました", "error");
+      // 失敗原因を含めて表示 (ネットワーク/サイズ/権限の区別)
+      const reason = err instanceof Error ? err.message : "原因不明";
+      showToast(`アップロードに失敗しました: ${reason}`, "error");
     },
   });
 
@@ -837,18 +841,16 @@ function CaptureInner() {
                 {doneCount > 0 && (
                   <button
                     onClick={clearDoneItems}
-                    className="px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    style={{ minHeight: 32 }}
+                    className="px-3 py-2.5 text-xs font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px]"
                   >
                     完了を削除
                   </button>
                 )}
                 <button
                   onClick={clearQueue}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-red-500 border border-gray-200 rounded-lg hover:bg-red-50 transition-colors"
-                  style={{ minHeight: 32 }}
+                  className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium text-gray-600 hover:text-red-600 border border-gray-200 rounded-lg hover:bg-red-50 transition-colors min-h-[44px]"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                   全クリア
                 </button>
               </div>

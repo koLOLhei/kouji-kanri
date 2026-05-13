@@ -206,14 +206,14 @@ export default function TodayPage() {
                     <div className="flex-1 min-w-0">
                       <h3
                         className={`text-lg font-bold ${
-                          isDone ? "text-gray-400 line-through" : "text-gray-800"
+                          isDone ? "text-gray-600 line-through" : "text-gray-900"
                         }`}
                       >
                         {step.title}
                       </h3>
                       <p
                         className={`text-sm mt-0.5 ${
-                          isDone ? "text-gray-300" : "text-gray-500"
+                          isDone ? "text-gray-500" : "text-gray-600"
                         }`}
                       >
                         {step.description}

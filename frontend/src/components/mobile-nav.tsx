@@ -125,10 +125,10 @@ export function MobileNav() {
                     aria-label="写真撮影"
                     className="flex flex-col items-center -mt-4"
                   >
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-300/50 flex items-center justify-center mb-0.5 active:scale-95 transition-transform">
+                    <div className="w-14 h-14 rounded-full bg-gray-900 shadow-lg flex items-center justify-center mb-0.5 active:scale-95 transition-transform">
                       <Camera className="w-6 h-6 text-white" aria-hidden="true" />
                     </div>
-                    <span className="text-[10px] font-bold text-blue-600">{item.label}</span>
+                    <span className="text-xs font-bold text-gray-900">{item.label}</span>
                   </Link>
                 );
               }
@@ -144,7 +144,7 @@ export function MobileNav() {
                     className="flex flex-col items-center py-2 px-3 text-gray-400"
                   >
                     <Menu className="w-5 h-5 mb-0.5" aria-hidden="true" />
-                    <span className="text-[10px]">{item.label}</span>
+                    <span className="text-xs">{item.label}</span>
                   </button>
                 );
               }
@@ -156,7 +156,7 @@ export function MobileNav() {
                   href={item.href}
                   className={cn(
                     "flex flex-col items-center py-2 px-3 transition-colors",
-                    active ? "text-blue-600" : "text-gray-400"
+                    active ? "text-gray-900" : "text-gray-500"
                   )}
                 >
                   <div className="relative">
@@ -164,13 +164,13 @@ export function MobileNav() {
                       className={cn("w-5 h-5 mb-0.5", active && "stroke-[2.5]")}
                     />
                     {isNotification && unreadCount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center px-1 font-bold animate-pulse">
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-600 text-white text-[10px] rounded-full flex items-center justify-center px-1 font-bold">
                         {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     )}
                   </div>
                   <span className={cn(
-                    "text-[10px]",
+                    "text-xs",
                     active ? "font-bold" : "font-normal"
                   )}>{item.label}</span>
                 </Link>
