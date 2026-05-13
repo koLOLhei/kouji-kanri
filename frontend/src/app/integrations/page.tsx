@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch, formatDate } from "@/lib/utils";
+import { API_BASE } from "@/lib/api-base";
 import {
   ArrowLeft,
   Calendar,
@@ -183,7 +184,7 @@ export default function IntegrationsPage() {
   };
 
   const handleCopyIcal = () => {
-    const icalUrl = `${window.location.origin}/api/integrations/ical/{project_id}`;
+    const icalUrl = `${API_BASE}/api/integrations/ical/{project_id}`;
     navigator.clipboard.writeText(icalUrl);
     setIcalCopied(true);
     setTimeout(() => setIcalCopied(false), 2000);
@@ -559,9 +560,7 @@ export default function IntegrationsPage() {
         </p>
         <div className="flex items-center gap-3">
           <div className="flex-1 bg-gray-50 border rounded-lg px-4 py-2.5 font-mono text-sm text-gray-600 truncate">
-            {typeof window !== "undefined"
-              ? `${window.location.origin}/api/integrations/ical/{project_id}`
-              : "/api/integrations/ical/{project_id}"}
+            {`${API_BASE}/api/integrations/ical/{project_id}`}
           </div>
           <button
             onClick={handleCopyIcal}

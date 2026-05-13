@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -104,6 +104,14 @@ const LOG_TYPES = ["点検", "修理", "交換", "発見"] as const;
 /* ── Component ─────────────────────────────────────── */
 
 export default function ElementDetailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-500">読み込み中...</div>}>
+      <ElementDetailInner />
+    </Suspense>
+  );
+}
+
+function ElementDetailInner() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();

@@ -27,7 +27,14 @@ export async function apiFetch<T = unknown>(
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  } catch {
+    throw new Error(
+      "サーバーに接続できません。ネットワーク接続を確認するか、しばらく待ってから再試行してください。"
+    );
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || JSON.stringify(err));

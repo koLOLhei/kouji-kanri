@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/utils";
@@ -70,6 +70,14 @@ interface UploadItem {
 // ─── Component ───────────────────────────────────────────────────
 
 export default function CapturePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-500">読み込み中...</div>}>
+      <CaptureInner />
+    </Suspense>
+  );
+}
+
+function CaptureInner() {
   const { token } = useAuth();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();

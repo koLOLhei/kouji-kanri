@@ -126,7 +126,7 @@ export default function RootLayout({
             staticmap.openstreetmap.de is needed for the photo map component. */}
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://kouji-kanri-api.onrender.com http://127.0.0.1:8001 https://*.onrender.com; font-src 'self' https://fonts.gstatic.com;"
+          content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://kouji-kanri-api.onrender.com http://127.0.0.1:8001 https://*.onrender.com https://*.r2.cloudflarestorage.com https://*.r2.dev; font-src 'self' https://fonts.gstatic.com; frame-src 'self' https://www.openstreetmap.org;"
         />
         <script
           type="application/ld+json"

@@ -302,10 +302,22 @@ async function syncQueue() {
         headers,
         body,
       });
-      if (response.ok || response.status < 500) {
+      if (response.ok) {
         await deleteQueuedRequest(req.id);
         results.synced++;
+      } else if (response.status === 401 || response.status === 403) {
+        // 認証失効: queue に残し、クライアントに通知して再ログインを促す
+        results.failed++;
+        const clients = await self.clients.matchAll();
+        clients.forEach((c) => {
+          c.postMessage({ type: "QUEUE_AUTH_FAILURE", url: req.url });
+        });
+      } else if (response.status >= 400 && response.status < 500) {
+        // 4xx (バリデーション失敗等) は永続エラーとして削除
+        await deleteQueuedRequest(req.id);
+        results.failed++;
       } else {
+        // 5xx は一時エラーとして queue に残す
         results.failed++;
       }
     } catch {

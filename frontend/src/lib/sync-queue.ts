@@ -291,12 +291,31 @@ export async function syncOfflineQueue(): Promise<{
         continue;
       }
 
-      if (response.ok || response.status < 500) {
+      // 認証失効 (401/403) は queue から削除しない — トークンが切れただけで
+      // データ自体は有効なので、再ログイン後に再送できる状態を保つ。
+      // バリデーション失敗 (422) は永続的なエラーなので queue から削除する。
+      if (response.ok) {
         if (item.id != null) await deleteQueueItem(item.id);
         results.synced++;
+      } else if (response.status === 401 || response.status === 403) {
+        // 認証エラー: queue に残す。UI で再ログインを促すために event 発火
+        results.failed++;
+        if (typeof self !== "undefined" && "dispatchEvent" in self) {
+          try {
+            (self as { dispatchEvent: (e: Event) => boolean }).dispatchEvent(
+              new CustomEvent("kk-queue-auth-failure", { detail: { url: item.url } })
+            );
+          } catch {
+            // dispatchEvent unsupported (Worker context等)
+          }
+        }
+      } else if (response.status >= 400 && response.status < 500) {
+        // 4xx (422 等) は永続エラー: queue から削除して loop を防ぐ
+        if (item.id != null) await deleteQueueItem(item.id);
+        results.failed++;
       } else {
         results.failed++;
-        // A failed POST means subsequent requests to the same resource may be invalid
+        // 5xx は一時的エラーとして queue に残す
         if (item.method === "POST") {
           blockedBaseUrls.add(baseUrl);
         }
