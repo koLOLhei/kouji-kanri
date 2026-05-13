@@ -23,16 +23,28 @@ interface HealthData {
   projects: ProjectHealth[];
 }
 
+// API レスポンス形式に合わせる: /api/project-health の返却形式
 interface ProjectHealth {
-  id: string;
-  name: string;
-  code: string;
-  score: number;
-  progress_percent: number;
-  document_rate: number;
-  open_ncr_count: number;
-  daily_report_today: boolean;
-  next_inspection_date: string | null;
+  project_id: string;
+  project_name: string;
+  project_code: string | null;
+  status: string;
+  health_score: number;
+  phase_progress: number;
+  doc_progress: number;
+  total_phases: number;
+  completed_phases: number;
+  open_ncr: number;
+  has_today_report: boolean;
+  next_inspection: string | null;
+}
+
+// /api/alerts はサマリー + 配列の両方を返す
+interface AlertsResponse {
+  total: number;
+  critical: number;
+  warning: number;
+  alerts: Alert[];
 }
 
 interface Alert {
@@ -98,24 +110,23 @@ export default function ProjectHealthPage() {
     enabled: !!token,
   });
 
-  const { data: alerts } = useQuery<Alert[]>({
+  const { data: alertsData } = useQuery<AlertsResponse>({
     queryKey: ["alerts"],
     queryFn: () => apiFetch("/api/alerts?days=14", { token: token! }),
     enabled: !!token,
   });
 
+  const alerts = alertsData?.alerts ?? [];
+  const criticalCount = alertsData?.critical ?? 0;
+  const warningCount = alertsData?.warning ?? 0;
+
   const avgScore = health?.average_score ?? 0;
   const circumference = 2 * Math.PI * 54;
   const strokeDashoffset = circumference - (avgScore / 100) * circumference;
 
-  const criticalCount =
-    alerts?.filter((a) => a.severity === "critical").length ?? 0;
-  const warningCount =
-    alerts?.filter((a) => a.severity === "warning").length ?? 0;
-
-  // Sort projects by score ascending (worst first)
+  // ヘルススコア低い順 (悪い案件を先頭に)
   const sortedProjects = [...(health?.projects ?? [])].sort(
-    (a, b) => a.score - b.score
+    (a, b) => a.health_score - b.health_score
   );
 
   if (healthLoading) {
@@ -218,12 +229,12 @@ export default function ProjectHealthPage() {
           {sortedProjects.map((project) => {
             const miniCircumference = 2 * Math.PI * 18;
             const miniOffset =
-              miniCircumference - (project.score / 100) * miniCircumference;
+              miniCircumference - (project.health_score / 100) * miniCircumference;
 
             return (
               <Link
-                key={project.id}
-                href={`/projects/${project.id}`}
+                key={project.project_id}
+                href={`/projects/${project.project_id}`}
                 className="block"
               >
                 <div className="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all p-5 group">
@@ -247,7 +258,7 @@ export default function ProjectHealthPage() {
                           cy="24"
                           r="18"
                           fill="none"
-                          stroke={scoreRing(project.score)}
+                          stroke={scoreRing(project.health_score)}
                           strokeWidth="4"
                           strokeLinecap="round"
                           strokeDasharray={miniCircumference}
@@ -257,10 +268,10 @@ export default function ProjectHealthPage() {
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span
                           className={`text-sm font-bold ${scoreColor(
-                            project.score
+                            project.health_score
                           )}`}
                         >
-                          {project.score}
+                          {project.health_score}
                         </span>
                       </div>
                     </div>
@@ -268,11 +279,13 @@ export default function ProjectHealthPage() {
                     {/* Project Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-mono bg-gray-100 text-gray-500 px-2 py-0.5 rounded">
-                          {project.code}
-                        </span>
-                        <h3 className="font-bold text-gray-800 truncate">
-                          {project.name}
+                        {project.project_code && (
+                          <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                            {project.project_code}
+                          </span>
+                        )}
+                        <h3 className="font-bold text-gray-900 truncate">
+                          {project.project_name}
                         </h3>
                       </div>
 
@@ -281,54 +294,54 @@ export default function ProjectHealthPage() {
                         <div className="flex items-center gap-1.5">
                           <div className="w-16 bg-gray-200 rounded-full h-1.5">
                             <div
-                              className="h-1.5 rounded-full bg-blue-500"
+                              className="h-1.5 rounded-full bg-gray-700"
                               style={{
-                                width: `${project.progress_percent}%`,
+                                width: `${project.phase_progress}%`,
                               }}
                             />
                           </div>
-                          <span className="text-xs text-gray-500">
-                            工程{project.progress_percent}%
+                          <span className="text-xs text-gray-600">
+                            工程{project.phase_progress}%
                           </span>
                         </div>
 
                         <div className="flex items-center gap-1">
-                          <FileText className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="text-xs text-gray-500">
-                            書類{project.document_rate}%
+                          <FileText className="w-3.5 h-3.5 text-gray-500" />
+                          <span className="text-xs text-gray-600">
+                            書類{project.doc_progress}%
                           </span>
                         </div>
 
                         <div className="flex items-center gap-1">
                           <AlertTriangle
                             className={`w-3.5 h-3.5 ${
-                              project.open_ncr_count > 0
-                                ? "text-red-400"
+                              project.open_ncr > 0
+                                ? "text-red-500"
                                 : "text-gray-300"
                             }`}
                           />
                           <span
                             className={`text-xs ${
-                              project.open_ncr_count > 0
-                                ? "text-red-500 font-bold"
-                                : "text-gray-400"
+                              project.open_ncr > 0
+                                ? "text-red-600 font-bold"
+                                : "text-gray-500"
                             }`}
                           >
-                            NCR {project.open_ncr_count}
+                            NCR {project.open_ncr}
                           </span>
                         </div>
 
                         <div className="flex items-center gap-1">
-                          {project.daily_report_today ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          {project.has_today_report ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           ) : (
                             <ClipboardList className="w-3.5 h-3.5 text-gray-300" />
                           )}
                           <span
                             className={`text-xs ${
-                              project.daily_report_today
-                                ? "text-emerald-500"
-                                : "text-gray-400"
+                              project.has_today_report
+                                ? "text-emerald-600"
+                                : "text-gray-500"
                             }`}
                           >
                             日報
@@ -337,11 +350,11 @@ export default function ProjectHealthPage() {
                       </div>
 
                       {/* Next Inspection */}
-                      {project.next_inspection_date && (
+                      {project.next_inspection && (
                         <div className="flex items-center gap-1.5 mt-2">
-                          <Calendar className="w-3.5 h-3.5 text-purple-400" />
-                          <span className="text-xs text-purple-500">
-                            次回検査: {formatDate(project.next_inspection_date)}
+                          <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                          <span className="text-xs text-gray-700">
+                            次回検査: {formatDate(project.next_inspection)}
                           </span>
                         </div>
                       )}
