@@ -1,37 +1,37 @@
 """Project schemas."""
 
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProjectCreate(BaseModel):
-    name: str
-    project_code: str | None = None
-    client_name: str | None = None
-    contractor_name: str | None = None
-    site_address: str | None = None
-    contract_amount: int | None = None
+    name: str = Field(..., min_length=1, max_length=500)
+    project_code: str | None = Field(None, max_length=100)
+    client_name: str | None = Field(None, max_length=255)
+    contractor_name: str | None = Field(None, max_length=255)
+    site_address: str | None = Field(None, max_length=500)
+    contract_amount: int | None = Field(None, ge=0, le=10_000_000_000)
     start_date: date | None = None
     end_date: date | None = None
-    spec_base: str = "kokyo_r7"
-    regional_spec: str | None = None
-    manager_id: str | None = None
-    notes: str | None = None
+    spec_base: str = Field("kokyo_r7", max_length=100)
+    regional_spec: str | None = Field(None, max_length=100)
+    manager_id: str | None = Field(None, max_length=36)
+    notes: str | None = Field(None, max_length=10000)
 
 
 class ProjectUpdate(BaseModel):
-    name: str | None = None
-    project_code: str | None = None
-    client_name: str | None = None
-    contractor_name: str | None = None
-    site_address: str | None = None
-    contract_amount: int | None = None
+    name: str | None = Field(None, min_length=1, max_length=500)
+    project_code: str | None = Field(None, max_length=100)
+    client_name: str | None = Field(None, max_length=255)
+    contractor_name: str | None = Field(None, max_length=255)
+    site_address: str | None = Field(None, max_length=500)
+    contract_amount: int | None = Field(None, ge=0, le=10_000_000_000)
     start_date: date | None = None
     end_date: date | None = None
-    status: str | None = None
-    regional_spec: str | None = None
-    manager_id: str | None = None
-    notes: str | None = None
+    status: str | None = Field(None, max_length=50)
+    regional_spec: str | None = Field(None, max_length=100)
+    manager_id: str | None = Field(None, max_length=36)
+    notes: str | None = Field(None, max_length=10000)
 
 
 class ProjectResponse(BaseModel):
