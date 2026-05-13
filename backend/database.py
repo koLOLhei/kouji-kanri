@@ -27,7 +27,8 @@ def _resolve_render_db_host(url: str) -> str:
     except OSError:
         pass
     # 解決できない場合、各リージョンの外部URLを順に試す
-    for region in ("singapore", "oregon", "frankfurt", "ohio", "virginia"):
+    # Oregon を最初に試す (Render free DB のデフォルトリージョン)
+    for region in ("oregon", "ohio", "virginia", "frankfurt", "singapore"):
         external = f"{short_host}.{region}-postgres.render.com"
         try:
             socket.gethostbyname(external)

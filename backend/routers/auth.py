@@ -70,20 +70,10 @@ def _record_email_failure(email: str) -> None:
 
 @router.post("/login", response_model=TokenResponse)
 def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    import traceback, sys, os
-    try:
-        client_ip = request.client.host if request.client else "unknown"
-        _check_rate_limit(client_ip)
-        _check_email_lockout(req.email)
-        user = db.query(User).filter(User.email == req.email, User.is_active == True).first()
-    except HTTPException:
-        raise
-    except Exception as _e:
-        # DB URL の最初の部分 (host) を露出してデプロイ確認
-        from database import _db_url
-        host = _db_url.split('@')[-1].split('/')[0] if '@' in _db_url else 'N/A'
-        traceback.print_exc(file=sys.stderr); sys.stderr.flush()
-        raise HTTPException(status_code=500, detail=f"DBG3: host={host} err={type(_e).__name__}: {str(_e)[:200]}")
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip)
+    _check_email_lockout(req.email)
+    user = db.query(User).filter(User.email == req.email, User.is_active == True).first()
     if not user or not verify_password(req.password, user.password_hash):
         # 失敗ログ記録 — メールの存在有無に関わらず必ず記録
         _record_failed_attempt(client_ip)
