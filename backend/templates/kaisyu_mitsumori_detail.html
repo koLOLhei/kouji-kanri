@@ -115,7 +115,7 @@ h2 { font-size: 11pt; font-weight: bold; border-left: 5px solid #1e40af; padding
     <tr class="section-row">
       <td colspan="8">{{ loop.index }}. {{ section.title }}</td>
     </tr>
-    {% for item in section.items|default([], true) %}
+    {% for item in section['items']|default([], true) %}
     <tr>
       <td class="center">{{ ns.idx }}</td>
       <td>{{ item.name|default('') }}</td>
