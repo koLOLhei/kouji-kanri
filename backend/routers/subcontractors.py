@@ -102,7 +102,9 @@ def get_subcontractor(
     db: Session = Depends(get_db),
 ):
     sub = db.query(Subcontractor).filter(
-        Subcontractor.id == sub_id, Subcontractor.tenant_id == user.tenant_id
+        Subcontractor.id == sub_id,
+        Subcontractor.tenant_id == user.tenant_id,
+        Subcontractor.is_active == True,  # ソフト削除済みは除外
     ).first()
     if not sub:
         raise HTTPException(status_code=404, detail="協力業者が見つかりません")
