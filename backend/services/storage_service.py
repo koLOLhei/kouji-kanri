@@ -54,7 +54,10 @@ def _try_init_s3():
             region_name=settings.s3_region,
             config=BotoConfig(signature_version="s3v4"),
         )
-        client.list_buckets()
+        # bucket-scoped credentials (e.g. R2 object-read-and-write) may not
+        # have list_buckets permission. head_bucket only needs access to the
+        # configured bucket itself.
+        client.head_bucket(Bucket=settings.s3_bucket)
         _use_s3 = True
         return client
     except Exception as exc:
