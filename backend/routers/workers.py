@@ -216,7 +216,11 @@ def get_worker(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    worker = db.query(Worker).filter(Worker.id == worker_id, Worker.tenant_id == user.tenant_id).first()
+    worker = db.query(Worker).filter(
+        Worker.id == worker_id,
+        Worker.tenant_id == user.tenant_id,
+        Worker.is_active == True,  # ソフト削除済みは除外
+    ).first()
     if not worker:
         raise HTTPException(status_code=404, detail="作業員が見つかりません")
     return worker
