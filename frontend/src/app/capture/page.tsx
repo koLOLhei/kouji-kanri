@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/utils";
+import { API_BASE } from "@/lib/api-base";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Camera, CheckCircle, X, ChevronLeft, Loader2, AlertCircle, Trash2, Image as ImageIcon, RefreshCw, Upload, LayoutGrid, List, RotateCcw } from "lucide-react";
 import ElectronicBlackboard, {
@@ -308,9 +309,8 @@ export default function CapturePage() {
           reader.onerror = () => reject(reader.error);
           reader.readAsDataURL(uploadFile);
         });
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
         const { queueOfflineRequest } = await import("@/lib/sync-queue");
-        await queueOfflineRequest(`${apiBase}${url}`, "POST", {
+        await queueOfflineRequest(`${API_BASE}${url}`, "POST", {
           _multipart: true,
           file_base64: base64,
           file_name: uploadFile.name,
@@ -343,9 +343,8 @@ export default function CapturePage() {
             reader.onerror = () => reject(reader.error);
             reader.readAsDataURL(uploadFile);
           });
-          const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
           const { queueOfflineRequest } = await import("@/lib/sync-queue");
-          await queueOfflineRequest(`${apiBase}${url}`, "POST", {
+          await queueOfflineRequest(`${API_BASE}${url}`, "POST", {
             _multipart: true,
             file_base64: base64,
             file_name: uploadFile.name,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { API_BASE } from "@/lib/api-base";
 
 /* ============================================================
    Push Notification Helpers
@@ -115,8 +116,6 @@ export function saveNotificationSettings(
 /* ============================================================
    Web Push Subscription (server-backed)
    ============================================================ */
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
 
 /**
  * Convert a URL-safe base64 string to a Uint8Array (required by

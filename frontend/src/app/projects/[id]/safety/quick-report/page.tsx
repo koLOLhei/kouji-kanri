@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowLeft, Camera, AlertTriangle, CheckCircle2, X, WifiOff } from "lucide-react";
 import { queueOfflineRequest } from "@/lib/sync-queue";
 import { VoiceTextarea } from "@/components/voice-input";
+import { API_BASE } from "@/lib/api-base";
 
 const SEVERITY_OPTIONS = [
   { key: "low", label: "軽微", desc: "注意が必要", color: "bg-blue-100 text-blue-700 border-blue-300", activeColor: "bg-blue-600 text-white border-blue-600" },
@@ -74,7 +75,7 @@ export default function QuickReportPage() {
     setSubmitting(true);
     setError(null);
 
-    const url = `http://127.0.0.1:8001/api/projects/${id}/safety/quick-incident`;
+    const url = `${API_BASE}/api/projects/${id}/safety/quick-incident`;
     const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
 
     // オフライン: ヒヤリハットは命にかかわるので必ずキューに保存（写真は base64 でキュー）

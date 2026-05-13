@@ -9,8 +9,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Building2, ArrowLeft, KeyRound, CheckCircle, Eye, EyeOff } from "lucide-react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8001";
+import { API_BASE } from "@/lib/api-base";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();

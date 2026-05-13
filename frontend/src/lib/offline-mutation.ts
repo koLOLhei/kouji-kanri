@@ -19,8 +19,7 @@
 import { useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { queueOfflineRequest } from "@/lib/sync-queue";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
+import { API_BASE } from "@/lib/api-base";
 
 export interface OfflineMutateOptions {
   method?: "POST" | "PUT" | "PATCH" | "DELETE";
