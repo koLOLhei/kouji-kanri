@@ -36,7 +36,7 @@ interface ProjectHealth {
   completed_phases: number;
   open_ncr: number;
   has_today_report: boolean;
-  next_inspection: string | null;
+  next_inspection: { title: string; date: string } | null;
 }
 
 // /api/alerts はサマリー + 配列の両方を返す
@@ -140,13 +140,13 @@ export default function ProjectHealthPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-8">
+      <div className="bg-gray-900 px-6 py-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <Activity className="w-7 h-7" />
             プロジェクトヘルス
           </h1>
-          <p className="text-teal-100 mt-1">全プロジェクトの健全性を一覧で把握</p>
+          <p className="text-gray-300 mt-1">全プロジェクトの健全性を一覧で把握</p>
         </div>
       </div>
 
@@ -183,7 +183,7 @@ export default function ProjectHealthPage() {
                   <span className={`text-4xl font-bold ${scoreColor(avgScore)}`}>
                     {avgScore}
                   </span>
-                  <span className="text-xs text-gray-400">平均スコア</span>
+                  <span className="text-xs text-gray-600">平均スコア</span>
                 </div>
               </div>
             </div>
@@ -218,9 +218,9 @@ export default function ProjectHealthPage() {
 
         {/* Project Cards */}
         <h2 className="text-lg font-bold text-gray-800 mb-4 px-1 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-teal-500" />
+          <TrendingUp className="w-5 h-5 text-gray-700" />
           プロジェクト一覧
-          <span className="text-sm font-normal text-gray-400">
+          <span className="text-sm font-normal text-gray-600">
             (スコア順)
           </span>
         </h2>
@@ -354,7 +354,7 @@ export default function ProjectHealthPage() {
                         <div className="flex items-center gap-1.5 mt-2">
                           <Calendar className="w-3.5 h-3.5 text-gray-500" />
                           <span className="text-xs text-gray-700">
-                            次回検査: {formatDate(project.next_inspection)}
+                            次回検査: {project.next_inspection.title} ({formatDate(project.next_inspection.date)})
                           </span>
                         </div>
                       )}
@@ -373,9 +373,9 @@ export default function ProjectHealthPage() {
         {alerts && alerts.length > 0 && (
           <>
             <h2 className="text-lg font-bold text-gray-800 mb-4 px-1 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
               アラート一覧
-              <span className="text-sm font-normal text-gray-400">
+              <span className="text-sm font-normal text-gray-600">
                 (直近14日)
               </span>
             </h2>

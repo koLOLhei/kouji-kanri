@@ -74,16 +74,16 @@ export function statusLabel(status: string): string {
 export function statusColor(status: string): string {
   const map: Record<string, string> = {
     planning: "bg-gray-100 text-gray-700",
-    active: "bg-blue-100 text-blue-700",
-    inspection: "bg-yellow-100 text-yellow-700",
-    completed: "bg-green-100 text-green-700",
-    not_started: "bg-gray-100 text-gray-600",
-    in_progress: "bg-blue-100 text-blue-700",
-    draft: "bg-gray-100 text-gray-600",
-    ready: "bg-green-100 text-green-700",
-    submitted: "bg-blue-100 text-blue-700",
-    approved: "bg-green-100 text-green-700",
-    rejected: "bg-red-100 text-red-700",
+    active: "bg-blue-50 text-blue-700",
+    inspection: "bg-amber-50 text-amber-700",
+    completed: "bg-emerald-50 text-emerald-700",
+    not_started: "bg-gray-100 text-gray-700",
+    in_progress: "bg-blue-50 text-blue-700",
+    draft: "bg-gray-100 text-gray-700",
+    ready: "bg-emerald-50 text-emerald-700",
+    submitted: "bg-blue-50 text-blue-700",
+    approved: "bg-emerald-50 text-emerald-700",
+    rejected: "bg-red-50 text-red-700",
   };
   return map[status] || "bg-gray-100 text-gray-700";
 }

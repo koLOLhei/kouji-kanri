@@ -27,9 +27,9 @@ interface ExpiringQual {
 }
 
 const ALERT_COLOR: Record<string, string> = {
-  critical: "bg-red-100 text-red-700 border-red-200",
-  high: "bg-orange-100 text-orange-700 border-orange-200",
-  medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  critical: "bg-white text-red-600 border-red-600",
+  high: "bg-white text-amber-600 border-amber-600",
+  medium: "bg-gray-50 text-gray-700 border-gray-300",
 };
 
 export default function WorkersPage() {
@@ -100,13 +100,14 @@ export default function WorkersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+      {/* Header bar */}
+      <div className="bg-gray-900 text-white rounded-xl px-6 py-4 flex items-center gap-4">
+        <h1 className="text-xl font-bold flex items-center gap-2">
           <HardHat className="w-6 h-6" /> 作業員管理
         </h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="ml-auto flex items-center gap-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="ml-auto flex items-center gap-1 bg-white text-gray-900 px-4 py-2 rounded-lg hover:bg-gray-200 active:bg-gray-300 font-medium"
         >
           <Plus className="w-4 h-4" /> 作業員登録
         </button>
@@ -114,11 +115,11 @@ export default function WorkersPage() {
 
       {/* Expiring qualification alert banner */}
       {expiringQuals.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 className="font-semibold text-orange-800 mb-2">
+              <h3 className="font-semibold text-gray-900 mb-2">
                 資格期限切れ間近 {expiringQuals.length}件
               </h3>
               <div className="space-y-1">
@@ -127,15 +128,15 @@ export default function WorkersPage() {
                     <span className={`px-2 py-0.5 rounded text-xs font-medium border ${ALERT_COLOR[q.alert_level]}`}>
                       {q.days_left}日
                     </span>
-                    <Link href={`/workers/${q.worker_id}`} className="font-medium text-orange-800 hover:underline">
+                    <Link href={`/workers/${q.worker_id}`} className="font-medium text-gray-900 hover:underline">
                       {q.worker_name}
                     </Link>
-                    <span className="text-orange-600">{q.qualification_name}</span>
+                    <span className="text-gray-700">{q.qualification_name}</span>
                     <span className="text-gray-500">{formatDate(q.expiry_date)}</span>
                   </div>
                 ))}
                 {expiringQuals.length > 5 && (
-                  <p className="text-xs text-orange-600 mt-1">他 {expiringQuals.length - 5}件...</p>
+                  <p className="text-xs text-gray-500 mt-1">他 {expiringQuals.length - 5}件...</p>
                 )}
               </div>
             </div>
@@ -144,20 +145,20 @@ export default function WorkersPage() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white border rounded-lg p-6 space-y-4">
-          <h2 className="font-semibold text-lg">作業員登録</h2>
+        <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+          <h2 className="font-semibold text-lg text-gray-900">作業員登録</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">氏名</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">氏名</label>
               <input type="text" value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
-                className="w-full border rounded px-3 py-2" required />
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-gray-900" required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">血液型</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">血液型</label>
               <select value={form.blood_type}
                 onChange={e => setForm({ ...form, blood_type: e.target.value })}
-                className="w-full border rounded px-3 py-2">
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-gray-900">
                 <option value="">未設定</option>
                 <option value="A">A</option>
                 <option value="B">B</option>
@@ -166,25 +167,25 @@ export default function WorkersPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">所属会社</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">所属会社</label>
               <input type="text" value={form.company_name}
                 onChange={e => setForm({ ...form, company_name: e.target.value })}
-                className="w-full border rounded px-3 py-2" />
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-gray-900" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">電話番号</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700">電話番号</label>
               <input type="tel" value={form.phone}
                 onChange={e => setForm({ ...form, phone: e.target.value })}
-                className="w-full border rounded px-3 py-2" />
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-gray-900" />
             </div>
           </div>
           <div className="flex gap-2">
             <button type="submit" disabled={createMutation.isPending}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              className="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-700 active:bg-gray-900 disabled:opacity-50 font-medium">
               {createMutation.isPending ? "保存中..." : "保存"}
             </button>
             <button type="button" onClick={() => setShowForm(false)}
-              className="border px-6 py-2 rounded-lg hover:bg-gray-50">キャンセル</button>
+              className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50">キャンセル</button>
           </div>
           {createMutation.isError && (
             <p className="text-red-600 text-sm">{(createMutation.error as Error).message}</p>
@@ -195,13 +196,13 @@ export default function WorkersPage() {
       {/* Filter toggle */}
       {expiringQuals.length > 0 && (
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-400" />
+          <Filter className="w-4 h-4 text-gray-500" />
           <button
             onClick={() => setShowExpiringOnly(!showExpiringOnly)}
             className={`flex items-center gap-1 text-sm px-3 py-1.5 rounded-full border transition-colors ${
               showExpiringOnly
-                ? "bg-orange-500 text-white border-orange-500"
-                : "bg-white text-gray-600 border-gray-300 hover:border-orange-400"
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-700 border-gray-300 hover:border-gray-900"
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -209,7 +210,7 @@ export default function WorkersPage() {
             {showExpiringOnly ? "" : ` (${workersWithExpiringQuals.size})`}
           </button>
           {showExpiringOnly && (
-            <button onClick={() => setShowExpiringOnly(false)} className="text-sm text-gray-500 hover:text-gray-700">
+            <button onClick={() => setShowExpiringOnly(false)} className="text-sm text-gray-500 hover:text-gray-900">
               全員表示
             </button>
           )}
@@ -226,17 +227,19 @@ export default function WorkersPage() {
             const alert = workerAlertMap.get(w.id);
             return (
               <Link key={w.id} href={`/workers/${w.id}`}
-                className="bg-white border rounded-lg p-4 flex items-center justify-between hover:bg-gray-50 block">
+                className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between hover:bg-gray-50 block">
                 <div className="flex items-center gap-4 flex-wrap">
-                  <span className="font-semibold">{w.name}</span>
+                  <span className="font-semibold text-gray-900">{w.name}</span>
                   {w.blood_type && (
-                    <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded">{w.blood_type}型</span>
+                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{w.blood_type}型</span>
                   )}
                   {w.company_name && (
                     <span className="text-sm text-gray-500">{w.company_name}</span>
                   )}
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    w.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                  <span className={`text-xs px-2 py-0.5 rounded border ${
+                    w.is_active
+                      ? "bg-white text-emerald-600 border-emerald-600"
+                      : "bg-gray-100 text-gray-500 border-gray-200"
                   }`}>
                     {w.is_active ? "稼働中" : "非稼働"}
                   </span>
@@ -247,7 +250,7 @@ export default function WorkersPage() {
                     </span>
                   )}
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
               </Link>
             );
           })}

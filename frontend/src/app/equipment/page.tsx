@@ -30,26 +30,15 @@ function typeLabel(type: string): string {
   return EQUIPMENT_TYPES.find(t => t.value === type)?.label || type;
 }
 
-function typeGradient(type: string): string {
-  const gradients: Record<string, string> = {
-    crane: "from-blue-500 to-indigo-600 shadow-blue-500/20",
-    excavator: "from-amber-500 to-orange-600 shadow-amber-500/20",
-    truck: "from-emerald-500 to-teal-600 shadow-emerald-500/20",
-    pump: "from-purple-500 to-violet-600 shadow-purple-500/20",
-    generator: "from-red-500 to-rose-600 shadow-red-500/20",
-  };
-  return gradients[type] || "from-gray-500 to-gray-600 shadow-gray-500/20";
-}
-
 function inspectionStatus(expiry: string | null): { label: string; className: string } {
-  if (!expiry) return { label: "未設定", className: "text-gray-400" };
+  if (!expiry) return { label: "未設定", className: "text-gray-500 bg-gray-50 border-gray-200" };
   const expiryDate = new Date(expiry);
   const now = new Date();
   const daysUntil = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (daysUntil < 0) return { label: "期限切れ", className: "text-red-600 bg-red-50 border-red-200" };
-  if (daysUntil <= 30) return { label: `残${daysUntil}日`, className: "text-amber-600 bg-amber-50 border-amber-200" };
-  return { label: "有効", className: "text-emerald-600 bg-emerald-50 border-emerald-200" };
+  if (daysUntil < 0) return { label: "期限切れ", className: "text-red-600 bg-gray-50 border-gray-200" };
+  if (daysUntil <= 30) return { label: `残${daysUntil}日`, className: "text-amber-600 bg-gray-50 border-gray-200" };
+  return { label: "有効", className: "text-emerald-600 bg-gray-50 border-gray-200" };
 }
 
 export default function EquipmentPage() {
@@ -106,14 +95,14 @@ export default function EquipmentPage() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center shadow-lg shadow-slate-600/20">
-            <Truck className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+            <Truck className="w-5 h-5 text-gray-700" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">車両・重機管理</h1>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="ml-auto flex items-center gap-2 bg-gradient-to-r from-slate-700 to-slate-900 text-white px-5 py-2.5 rounded-xl hover:from-slate-800 hover:to-black shadow-lg shadow-slate-700/25 transition-all"
+          className="ml-auto flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-xl hover:bg-gray-700 active:bg-white active:text-gray-900 active:border active:border-gray-900 transition-colors"
         >
           <Plus className="w-4 h-4" /> 新規登録
         </button>
@@ -130,7 +119,7 @@ export default function EquipmentPage() {
                 type="text"
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
                 placeholder="25tラフター"
                 required
               />
@@ -140,7 +129,7 @@ export default function EquipmentPage() {
               <select
                 value={form.equipment_type}
                 onChange={e => setForm({ ...form, equipment_type: e.target.value })}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
               >
                 {EQUIPMENT_TYPES.map(t => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -153,7 +142,7 @@ export default function EquipmentPage() {
                 type="text"
                 value={form.model_number}
                 onChange={e => setForm({ ...form, model_number: e.target.value })}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
                 placeholder="GR-250N-5"
               />
             </div>
@@ -163,7 +152,7 @@ export default function EquipmentPage() {
                 type="text"
                 value={form.registration_number}
                 onChange={e => setForm({ ...form, registration_number: e.target.value })}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
                 placeholder="東京100あ1234"
               />
             </div>
@@ -173,7 +162,7 @@ export default function EquipmentPage() {
                 type="text"
                 value={form.owner_company}
                 onChange={e => setForm({ ...form, owner_company: e.target.value })}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
               />
             </div>
             <div>
@@ -182,7 +171,7 @@ export default function EquipmentPage() {
                 type="date"
                 value={form.inspection_expiry}
                 onChange={e => setForm({ ...form, inspection_expiry: e.target.value })}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
               />
             </div>
           </div>
@@ -192,7 +181,7 @@ export default function EquipmentPage() {
               type="text"
               value={form.capacity}
               onChange={e => setForm({ ...form, capacity: e.target.value })}
-              className="w-full md:w-1/2 border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all"
+              className="w-full md:w-1/2 border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 outline-none transition-colors"
               placeholder="吊上荷重 25t"
             />
           </div>
@@ -200,14 +189,14 @@ export default function EquipmentPage() {
             <button
               type="submit"
               disabled={createMutation.isPending}
-              className="bg-gradient-to-r from-slate-700 to-slate-900 text-white px-6 py-2.5 rounded-xl hover:from-slate-800 hover:to-black disabled:opacity-50 shadow-lg shadow-slate-700/25 transition-all font-medium"
+              className="bg-gray-900 text-white px-6 py-2.5 rounded-xl hover:bg-gray-700 active:bg-white active:text-gray-900 active:border active:border-gray-900 disabled:opacity-50 transition-colors font-medium"
             >
               {createMutation.isPending ? "保存中..." : "保存"}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="border border-gray-300 px-6 py-2.5 rounded-xl hover:bg-gray-50 transition-all font-medium text-gray-700"
+              className="border border-gray-300 px-6 py-2.5 rounded-xl hover:bg-gray-50 transition-colors font-medium text-gray-700"
             >
               キャンセル
             </button>
@@ -223,11 +212,11 @@ export default function EquipmentPage() {
         <div className="text-center py-12 text-gray-500">読み込み中...</div>
       ) : equipment.length === 0 ? (
         <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-            <Truck className="w-8 h-8 text-gray-400" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-100 flex items-center justify-center">
+            <Truck className="w-8 h-8 text-gray-500" />
           </div>
-          <p className="text-gray-500 text-lg">車両・重機が登録されていません</p>
-          <p className="text-gray-400 text-sm mt-1">「新規登録」から追加してください</p>
+          <p className="text-gray-700 text-lg">車両・重機が登録されていません</p>
+          <p className="text-gray-500 text-sm mt-1">「新規登録」から追加してください</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -237,20 +226,20 @@ export default function EquipmentPage() {
             return (
               <div
                 key={eq.id}
-                className={`bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all ${
-                  status.label === "期限切れ" ? "border-red-200" : "border-gray-200"
+                className={`bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow ${
+                  status.label === "期限切れ" ? "border-red-600" : "border-gray-200"
                 }`}
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${typeGradient(eq.equipment_type)} flex items-center justify-center shadow-lg`}>
-                    <Truck className="w-6 h-6 text-white" />
+                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+                    <Truck className="w-6 h-6 text-gray-700" />
                   </div>
                   {isWarning && (
-                    <AlertTriangle className={`w-5 h-5 ${status.label === "期限切れ" ? "text-red-500" : "text-amber-500"}`} />
+                    <AlertTriangle className={`w-5 h-5 ${status.label === "期限切れ" ? "text-red-600" : "text-amber-600"}`} />
                   )}
                 </div>
                 <h3 className="font-bold text-gray-900 text-lg">{eq.name}</h3>
-                <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
                   {typeLabel(eq.equipment_type)}
                 </span>
 

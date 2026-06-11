@@ -66,20 +66,27 @@ interface RiskMatrix {
 }
 
 interface AlertItem {
-  id: string;
+  type: string;
   severity: string;
   title: string;
   project_name: string;
-  project_id: string;
+  date: string;
   days_until: number;
-  action_link: string;
+  action_url: string;
+}
+
+interface AlertsResponse {
+  total: number;
+  critical: number;
+  warning: number;
+  alerts: AlertItem[];
 }
 
 // ---------- Helpers ----------
 
 type SortKey = keyof ProjectComparison;
 
-function ProgressBar({ value, color = "bg-blue-500" }: { value: number; color?: string }) {
+function ProgressBar({ value, color = "bg-blue-600" }: { value: number; color?: string }) {
   return (
     <div className="w-full bg-gray-200 rounded-full h-2">
       <div
@@ -97,15 +104,14 @@ function SummaryCard({
   value: string | number;
   sub?: string;
   icon: React.ComponentType<{ className?: string }>;
-  color?: string;
+  color?: "blue" | "emerald" | "amber" | "red";
   trend?: "up" | "down" | "neutral";
 }) {
   const colorMap: Record<string, string> = {
     blue: "bg-blue-50 text-blue-600",
-    green: "bg-green-50 text-green-600",
+    emerald: "bg-emerald-50 text-emerald-600",
     amber: "bg-amber-50 text-amber-600",
     red: "bg-red-50 text-red-600",
-    purple: "bg-purple-50 text-purple-600",
   };
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
@@ -121,8 +127,8 @@ function SummaryCard({
       </div>
       {trend && (
         <div className="mt-3 flex items-center gap-1">
-          {trend === "up" && <TrendingUp className="w-3.5 h-3.5 text-green-500" />}
-          {trend === "down" && <TrendingDown className="w-3.5 h-3.5 text-red-500" />}
+          {trend === "up" && <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />}
+          {trend === "down" && <TrendingDown className="w-3.5 h-3.5 text-red-600" />}
         </div>
       )}
     </div>
@@ -130,13 +136,14 @@ function SummaryCard({
 }
 
 // ---------- Risk Matrix cell color ----------
+// 4-state: low(gray) / medium(amber-light) / high(amber) / critical(red)
 
 function riskColor(score: number): string {
   if (score >= 20) return "bg-red-600 text-white";
-  if (score >= 12) return "bg-red-400 text-white";
-  if (score >= 8) return "bg-amber-400 text-white";
-  if (score >= 4) return "bg-yellow-200 text-gray-800";
-  return "bg-green-100 text-gray-600";
+  if (score >= 12) return "bg-red-500 text-white";
+  if (score >= 8) return "bg-amber-600 text-white";
+  if (score >= 4) return "bg-amber-100 text-gray-800";
+  return "bg-gray-100 text-gray-600";
 }
 
 // ---------- CSS Bar chart component ----------
@@ -146,7 +153,7 @@ function BarChart({
   valueKey,
   labelKey,
   label,
-  color = "bg-blue-500",
+  color = "bg-blue-600",
 }: {
   data: TrendMonth[];
   valueKey: keyof TrendMonth;
@@ -209,18 +216,20 @@ export default function DashboardPage() {
     enabled: !!token,
   });
 
-  const { data: alerts = [] } = useQuery({
+  // /api/alerts returns { total, critical, warning, alerts: [...] }
+  const { data: alertsResp } = useQuery({
     queryKey: ["alerts"],
-    queryFn: () => apiFetch<AlertItem[]>("/api/alerts", { token }),
+    queryFn: () => apiFetch<AlertsResponse>("/api/alerts", { token }),
     enabled: !!token,
   });
+  const alerts: AlertItem[] = alertsResp?.alerts ?? [];
 
   const isLoading = loadingOverview || loadingComparison || loadingTrends || loadingRisk;
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -289,21 +298,21 @@ export default function DashboardPage() {
             value={formatAmount(overview.total_budget)}
             sub={`実績 ${formatAmount(overview.total_actual)}`}
             icon={DollarSign}
-            color="green"
+            color="emerald"
           />
           <SummaryCard
             label="平均進捗率"
             value={`${overview.average_progress}%`}
             sub={`遅延案件 ${overview.overdue_project_count} 件`}
             icon={Target}
-            color={overview.overdue_project_count > 0 ? "amber" : "green"}
+            color={overview.overdue_project_count > 0 ? "amber" : "emerald"}
           />
           <SummaryCard
             label="未解決是正指摘"
             value={overview.pending_ncr_count}
             sub="件（全案件合計）"
             icon={AlertTriangle}
-            color={overview.pending_ncr_count > 0 ? "red" : "green"}
+            color={overview.pending_ncr_count > 0 ? "red" : "emerald"}
           />
         </div>
       )}
@@ -312,14 +321,14 @@ export default function DashboardPage() {
       {(criticalAlerts.length > 0 || warningAlerts.length > 0) && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-500" />
+            <AlertCircle className="w-5 h-5 text-red-600" />
             アラート
           </h2>
           <div className="space-y-2">
-            {[...criticalAlerts, ...warningAlerts].slice(0, 10).map((a) => (
+            {[...criticalAlerts, ...warningAlerts].slice(0, 10).map((a, idx) => (
               <Link
-                key={a.id}
-                href={a.action_link || "#"}
+                key={`${a.type}-${a.title}-${idx}`}
+                href={a.action_url || "#"}
                 className={cn(
                   "flex items-start gap-3 p-3 rounded-lg border text-sm",
                   a.severity === "critical"
@@ -328,13 +337,15 @@ export default function DashboardPage() {
                 )}
               >
                 {a.severity === "critical" ? (
-                  <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                  <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
                 ) : (
-                  <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                 )}
                 <div>
-                  <span className="font-medium">{a.title}</span>
-                  <span className="text-gray-500 ml-2">{a.project_name}</span>
+                  <span className="font-medium text-gray-900">{a.title}</span>
+                  {a.project_name && (
+                    <span className="text-gray-500 ml-2">{a.project_name}</span>
+                  )}
                 </div>
               </Link>
             ))}
@@ -346,7 +357,7 @@ export default function DashboardPage() {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div className="p-5 border-b border-gray-100">
           <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-blue-500" />
+            <BarChart3 className="w-5 h-5 text-blue-600" />
             案件比較
           </h2>
         </div>
@@ -387,7 +398,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2">
                       <ProgressBar
                         value={p.progress}
-                        color={p.progress >= 80 ? "bg-green-500" : p.progress >= 50 ? "bg-blue-500" : "bg-amber-500"}
+                        color={p.progress >= 80 ? "bg-emerald-600" : p.progress >= 50 ? "bg-blue-600" : "bg-amber-600"}
                       />
                       <span className="text-xs text-gray-600 w-10 text-right">{p.progress}%</span>
                     </div>
@@ -397,7 +408,7 @@ export default function DashboardPage() {
                   <td className="px-3 py-3 text-right">
                     <span className={cn(
                       "text-sm font-medium",
-                      p.cost_rate > 90 ? "text-red-600" : p.cost_rate > 70 ? "text-amber-600" : "text-green-600"
+                      p.cost_rate > 90 ? "text-red-600" : p.cost_rate > 70 ? "text-amber-600" : "text-emerald-600"
                     )}>
                       {p.cost_rate}%
                     </span>
@@ -406,14 +417,14 @@ export default function DashboardPage() {
                     {p.incident_count > 0 ? (
                       <span className="text-red-600 font-semibold">{p.incident_count}</span>
                     ) : (
-                      <CheckCircle2 className="w-4 h-4 text-green-400 mx-auto" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 mx-auto" />
                     )}
                   </td>
                   <td className="px-3 py-3 w-28">
                     <div className="flex items-center gap-2">
                       <ProgressBar
                         value={p.document_completion_rate}
-                        color="bg-purple-500"
+                        color="bg-blue-600"
                       />
                       <span className="text-xs text-gray-600 w-10 text-right">
                         {p.document_completion_rate}%
@@ -438,7 +449,7 @@ export default function DashboardPage() {
       {trends.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="font-semibold text-gray-800 mb-5 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-blue-500" />
+            <Activity className="w-5 h-5 text-blue-600" />
             月次トレンド（過去6ヶ月）
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -447,21 +458,21 @@ export default function DashboardPage() {
               valueKey="actual_cost"
               labelKey="month"
               label="月次実績コスト（円）"
-              color="bg-blue-500"
+              color="bg-blue-600"
             />
             <BarChart
               data={trends}
               valueKey="incident_count"
               labelKey="month"
               label="安全インシデント件数"
-              color="bg-red-400"
+              color="bg-red-600"
             />
             <BarChart
               data={trends}
               valueKey="document_completion_rate"
               labelKey="month"
               label="書類完了率（%）"
-              color="bg-purple-500"
+              color="bg-emerald-600"
             />
           </div>
         </div>
@@ -471,7 +482,7 @@ export default function DashboardPage() {
       {riskData && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
             リスクマトリクス
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -499,10 +510,10 @@ export default function DashboardPage() {
                 <span>重大度: 低</span>
                 <span>高</span>
               </div>
-              <div className="mt-2 flex gap-2 text-xs">
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 inline-block" />低リスク</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-200 inline-block" />中リスク</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400 inline-block" />高リスク</span>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 inline-block" />低リスク</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-100 inline-block" />中リスク</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-600 inline-block" />高リスク</span>
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-600 inline-block" />最高リスク</span>
               </div>
             </div>
@@ -524,7 +535,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {riskData.items.length === 0 && (
-                  <div className="flex items-center gap-2 p-3 text-green-600 bg-green-50 rounded-lg">
+                  <div className="flex items-center gap-2 p-3 text-emerald-600 bg-emerald-50 rounded-lg">
                     <CheckCircle2 className="w-4 h-4" />
                     <span className="text-sm">リスク項目なし</span>
                   </div>

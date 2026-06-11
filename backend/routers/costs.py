@@ -183,8 +183,18 @@ def update_actual(
     a = db.query(CostActual).filter(CostActual.id == actual_id, CostActual.project_id == project_id).first()
     if not a:
         raise HTTPException(status_code=404, detail="実績が見つかりません")
-    for k, v in req.model_dump(exclude_unset=True).items():
+    updates = req.model_dump(exclude_unset=True)
+    amount_changed = "amount" in updates and updates["amount"] is not None and updates["amount"] != a.amount
+    for k, v in updates.items():
         setattr(a, k, v)
+    # 金額が変更された場合は承認要否を再評価し、すでに付与済みの承認をリセット
+    # （承認回避のため金額を引き下げ・引き上げするケースを防ぐ）
+    if amount_changed:
+        a.approval_required = a.amount >= APPROVAL_THRESHOLD
+        if a.approval_required:
+            a.approved = False
+            a.approved_by = None
+            a.approved_at = None
     db.commit()
     db.refresh(a)
     return a
@@ -352,6 +362,12 @@ def approve_actual(
         raise HTTPException(status_code=404, detail="実績が見つかりません")
     if not a.approval_required:
         raise HTTPException(status_code=400, detail="この実績は承認不要です")
+    # 自己承認の禁止（内部統制上、起票者本人は承認できない）
+    if a.recorded_by and a.recorded_by == user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="自己承認はできません。起票者本人以外の承認者が承認してください。",
+        )
 
     a.approved = req.approved
     a.approved_by = user.id

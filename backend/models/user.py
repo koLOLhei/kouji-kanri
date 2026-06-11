@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, Boolean, DateTime, Integer, ForeignKey
+from sqlalchemy import String, Boolean, DateTime, Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -11,6 +11,12 @@ from database import Base
 
 class User(Base):
     __tablename__ = "users"
+    # SaaSセキュリティ: 同テナント内で email の重複を禁止する複合ユニーク制約。
+    # 異なるテナント間では同 email が存在してよいが、同一テナント内では
+    # 認証一意性が崩れると致命的なので必須。
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id"), nullable=False)

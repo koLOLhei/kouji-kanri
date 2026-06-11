@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { apiFetch, formatDate } from "@/lib/utils";
+import { apiFetch, formatDate, API_BASE } from "@/lib/utils";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FileImage, Plus, ChevronDown, ChevronUp, Eye, X } from "lucide-react";
@@ -11,21 +11,43 @@ import { PdfViewer } from "@/components/pdf-viewer";
 
 interface Drawing {
   id: string;
-  drawing_number: string;
+  drawing_number: string | null;
   title: string;
   category: string;
-  current_revision: string;
-  uploaded_at: string;
-  file_url: string | null;
+  drawing_category?: string | null;
+  current_revision: number;
+  status?: string;
+  approval_status?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+interface DrawingListItem extends Drawing {
   revisions?: DrawingRevision[];
 }
 
 interface DrawingRevision {
   id: string;
-  revision: string;
-  description: string | null;
-  uploaded_at: string;
-  file_url: string | null;
+  revision_number: number;
+  change_description: string | null;
+  created_at: string;
+  file_key: string | null;
+  download_url?: string | null;
+}
+
+interface UploadedFile {
+  id: string;
+  filename: string;
+  size: number;
+}
+
+interface DrawingCreatePayload {
+  drawing_number: string | null;
+  title: string;
+  category: string;
+  file_key: string;
+  file_size?: number;
+  change_description?: string;
 }
 
 export default function DrawingsPage() {
@@ -35,6 +57,8 @@ export default function DrawingsPage() {
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewerDrawingId, setViewerDrawingId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [form, setForm] = useState({
     drawing_number: "",
     title: "",
@@ -42,34 +66,70 @@ export default function DrawingsPage() {
     file: null as File | null,
   });
 
-  const { data: drawings = [], isLoading } = useQuery<Drawing[]>({
+  const { data: drawings = [], isLoading } = useQuery<DrawingListItem[]>({
     queryKey: ["drawings", id],
     queryFn: () => apiFetch(`/api/projects/${id}/drawings`, { token: token! }),
     enabled: !!token,
   });
 
   const createMutation = useMutation({
-    mutationFn: (formData: FormData) =>
+    mutationFn: (payload: DrawingCreatePayload) =>
       apiFetch(`/api/projects/${id}/drawings`, {
         token: token!,
         method: "POST",
-        body: formData,
+        body: JSON.stringify(payload),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["drawings", id] });
       setShowForm(false);
       setForm({ drawing_number: "", title: "", category: "", file: null });
+      setUploadError(null);
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Upload the binary file via the platform attachment endpoint, return the
+  // attachment id used as a stable file reference (the backend stores the
+  // actual storage key server-side).
+  async function uploadAttachment(file: File): Promise<UploadedFile> {
     const fd = new FormData();
-    fd.append("drawing_number", form.drawing_number);
-    fd.append("title", form.title);
-    fd.append("category", form.category);
-    if (form.file) fd.append("file", form.file);
-    createMutation.mutate(fd);
+    fd.append("file", file);
+    fd.append("entity_type", "drawing");
+    const res = await fetch(`${API_BASE}/api/projects/${id}/files`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || "ファイルアップロードに失敗しました");
+    }
+    return res.json();
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUploadError(null);
+    if (!form.file) {
+      setUploadError("図面ファイルを選択してください");
+      return;
+    }
+    try {
+      setUploading(true);
+      const uploaded = await uploadAttachment(form.file);
+      const payload: DrawingCreatePayload = {
+        drawing_number: form.drawing_number || null,
+        title: form.title,
+        category: form.category,
+        file_key: `attachments/${uploaded.id}/${uploaded.filename}`,
+        file_size: uploaded.size,
+        change_description: "初版",
+      };
+      createMutation.mutate(payload);
+    } catch (err) {
+      setUploadError((err as Error).message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const toggleExpand = (drawingId: string) => {
@@ -101,7 +161,7 @@ export default function DrawingsPage() {
               <label className="block text-sm font-medium mb-1">図面番号</label>
               <input type="text" value={form.drawing_number}
                 onChange={e => setForm({ ...form, drawing_number: e.target.value })}
-                className="w-full border rounded px-3 py-2" required />
+                className="w-full border rounded px-3 py-2" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">タイトル</label>
@@ -120,16 +180,23 @@ export default function DrawingsPage() {
             <label className="block text-sm font-medium mb-1">ファイル</label>
             <input type="file"
               onChange={e => setForm({ ...form, file: e.target.files?.[0] || null })}
-              className="w-full border rounded px-3 py-2" />
+              className="w-full border rounded px-3 py-2" required />
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={createMutation.isPending}
+            <button type="submit" disabled={uploading || createMutation.isPending}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-              {createMutation.isPending ? "アップロード中..." : "登録"}
+              {uploading
+                ? "アップロード中..."
+                : createMutation.isPending
+                ? "登録中..."
+                : "登録"}
             </button>
-            <button type="button" onClick={() => setShowForm(false)}
+            <button type="button" onClick={() => { setShowForm(false); setUploadError(null); }}
               className="border px-6 py-2 rounded-lg hover:bg-gray-50">キャンセル</button>
           </div>
+          {uploadError && (
+            <p className="text-red-600 text-sm">{uploadError}</p>
+          )}
           {createMutation.isError && (
             <p className="text-red-600 text-sm">{(createMutation.error as Error).message}</p>
           )}
@@ -155,13 +222,13 @@ export default function DrawingsPage() {
             <div key={d.id} className="bg-white border rounded-lg p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="font-mono text-sm text-gray-500">{d.drawing_number}</p>
+                  <p className="font-mono text-sm text-gray-500">{d.drawing_number || "-"}</p>
                   <p className="font-semibold mt-1">{d.title}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{d.category}</span>
+                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{d.category}</span>
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Rev.{d.current_revision}</span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">{formatDate(d.uploaded_at)}</p>
+                  <p className="text-xs text-gray-500 mt-2">{formatDate(d.created_at)}</p>
                 </div>
                 <button
                   onClick={() => setViewerDrawingId(d.id)}
@@ -175,7 +242,7 @@ export default function DrawingsPage() {
                 <div className="mt-3 border-t pt-2">
                   <button
                     onClick={() => toggleExpand(d.id)}
-                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
                   >
                     改訂履歴 ({d.revisions.length})
                     {expandedId === d.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -183,9 +250,9 @@ export default function DrawingsPage() {
                   {expandedId === d.id && (
                     <div className="mt-2 space-y-1">
                       {d.revisions.map(rev => (
-                        <div key={rev.id} className="text-xs text-gray-600 flex justify-between">
-                          <span>Rev.{rev.revision} {rev.description && `- ${rev.description}`}</span>
-                          <span>{formatDate(rev.uploaded_at)}</span>
+                        <div key={rev.id} className="text-xs text-gray-700 flex justify-between">
+                          <span>Rev.{rev.revision_number} {rev.change_description && `- ${rev.change_description}`}</span>
+                          <span>{formatDate(rev.created_at)}</span>
                         </div>
                       ))}
                     </div>
@@ -201,7 +268,7 @@ export default function DrawingsPage() {
 }
 
 interface DrawingDetail {
-  drawing: { id: string; title: string; drawing_number: string };
+  drawing: { id: string; title: string; drawing_number: string | null };
   revisions: Array<{
     id: string;
     revision_number: number;
@@ -260,7 +327,7 @@ function DrawingViewerModal({
           {url && isPdf && <PdfViewer url={url} filename={data?.drawing.title} />}
           {url && !isPdf && (
             <div className="text-center space-y-3">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-700">
                 このファイル形式（CAD/画像）はブラウザビューアで開けません
               </p>
               <a

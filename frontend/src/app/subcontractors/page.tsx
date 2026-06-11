@@ -66,65 +66,65 @@ export default function SubcontractorsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Building2 className="w-6 h-6" /> 協力会社管理
         </h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="ml-auto flex items-center gap-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="ml-auto flex items-center gap-1 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-700 active:bg-gray-900"
         >
           <Plus className="w-4 h-4" /> 協力会社登録
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white border rounded-lg p-6 space-y-4">
-          <h2 className="font-semibold text-lg">協力会社登録</h2>
+        <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+          <h2 className="font-semibold text-lg text-gray-900">協力会社登録</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">会社名</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">会社名</label>
               <input type="text" value={form.company_name}
                 onChange={e => setForm({ ...form, company_name: e.target.value })}
-                className="w-full border rounded px-3 py-2" required />
+                className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900" required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">代表者</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">代表者</label>
               <input type="text" value={form.representative}
                 onChange={e => setForm({ ...form, representative: e.target.value })}
-                className="w-full border rounded px-3 py-2" />
+                className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">電話番号</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
               <input type="tel" value={form.phone}
                 onChange={e => setForm({ ...form, phone: e.target.value })}
-                className="w-full border rounded px-3 py-2" />
+                className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">メールアドレス</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">メールアドレス</label>
               <input type="email" value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
-                className="w-full border rounded px-3 py-2" />
+                className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">住所</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">住所</label>
               <input type="text" value={form.address}
                 onChange={e => setForm({ ...form, address: e.target.value })}
-                className="w-full border rounded px-3 py-2" />
+                className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">登録番号</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">登録番号</label>
               <input type="text" value={form.registration_number}
                 onChange={e => setForm({ ...form, registration_number: e.target.value })}
-                className="w-full border rounded px-3 py-2" />
+                className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900" />
             </div>
           </div>
           <div className="flex gap-2">
             <button type="submit" disabled={createMutation.isPending}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              className="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-700 active:bg-gray-900 disabled:opacity-50">
               {createMutation.isPending ? "保存中..." : "保存"}
             </button>
             <button type="button" onClick={() => setShowForm(false)}
-              className="border px-6 py-2 rounded-lg hover:bg-gray-50">キャンセル</button>
+              className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50">キャンセル</button>
           </div>
           {createMutation.isError && (
             <p className="text-red-600 text-sm">{(createMutation.error as Error).message}</p>
@@ -139,32 +139,32 @@ export default function SubcontractorsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {subs.map(s => (
-            <div key={s.id} className="bg-white border rounded-lg p-4">
+            <div key={s.id} className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold">{s.company_name}</h3>
+                <h3 className="font-semibold text-gray-900">{s.company_name}</h3>
                 <span className={`text-xs px-2 py-0.5 rounded ${
-                  s.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                  s.is_active ? "bg-gray-100 text-emerald-600" : "bg-gray-100 text-gray-500"
                 }`}>
                   {s.is_active ? "有効" : "無効"}
                 </span>
               </div>
               {s.representative && (
-                <p className="text-sm text-gray-600 flex items-center gap-1">
+                <p className="text-sm text-gray-700 flex items-center gap-1">
                   <User className="w-3 h-3" /> {s.representative}
                 </p>
               )}
               {s.phone && (
-                <p className="text-sm text-gray-600 flex items-center gap-1">
+                <p className="text-sm text-gray-700 flex items-center gap-1">
                   <Phone className="w-3 h-3" /> {s.phone}
                 </p>
               )}
               {s.registration_number && (
-                <p className="text-xs text-gray-400 mt-2">登録番号: {s.registration_number}</p>
+                <p className="text-xs text-gray-500 mt-2">登録番号: {s.registration_number}</p>
               )}
-              <div className="mt-3 pt-3 border-t border-gray-100">
+              <div className="mt-3 pt-3 border-t border-gray-200">
                 <Link
                   href={`/subcontractors/${s.id}/evaluations`}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-gray-900"
                 >
                   <Star className="w-3 h-3" /> 評価を見る
                 </Link>

@@ -68,30 +68,30 @@ export default function ProjectsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">案件管理</h1>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-700 active:bg-gray-900 transition-colors"
         >
           <Plus className="w-4 h-4" /> 新規案件
         </button>
       </div>
 
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="案件名、工事番号、発注者で検索..."
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 outline-none"
         />
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">新規案件作成</h2>
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">新規案件作成</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -141,8 +141,8 @@ export default function ProjectsPage() {
               <input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
             </div>
             <div className="md:col-span-2 flex gap-3 justify-end">
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">キャンセル</button>
-              <button type="submit" disabled={createMutation.isPending} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">キャンセル</button>
+              <button type="submit" disabled={createMutation.isPending} className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 active:bg-gray-900 disabled:opacity-50">
                 {createMutation.isPending ? "作成中..." : "作成"}
               </button>
             </div>
@@ -151,8 +151,8 @@ export default function ProjectsPage() {
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-16 text-gray-400">
-          <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mr-3" />
+        <div className="flex items-center justify-center py-16 text-gray-500">
+          <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mr-3" />
           <span>読み込み中...</span>
         </div>
       ) : isError ? (
@@ -165,7 +165,7 @@ export default function ProjectsPage() {
           <p className="text-gray-500 mb-2">案件がまだ登録されていません</p>
           <button
             onClick={() => setShowForm(true)}
-            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+            className="text-gray-900 hover:text-gray-700 underline font-medium text-sm"
           >
             最初の案件を作成する
           </button>
@@ -178,7 +178,7 @@ export default function ProjectsPage() {
               <Link
                 key={project.id}
                 href={`/projects/${project.id}`}
-                className="block bg-white rounded-xl shadow-sm p-4 border border-gray-100 hover:border-blue-300 transition-colors"
+                className="block bg-white rounded-xl p-4 border border-gray-200 hover:border-gray-900 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -198,7 +198,7 @@ export default function ProjectsPage() {
                   <div className="text-right ml-4">
                     <div className="text-sm text-gray-500">{project.completed_phases || 0}/{project.phase_count || 0} 工程</div>
                     <div className="w-24 bg-gray-100 rounded-full h-1.5 mt-1">
-                      <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${progress}%` }} />
+                      <div className="bg-gray-900 h-1.5 rounded-full" style={{ width: `${progress}%` }} />
                     </div>
                   </div>
                 </div>
@@ -206,7 +206,7 @@ export default function ProjectsPage() {
             );
           })}
           {filtered.length === 0 && search && (
-            <p className="text-center text-gray-400 py-8">「{search}」に一致する案件はありません</p>
+            <p className="text-center text-gray-500 py-8">「{search}」に一致する案件はありません</p>
           )}
         </div>
       )}

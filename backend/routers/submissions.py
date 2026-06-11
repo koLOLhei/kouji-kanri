@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from database import get_db
 from models.submission import Submission
 from models.document_version import DocumentVersion
+from models.phase import Phase
 from models.user import User
 from schemas.submission import SubmissionResponse, GenerateRequest
 from services.auth_service import get_current_user
@@ -46,6 +47,12 @@ def generate_submission(
 ):
     verify_project_access(project_id, user, db)
     """手動で提出書類を生成"""
+    phase = db.query(Phase).filter(
+        Phase.id == req.phase_id,
+        Phase.project_id == project_id,
+    ).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="工程が見つかりません")
     check = check_phase_completeness(db, req.phase_id)
     if not check["complete"]:
         missing = [d for d in check["details"] if not d["fulfilled"] and d["is_mandatory"]]
@@ -115,6 +122,12 @@ def check_readiness(
 ):
     verify_project_access(project_id, user, db)
     """工程の書類充足状況を確認"""
+    phase = db.query(Phase).filter(
+        Phase.id == phase_id,
+        Phase.project_id == project_id,
+    ).first()
+    if not phase:
+        raise HTTPException(status_code=404, detail="工程が見つかりません")
     return check_phase_completeness(db, phase_id)
 
 

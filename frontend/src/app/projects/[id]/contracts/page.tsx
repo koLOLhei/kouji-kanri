@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiFetch, formatDate, formatAmount, statusLabel, statusColor } from "@/lib/utils";
@@ -11,12 +11,17 @@ import { ArrowLeft, FileSignature, Plus } from "lucide-react";
 interface Contract {
   id: string;
   contract_type: string;
-  company_name: string;
-  work_scope: string;
-  amount: number | null;
+  subcontractor_id: string;
+  work_scope: string | null;
+  contract_amount: number | null;
   start_date: string | null;
   end_date: string | null;
   status: string;
+}
+
+interface Subcontractor {
+  id: string;
+  company_name: string;
 }
 
 const CONTRACT_TYPES = [
@@ -28,8 +33,8 @@ const CONTRACT_TYPES = [
 function contractTypeBadge(type: string) {
   const colors: Record<string, string> = {
     primary: "bg-blue-100 text-blue-700",
-    secondary: "bg-purple-100 text-purple-700",
-    tertiary: "bg-orange-100 text-orange-700",
+    secondary: "bg-gray-100 text-gray-700",
+    tertiary: "bg-amber-100 text-amber-700",
   };
   const labels: Record<string, string> = {
     primary: "一次",
@@ -50,9 +55,9 @@ export default function ContractsPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     contract_type: "primary",
-    company_name: "",
+    subcontractor_id: "",
     work_scope: "",
-    amount: "",
+    contract_amount: "",
     start_date: "",
     end_date: "",
   });
@@ -62,6 +67,18 @@ export default function ContractsPage() {
     queryFn: () => apiFetch(`/api/projects/${id}/contracts`, { token: token! }),
     enabled: !!token,
   });
+
+  const { data: subcontractors = [] } = useQuery<Subcontractor[]>({
+    queryKey: ["subcontractors"],
+    queryFn: () => apiFetch(`/api/subcontractors`, { token: token! }),
+    enabled: !!token,
+  });
+
+  const subcontractorMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of subcontractors) m.set(s.id, s.company_name);
+    return m;
+  }, [subcontractors]);
 
   const createMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -73,15 +90,25 @@ export default function ContractsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contracts", id] });
       setShowForm(false);
-      setForm({ contract_type: "primary", company_name: "", work_scope: "", amount: "", start_date: "", end_date: "" });
+      setForm({
+        contract_type: "primary",
+        subcontractor_id: "",
+        work_scope: "",
+        contract_amount: "",
+        start_date: "",
+        end_date: "",
+      });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.subcontractor_id) return;
     createMutation.mutate({
-      ...form,
-      amount: form.amount ? Number(form.amount) : null,
+      contract_type: form.contract_type,
+      subcontractor_id: form.subcontractor_id,
+      work_scope: form.work_scope || null,
+      contract_amount: form.contract_amount ? Number(form.contract_amount) : null,
       start_date: form.start_date || null,
       end_date: form.end_date || null,
     });
@@ -119,15 +146,32 @@ export default function ContractsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">会社名</label>
-              <input type="text" value={form.company_name}
-                onChange={e => setForm({ ...form, company_name: e.target.value })}
-                className="w-full border rounded px-3 py-2" required />
+              <label className="block text-sm font-medium mb-1">協力業者</label>
+              <select
+                value={form.subcontractor_id}
+                onChange={e => setForm({ ...form, subcontractor_id: e.target.value })}
+                className="w-full border rounded px-3 py-2"
+                required
+              >
+                <option value="">選択してください</option>
+                {subcontractors.map(s => (
+                  <option key={s.id} value={s.id}>{s.company_name}</option>
+                ))}
+              </select>
+              {subcontractors.length === 0 && (
+                <p className="mt-1 text-xs text-gray-500">
+                  協力業者が登録されていません。先に
+                  <Link href="/subcontractors" className="text-blue-600 hover:underline ml-1">
+                    協力業者管理
+                  </Link>
+                  で登録してください。
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">契約金額</label>
-              <input type="number" value={form.amount}
-                onChange={e => setForm({ ...form, amount: e.target.value })}
+              <input type="number" value={form.contract_amount}
+                onChange={e => setForm({ ...form, contract_amount: e.target.value })}
                 className="w-full border rounded px-3 py-2" />
             </div>
           </div>
@@ -135,7 +179,7 @@ export default function ContractsPage() {
             <label className="block text-sm font-medium mb-1">工事範囲</label>
             <textarea value={form.work_scope}
               onChange={e => setForm({ ...form, work_scope: e.target.value })}
-              className="w-full border rounded px-3 py-2 h-20" required />
+              className="w-full border rounded px-3 py-2 h-20" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -152,7 +196,7 @@ export default function ContractsPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={createMutation.isPending}
+            <button type="submit" disabled={createMutation.isPending || !form.subcontractor_id}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
               {createMutation.isPending ? "保存中..." : "保存"}
             </button>
@@ -171,28 +215,33 @@ export default function ContractsPage() {
         <p className="text-gray-500">契約がありません</p>
       ) : (
         <div className="space-y-3">
-          {contracts.map(c => (
-            <div key={c.id} className="bg-white border rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {contractTypeBadge(c.contract_type)}
-                  <span className="font-semibold">{c.company_name}</span>
-                  {c.amount != null && (
-                    <span className="text-sm font-medium">{formatAmount(c.amount)}</span>
-                  )}
+          {contracts.map(c => {
+            const companyName = subcontractorMap.get(c.subcontractor_id) ?? "(協力業者不明)";
+            return (
+              <div key={c.id} className="bg-white border rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {contractTypeBadge(c.contract_type)}
+                    <span className="font-semibold">{companyName}</span>
+                    {c.contract_amount != null && (
+                      <span className="text-sm font-medium">{formatAmount(c.contract_amount)}</span>
+                    )}
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColor(c.status)}`}>
+                    {statusLabel(c.status)}
+                  </span>
                 </div>
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColor(c.status)}`}>
-                  {statusLabel(c.status)}
-                </span>
+                {c.work_scope && (
+                  <p className="mt-2 text-sm text-gray-600">{c.work_scope}</p>
+                )}
+                {(c.start_date || c.end_date) && (
+                  <p className="mt-1 text-xs text-gray-400">
+                    期間: {formatDate(c.start_date)} 〜 {formatDate(c.end_date)}
+                  </p>
+                )}
               </div>
-              <p className="mt-2 text-sm text-gray-600">{c.work_scope}</p>
-              {(c.start_date || c.end_date) && (
-                <p className="mt-1 text-xs text-gray-400">
-                  期間: {formatDate(c.start_date)} 〜 {formatDate(c.end_date)}
-                </p>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

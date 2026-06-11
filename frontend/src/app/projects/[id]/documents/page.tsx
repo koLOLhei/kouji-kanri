@@ -50,11 +50,20 @@ interface Requirement {
 }
 
 interface MissingItem {
+  phase_id: string;
   phase_code: string;
   phase_name: string;
+  requirement_id: string;
   requirement_name: string;
-  type: "photo" | "file";
+  requirement_type: "photo" | "file";
+  current: number;
+  required: number;
   remaining: number;
+}
+
+interface MissingResponse {
+  total_missing: number;
+  items: MissingItem[];
 }
 
 export default function DocumentsDashboardPage() {
@@ -71,12 +80,15 @@ export default function DocumentsDashboardPage() {
     enabled: !!token,
   });
 
-  const { data: missingItems } = useQuery<MissingItem[]>({
+  const { data: missingData } = useQuery<MissingResponse>({
     queryKey: ["documents-missing", id],
     queryFn: () =>
       apiFetch(`/api/projects/${id}/documents/missing`, { token: token! }),
     enabled: !!token,
   });
+
+  const missingItems: MissingItem[] = missingData?.items ?? [];
+  const missingTotal = missingData?.total_missing ?? missingItems.length;
 
   const batchGenerate = useMutation({
     mutationFn: () =>
@@ -115,14 +127,14 @@ export default function DocumentsDashboardPage() {
   const circumference = 2 * Math.PI * 40;
   const strokeDashoffset = circumference - (rate / 100) * circumference;
   const rateColor =
-    rate >= 80 ? "text-emerald-500" : rate >= 60 ? "text-amber-500" : "text-red-500";
+    rate >= 80 ? "text-emerald-600" : rate >= 60 ? "text-amber-600" : "text-red-600";
   const rateStroke =
-    rate >= 80 ? "#10b981" : rate >= 60 ? "#f59e0b" : "#ef4444";
+    rate >= 80 ? "#059669" : rate >= 60 ? "#d97706" : "#dc2626";
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-gray-700" />
       </div>
     );
   }
@@ -130,17 +142,17 @@ export default function DocumentsDashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8">
+      <div className="bg-gray-900 px-6 py-8">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <FileText className="w-7 h-7" />
           書類ダッシュボード
         </h1>
-        <p className="text-blue-100 mt-1">プロジェクト書類の状況を一覧で確認</p>
+        <p className="text-gray-200 mt-1">プロジェクト書類の状況を一覧で確認</p>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 -mt-6">
         {/* Summary Banner */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
             {/* Fulfillment Rate with Progress Ring */}
             <div className="flex flex-col items-center">
@@ -175,19 +187,19 @@ export default function DocumentsDashboardPage() {
             </div>
 
             {/* Generatable Phases */}
-            <div className="text-center p-4 bg-blue-50 rounded-xl">
+            <div className="text-center p-4 bg-gray-100 rounded-xl">
               <div className="text-3xl font-bold text-blue-600">
                 {dashboard?.generatable_phases ?? 0}
               </div>
-              <div className="text-sm text-gray-600 mt-1">生成可能工程</div>
+              <div className="text-sm text-gray-700 mt-1">生成可能工程</div>
             </div>
 
             {/* Missing Count */}
-            <div className="text-center p-4 bg-red-50 rounded-xl">
-              <div className="text-3xl font-bold text-red-500">
+            <div className="text-center p-4 bg-gray-100 rounded-xl">
+              <div className="text-3xl font-bold text-red-600">
                 {dashboard?.missing_count ?? 0}
               </div>
-              <div className="text-sm text-gray-600 mt-1">不足書類数</div>
+              <div className="text-sm text-gray-700 mt-1">不足書類数</div>
             </div>
 
             {/* Batch Generate Button */}
@@ -197,7 +209,7 @@ export default function DocumentsDashboardPage() {
                 disabled={
                   batchGenerate.isPending || (dashboard?.generatable_phases ?? 0) === 0
                 }
-                className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                className="w-full md:w-auto px-8 py-4 bg-gray-900 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
               >
                 {batchGenerate.isPending ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -211,17 +223,17 @@ export default function DocumentsDashboardPage() {
         </div>
 
         {/* Missing Documents Section */}
-        {(missingItems?.length ?? 0) > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg mb-6 overflow-hidden">
+        {missingItems.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-lg mb-6 overflow-hidden border border-gray-200">
             <button
               onClick={() => setMissingOpen(!missingOpen)}
               className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500" />
-                <h2 className="text-lg font-bold text-gray-800">不足書類一覧</h2>
-                <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                  {missingItems?.length}件
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <h2 className="text-lg font-bold text-gray-900">不足書類一覧</h2>
+                <span className="bg-gray-100 text-red-600 text-xs font-bold px-2.5 py-1 rounded-full">
+                  {missingTotal}件
                 </span>
               </div>
               {missingOpen ? (
@@ -234,23 +246,23 @@ export default function DocumentsDashboardPage() {
             {missingOpen && (
               <div className="px-6 pb-4">
                 <div className="divide-y divide-gray-100">
-                  {missingItems?.map((item, idx) => (
+                  {missingItems.map((item) => (
                     <div
-                      key={idx}
+                      key={`${item.phase_id}-${item.requirement_id}`}
                       className="flex items-center gap-4 py-3 px-3 hover:bg-gray-50 rounded-lg transition-colors"
                     >
-                      <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                      <span className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-1 rounded">
                         {item.phase_code}
                       </span>
-                      {item.type === "photo" ? (
-                        <Camera className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      {item.requirement_type === "photo" ? (
+                        <Camera className="w-4 h-4 text-blue-600 flex-shrink-0" />
                       ) : (
-                        <File className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                        <File className="w-4 h-4 text-amber-600 flex-shrink-0" />
                       )}
                       <span className="text-sm text-gray-700 flex-1">
                         {item.requirement_name}
                       </span>
-                      <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-full">
+                      <span className="text-xs font-bold text-red-600 bg-gray-100 px-2 py-1 rounded-full">
                         あと{item.remaining}件
                       </span>
                     </div>
@@ -263,8 +275,8 @@ export default function DocumentsDashboardPage() {
 
         {/* Phase Document Status */}
         <div className="space-y-4 pb-8">
-          <h2 className="text-lg font-bold text-gray-800 px-1 flex items-center gap-2">
-            <FolderOpen className="w-5 h-5 text-blue-500" />
+          <h2 className="text-lg font-bold text-gray-900 px-1 flex items-center gap-2">
+            <FolderOpen className="w-5 h-5 text-gray-700" />
             工程別書類状況
           </h2>
 
@@ -279,21 +291,21 @@ export default function DocumentsDashboardPage() {
               switch (phase.status) {
                 case "generated":
                   return (
-                    <span className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full">
+                    <span className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-gray-100 px-3 py-1.5 rounded-full">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       生成済み
                     </span>
                   );
                 case "generatable":
                   return (
-                    <span className="flex items-center gap-1 text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full">
+                    <span className="flex items-center gap-1 text-xs font-bold text-blue-700 bg-gray-100 px-3 py-1.5 rounded-full">
                       <Circle className="w-3.5 h-3.5" />
                       生成可能
                     </span>
                   );
                 default:
                   return (
-                    <span className="flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full">
+                    <span className="flex items-center gap-1 text-xs font-bold text-amber-700 bg-gray-100 px-3 py-1.5 rounded-full">
                       <AlertCircle className="w-3.5 h-3.5" />
                       要件不足
                     </span>
@@ -304,7 +316,7 @@ export default function DocumentsDashboardPage() {
             return (
               <div
                 key={phase.id}
-                className="bg-white rounded-2xl shadow-md overflow-hidden"
+                className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200"
               >
                 <button
                   onClick={() => togglePhase(phase.id)}
@@ -320,10 +332,10 @@ export default function DocumentsDashboardPage() {
 
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono bg-gray-100 text-gray-500 px-2 py-0.5 rounded">
+                      <span className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
                         {phase.code}
                       </span>
-                      <span className="font-semibold text-gray-800 truncate">
+                      <span className="font-semibold text-gray-900 truncate">
                         {phase.name}
                       </span>
                     </div>
@@ -332,10 +344,10 @@ export default function DocumentsDashboardPage() {
                         <div
                           className={`h-2 rounded-full transition-all duration-500 ${
                             pct === 100
-                              ? "bg-emerald-500"
+                              ? "bg-emerald-600"
                               : pct >= 50
-                              ? "bg-blue-500"
-                              : "bg-amber-500"
+                              ? "bg-blue-600"
+                              : "bg-amber-600"
                           }`}
                           style={{ width: `${pct}%` }}
                         />
@@ -355,7 +367,7 @@ export default function DocumentsDashboardPage() {
                           phaseGenerate.mutate(phase.id);
                         }}
                         disabled={phaseGenerate.isPending}
-                        className="px-4 py-2 bg-blue-500 text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors"
+                        className="px-4 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-black transition-colors"
                       >
                         生成
                       </button>
@@ -372,18 +384,18 @@ export default function DocumentsDashboardPage() {
                           className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-gray-50"
                         >
                           {req.fulfilled ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                           ) : (
                             <Circle className="w-5 h-5 text-gray-300 flex-shrink-0" />
                           )}
                           {req.type === "photo" ? (
-                            <Camera className="w-4 h-4 text-blue-400" />
+                            <Camera className="w-4 h-4 text-blue-600" />
                           ) : (
-                            <File className="w-4 h-4 text-amber-400" />
+                            <File className="w-4 h-4 text-amber-600" />
                           )}
                           <span
                             className={`flex-1 text-sm ${
-                              req.fulfilled ? "text-gray-500" : "text-gray-800"
+                              req.fulfilled ? "text-gray-500" : "text-gray-900"
                             }`}
                           >
                             {req.name}
@@ -400,7 +412,7 @@ export default function DocumentsDashboardPage() {
                               <a
                                 href={req.submission.download_url}
                                 onClick={(e) => e.stopPropagation()}
-                                className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                className="p-1.5 text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
                               >
                                 <Download className="w-4 h-4" />
                               </a>

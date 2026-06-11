@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -33,28 +33,39 @@ interface ConcretePlacement {
   formwork_removal_days: number;
   curing_completed: boolean;
   formwork_removed: boolean;
-  test_7day_result?: number;
-  test_28day_result?: number;
+  test_7day_strength?: number;
+  test_28day_strength?: number;
   created_at: string;
 }
 
-interface Alert {
+type AlertType = "curing" | "formwork_removal" | "test_7day" | "test_28day";
+
+interface BackendAlert {
   id: string;
-  type: string;
-  message: string;
-  placement_id: string;
-  severity: "high" | "medium" | "low";
+  type: AlertType;
+  location: string;
+  member_type: string;
+  target_date: string;
+  days_until: number;
 }
 
 interface Dashboard {
   total_placements: number;
-  curing_active: number;
-  tests_pending: number;
-  alert_count: number;
+  curing_in_progress: number;
+  strength_tests_pending: number;
+  average_7day_strength: number | null;
+  average_28day_strength: number | null;
 }
 
 const MEMBER_TYPES = ["柱", "梁", "床版", "壁", "基礎"];
 const CURING_METHODS = ["散水", "シート", "膜養生"];
+
+const ALERT_LABEL: Record<AlertType, string> = {
+  curing: "養生終了予定",
+  formwork_removal: "脱型可能日",
+  test_7day: "7日強度試験",
+  test_28day: "28日強度試験",
+};
 
 export default function ConcretePage() {
   const { id } = useParams();
@@ -82,7 +93,7 @@ export default function ConcretePage() {
     queryFn: () => apiFetch(`/api/projects/${id}/concrete/dashboard`, { headers }),
   });
 
-  const { data: alerts = [] } = useQuery<Alert[]>({
+  const { data: alerts = [] } = useQuery<BackendAlert[]>({
     queryKey: ["concrete-alerts", id],
     queryFn: () => apiFetch(`/api/projects/${id}/concrete/alerts`, { headers }),
   });
@@ -108,6 +119,7 @@ export default function ConcretePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["concrete", id] });
       queryClient.invalidateQueries({ queryKey: ["concrete-dashboard", id] });
+      queryClient.invalidateQueries({ queryKey: ["concrete-alerts", id] });
       setShowForm(false);
       setForm({
         placement_date: "",
@@ -138,32 +150,42 @@ export default function ConcretePage() {
     return d.toISOString().split("T")[0];
   };
 
-  const stats = [
-    {
-      label: "打設回数",
-      value: dashboard?.total_placements ?? 0,
-      icon: Layers,
-      gradient: "from-blue-500 to-blue-700",
-    },
-    {
-      label: "養生中",
-      value: dashboard?.curing_active ?? 0,
-      icon: Droplets,
-      gradient: "from-cyan-500 to-teal-600",
-    },
-    {
-      label: "強度試験待ち",
-      value: dashboard?.tests_pending ?? 0,
-      icon: FlaskConical,
-      gradient: "from-amber-500 to-orange-600",
-    },
-    {
-      label: "アラート数",
-      value: dashboard?.alert_count ?? 0,
-      icon: AlertTriangle,
-      gradient: "from-red-500 to-rose-700",
-    },
-  ];
+  // 期限超過 (negative) -> red, 当日〜2日 -> amber, それ以外 -> gray
+  const severityOf = (daysUntil: number): "high" | "medium" | "low" => {
+    if (daysUntil < 0) return "high";
+    if (daysUntil <= 2) return "medium";
+    return "low";
+  };
+
+  const stats = useMemo(
+    () => [
+      {
+        label: "打設回数",
+        value: dashboard?.total_placements ?? 0,
+        icon: Layers,
+        accent: "text-gray-900",
+      },
+      {
+        label: "養生中",
+        value: dashboard?.curing_in_progress ?? 0,
+        icon: Droplets,
+        accent: "text-blue-600",
+      },
+      {
+        label: "強度試験待ち",
+        value: dashboard?.strength_tests_pending ?? 0,
+        icon: FlaskConical,
+        accent: "text-amber-600",
+      },
+      {
+        label: "アラート数",
+        value: alerts.length,
+        icon: AlertTriangle,
+        accent: alerts.length > 0 ? "text-red-600" : "text-gray-900",
+      },
+    ],
+    [dashboard, alerts.length],
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -178,7 +200,7 @@ export default function ConcretePage() {
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-lg shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all"
+            className="inline-flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-lg hover:bg-gray-700 active:bg-white active:text-gray-900 active:border active:border-gray-900 transition-colors"
           >
             <Plus className="w-5 h-5" />
             新規打設記録
@@ -190,55 +212,74 @@ export default function ConcretePage() {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className={`bg-gradient-to-br ${stat.gradient} rounded-xl p-5 text-white shadow-lg`}
+              className="bg-white border border-gray-200 rounded-xl p-5"
             >
               <div className="flex items-center justify-between">
-                <stat.icon className="w-8 h-8 opacity-80" />
-                <span className="text-3xl font-bold">{stat.value}</span>
+                <stat.icon className={`w-8 h-8 ${stat.accent}`} />
+                <span className={`text-3xl font-bold ${stat.accent}`}>{stat.value}</span>
               </div>
-              <p className="mt-2 text-sm opacity-90">{stat.label}</p>
+              <p className="mt-2 text-sm text-gray-500">{stat.label}</p>
             </div>
           ))}
         </div>
 
         {/* Alerts Section */}
         {alerts.length > 0 && (
-          <div className="bg-white border-2 border-red-300 rounded-xl p-5 shadow-sm">
+          <div className="bg-white border border-gray-200 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle className="w-5 h-5 text-red-600" />
-              <h2 className="text-lg font-bold text-red-800">緊急アラート</h2>
+              <h2 className="text-lg font-bold text-gray-900">期限アラート</h2>
             </div>
             <div className="space-y-2">
-              {alerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className={`flex items-start gap-3 p-3 rounded-lg ${
-                    alert.severity === "high"
-                      ? "bg-red-50 border border-red-200"
-                      : alert.severity === "medium"
-                      ? "bg-amber-50 border border-amber-200"
-                      : "bg-yellow-50 border border-yellow-200"
-                  }`}
-                >
-                  <span
-                    className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${
-                      alert.severity === "high"
-                        ? "bg-red-500"
-                        : alert.severity === "medium"
-                        ? "bg-amber-500"
-                        : "bg-yellow-500"
-                    }`}
-                  />
-                  <p className="text-sm text-gray-800">{alert.message}</p>
-                </div>
-              ))}
+              {alerts.map((alert, idx) => {
+                const sev = severityOf(alert.days_until);
+                const dotClass =
+                  sev === "high"
+                    ? "bg-red-600"
+                    : sev === "medium"
+                    ? "bg-amber-600"
+                    : "bg-gray-300";
+                const wrapperClass =
+                  sev === "high"
+                    ? "border-red-200 bg-white"
+                    : sev === "medium"
+                    ? "border-amber-200 bg-white"
+                    : "border-gray-200 bg-white";
+                const dayText =
+                  alert.days_until < 0
+                    ? `${Math.abs(alert.days_until)}日超過`
+                    : alert.days_until === 0
+                    ? "本日期限"
+                    : `あと${alert.days_until}日`;
+                return (
+                  <div
+                    key={`${alert.id}-${alert.type}-${idx}`}
+                    className={`flex items-start gap-3 p-3 rounded-lg border ${wrapperClass}`}
+                  >
+                    <span
+                      className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${dotClass}`}
+                    />
+                    <div className="flex-1 text-sm">
+                      <p className="text-gray-900">
+                        <span className="font-medium">{alert.location}</span>
+                        <span className="text-gray-500"> ({alert.member_type})</span>
+                        <span className="mx-2 text-gray-300">|</span>
+                        <span>{ALERT_LABEL[alert.type]}</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {formatDate(alert.target_date)} ・ {dayText}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* Create Form */}
         {showForm && (
-          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">新規打設記録</h2>
             <form
               onSubmit={(e) => {
@@ -255,7 +296,7 @@ export default function ConcretePage() {
                   type="date"
                   value={form.placement_date}
                   onChange={(e) => setForm({ ...form, placement_date: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
                 />
               </div>
@@ -268,7 +309,7 @@ export default function ConcretePage() {
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
                   placeholder="例: 1F柱 C1-C4"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
                 />
               </div>
@@ -279,7 +320,7 @@ export default function ConcretePage() {
                 <select
                   value={form.member_type}
                   onChange={(e) => setForm({ ...form, member_type: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 >
                   {MEMBER_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -298,7 +339,7 @@ export default function ConcretePage() {
                   value={form.volume_m3}
                   onChange={(e) => setForm({ ...form, volume_m3: e.target.value })}
                   placeholder="例: 45.5"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
                 />
               </div>
@@ -311,7 +352,7 @@ export default function ConcretePage() {
                   value={form.design_strength}
                   onChange={(e) => setForm({ ...form, design_strength: e.target.value })}
                   placeholder="例: 24N/mm2"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
                 />
               </div>
@@ -325,7 +366,7 @@ export default function ConcretePage() {
                   value={form.slump}
                   onChange={(e) => setForm({ ...form, slump: e.target.value })}
                   placeholder="例: 18"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
                 />
               </div>
@@ -336,7 +377,7 @@ export default function ConcretePage() {
                 <select
                   value={form.curing_method}
                   onChange={(e) => setForm({ ...form, curing_method: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 >
                   {CURING_METHODS.map((m) => (
                     <option key={m} value={m}>
@@ -355,7 +396,7 @@ export default function ConcretePage() {
                   onChange={(e) =>
                     setForm({ ...form, curing_days_required: e.target.value })
                   }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
                 />
               </div>
@@ -369,7 +410,7 @@ export default function ConcretePage() {
                   onChange={(e) =>
                     setForm({ ...form, formwork_removal_days: e.target.value })
                   }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   required
                 />
               </div>
@@ -377,14 +418,14 @@ export default function ConcretePage() {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   キャンセル
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-md hover:shadow-lg transition disabled:opacity-50"
+                  className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 active:bg-white active:text-gray-900 active:border active:border-gray-900 transition-colors disabled:opacity-50"
                 >
                   {createMutation.isPending ? "登録中..." : "登録"}
                 </button>
@@ -397,8 +438,8 @@ export default function ConcretePage() {
         <div className="space-y-4">
           <h2 className="text-lg font-bold text-gray-900">打設一覧</h2>
           {placements.length === 0 ? (
-            <div className="bg-white rounded-xl p-12 text-center text-gray-400 border border-dashed border-gray-300">
-              <Droplets className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <div className="bg-white rounded-xl p-12 text-center text-gray-500 border border-dashed border-gray-300">
+              <Droplets className="w-12 h-12 mx-auto mb-3 text-gray-300" />
               <p>打設記録がありません</p>
             </div>
           ) : (
@@ -413,7 +454,7 @@ export default function ConcretePage() {
               return (
                 <div
                   key={p.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                  className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-gray-300 transition-colors"
                 >
                   <div
                     className="p-5 cursor-pointer"
@@ -421,13 +462,13 @@ export default function ConcretePage() {
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="bg-gradient-to-br from-blue-100 to-indigo-100 p-2.5 rounded-lg">
-                          <MapPin className="w-5 h-5 text-blue-700" />
+                        <div className="bg-gray-100 p-2.5 rounded-lg">
+                          <MapPin className="w-5 h-5 text-gray-700" />
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-900">{p.location}</h3>
                           <div className="flex items-center gap-2 mt-0.5 text-sm text-gray-500">
-                            <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium">
+                            <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium text-gray-700">
                               {p.member_type}
                             </span>
                             <span>{formatDate(p.placement_date)}</span>
@@ -438,26 +479,26 @@ export default function ConcretePage() {
                       <div className="flex items-center gap-4">
                         <div className="flex gap-2">
                           {p.curing_completed && (
-                            <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                            <span className="bg-white border border-emerald-600 text-emerald-600 text-xs font-medium px-2.5 py-1 rounded-full">
                               養生完了
                             </span>
                           )}
                           {p.formwork_removed && (
-                            <span className="bg-teal-100 text-teal-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                            <span className="bg-white border border-emerald-600 text-emerald-600 text-xs font-medium px-2.5 py-1 rounded-full">
                               脱型完了
                             </span>
                           )}
                           {!p.curing_completed && (
-                            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <span className="bg-white border border-blue-600 text-blue-600 text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               養生中
                             </span>
                           )}
                         </div>
                         {isExpanded ? (
-                          <ChevronUp className="w-5 h-5 text-gray-400" />
+                          <ChevronUp className="w-5 h-5 text-gray-500" />
                         ) : (
-                          <ChevronDown className="w-5 h-5 text-gray-400" />
+                          <ChevronDown className="w-5 h-5 text-gray-500" />
                         )}
                       </div>
                     </div>
@@ -474,10 +515,10 @@ export default function ConcretePage() {
                         <div
                           className={`h-2.5 rounded-full transition-all duration-500 ${
                             progress >= 100
-                              ? "bg-gradient-to-r from-green-400 to-emerald-500"
+                              ? "bg-emerald-600"
                               : progress >= 70
-                              ? "bg-gradient-to-r from-blue-400 to-blue-600"
-                              : "bg-gradient-to-r from-amber-400 to-orange-500"
+                              ? "bg-blue-600"
+                              : "bg-amber-600"
                           }`}
                           style={{ width: `${Math.min(100, progress)}%` }}
                         />
@@ -487,7 +528,7 @@ export default function ConcretePage() {
 
                   {/* Expanded Details */}
                   {isExpanded && (
-                    <div className="border-t border-gray-100 bg-gray-50 p-5">
+                    <div className="border-t border-gray-200 bg-gray-50 p-5">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Timeline */}
                         <div>
@@ -518,21 +559,21 @@ export default function ConcretePage() {
                                 label: "7日強度試験",
                                 date: test7day,
                                 icon: Beaker,
-                                done: !!p.test_7day_result,
+                                done: p.test_7day_strength != null,
                               },
                               {
                                 label: "28日強度試験",
                                 date: test28day,
                                 icon: FlaskConical,
-                                done: !!p.test_28day_result,
+                                done: p.test_28day_strength != null,
                               },
                             ].map((item, idx) => (
                               <div key={idx} className="flex items-center gap-3">
                                 <div
                                   className={`w-8 h-8 rounded-full flex items-center justify-center ${
                                     item.done
-                                      ? "bg-green-100 text-green-600"
-                                      : "bg-gray-200 text-gray-400"
+                                      ? "bg-white border border-emerald-600 text-emerald-600"
+                                      : "bg-gray-100 text-gray-500"
                                   }`}
                                 >
                                   {item.done ? (
@@ -542,7 +583,7 @@ export default function ConcretePage() {
                                   )}
                                 </div>
                                 <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-800">
+                                  <p className="text-sm font-medium text-gray-900">
                                     {item.label}
                                   </p>
                                   <p className="text-xs text-gray-500">
@@ -561,43 +602,43 @@ export default function ConcretePage() {
                               配合・仕様
                             </h4>
                             <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div className="bg-white p-2.5 rounded-lg border">
+                              <div className="bg-white p-2.5 rounded-lg border border-gray-200">
                                 <p className="text-gray-500 text-xs">設計基準強度</p>
-                                <p className="font-semibold">{p.design_strength}</p>
+                                <p className="font-semibold text-gray-900">{p.design_strength}</p>
                               </div>
-                              <div className="bg-white p-2.5 rounded-lg border">
+                              <div className="bg-white p-2.5 rounded-lg border border-gray-200">
                                 <p className="text-gray-500 text-xs">スランプ</p>
-                                <p className="font-semibold">{p.slump} cm</p>
+                                <p className="font-semibold text-gray-900">{p.slump} cm</p>
                               </div>
-                              <div className="bg-white p-2.5 rounded-lg border">
+                              <div className="bg-white p-2.5 rounded-lg border border-gray-200">
                                 <p className="text-gray-500 text-xs">養生方法</p>
-                                <p className="font-semibold">{p.curing_method}</p>
+                                <p className="font-semibold text-gray-900">{p.curing_method}</p>
                               </div>
-                              <div className="bg-white p-2.5 rounded-lg border">
+                              <div className="bg-white p-2.5 rounded-lg border border-gray-200">
                                 <p className="text-gray-500 text-xs">打設量</p>
-                                <p className="font-semibold">{p.volume_m3} m3</p>
+                                <p className="font-semibold text-gray-900">{p.volume_m3} m3</p>
                               </div>
                             </div>
                           </div>
-                          {(p.test_7day_result || p.test_28day_result) && (
+                          {(p.test_7day_strength != null || p.test_28day_strength != null) && (
                             <div>
                               <h4 className="text-sm font-semibold text-gray-700 mb-3">
                                 試験結果
                               </h4>
                               <div className="grid grid-cols-2 gap-2 text-sm">
-                                {p.test_7day_result && (
-                                  <div className="bg-white p-2.5 rounded-lg border">
+                                {p.test_7day_strength != null && (
+                                  <div className="bg-white p-2.5 rounded-lg border border-gray-200">
                                     <p className="text-gray-500 text-xs">7日強度</p>
-                                    <p className="font-semibold text-blue-700">
-                                      {p.test_7day_result} N/mm2
+                                    <p className="font-semibold text-gray-900">
+                                      {p.test_7day_strength} N/mm2
                                     </p>
                                   </div>
                                 )}
-                                {p.test_28day_result && (
-                                  <div className="bg-white p-2.5 rounded-lg border">
+                                {p.test_28day_strength != null && (
+                                  <div className="bg-white p-2.5 rounded-lg border border-gray-200">
                                     <p className="text-gray-500 text-xs">28日強度</p>
-                                    <p className="font-semibold text-green-700">
-                                      {p.test_28day_result} N/mm2
+                                    <p className="font-semibold text-emerald-600">
+                                      {p.test_28day_strength} N/mm2
                                     </p>
                                   </div>
                                 )}

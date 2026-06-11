@@ -106,23 +106,45 @@ def qr_checkin(
     if not project_id:
         raise HTTPException(status_code=400, detail="QRコードにプロジェクト情報がありません")
 
-    # Verify tenant ownership
+    # Verify tenant ownership — tenant_id 必須。欠落・不一致は全て拒否
     qr_tenant = payload.get("tenant_id")
-    if qr_tenant and qr_tenant != user.tenant_id:
-        raise HTTPException(status_code=403, detail="テナントが一致しません")
+    if not qr_tenant:
+        raise HTTPException(
+            status_code=400,
+            detail="QRコードにテナント情報が含まれていません。再発行してください",
+        )
+    if qr_tenant != user.tenant_id:
+        raise HTTPException(
+            status_code=403,
+            detail="このQRコードは別テナントで発行されたため使用できません",
+        )
 
     verify_project_access(project_id, user, db)
 
-    # Resolve project name
+    # Resolve project name — プロジェクトのテナントも厳密チェック
     project = db.query(Project).filter(Project.id == project_id).first()
-    project_name = project.name if project else None
+    if project is None:
+        raise HTTPException(status_code=404, detail="対象のプロジェクトが見つかりません")
+    if project.tenant_id != user.tenant_id:
+        raise HTTPException(
+            status_code=403,
+            detail="他テナントのプロジェクトに対してはチェックインできません",
+        )
+    project_name = project.name
 
-    # Resolve equipment name
+    # Resolve equipment name — 機材のテナントも厳密チェック
     equipment_id = payload.get("equipment_id")
     equipment_name = None
     if equipment_id:
         eq = db.query(Equipment).filter(Equipment.id == equipment_id).first()
-        equipment_name = eq.name if eq else None
+        if eq is None:
+            raise HTTPException(status_code=404, detail="対象の機材が見つかりません")
+        if eq.tenant_id != user.tenant_id:
+            raise HTTPException(
+                status_code=403,
+                detail="他テナントの機材に対してはチェックインできません",
+            )
+        equipment_name = eq.name
 
     # Determine worker_id: explicit override or fallback to user's worker record if available
     worker_id = req.worker_id

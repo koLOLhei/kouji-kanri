@@ -3,7 +3,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -19,8 +19,8 @@ project_equipment_router = APIRouter(tags=["equipment"])
 # ---------- Schemas ----------
 
 class EquipmentCreate(BaseModel):
-    name: str
-    equipment_type: str | None = None
+    name: str = Field(..., min_length=1, description="機材名は必須です")
+    equipment_type: str = Field(..., min_length=1, description="機材種別は必須です")
     model_number: str | None = None
     registration_number: str | None = None
     owner_company: str | None = None
@@ -29,8 +29,8 @@ class EquipmentCreate(BaseModel):
 
 
 class EquipmentUpdate(BaseModel):
-    name: str | None = None
-    equipment_type: str | None = None
+    name: str | None = Field(default=None, min_length=1)
+    equipment_type: str | None = Field(default=None, min_length=1)
     model_number: str | None = None
     registration_number: str | None = None
     owner_company: str | None = None
@@ -39,15 +39,15 @@ class EquipmentUpdate(BaseModel):
 
 
 class DailyCheckCreate(BaseModel):
-    equipment_id: str
+    equipment_id: str = Field(..., min_length=1, description="機材IDは必須です")
     check_date: date
-    operator_name: str | None = None
+    operator_name: str = Field(..., min_length=1, description="点検者名は必須です")
     checklist: list | None = None
     overall_result: str | None = None  # pass / fail
 
 
 class EquipmentUsageCreate(BaseModel):
-    equipment_id: str
+    equipment_id: str = Field(..., min_length=1, description="機材IDは必須です")
     usage_date: date
     hours: float | None = None
     work_description: str | None = None

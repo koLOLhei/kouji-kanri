@@ -21,71 +21,124 @@ import {
 import { useAuth } from "@/lib/auth";
 import { apiFetch, formatAmount, formatDate } from "@/lib/utils";
 
+// ===== Backend response types (合わせる) =====
+
 interface Rating {
+  id?: string;
+  evaluation_date?: string;
+  construction_system_score: number;
+  construction_system_notes?: string | null;
+  schedule_management: number;
+  safety_management: number;
+  worker_management: number;
+  quality_score: number;
+  as_built_accuracy: number;
+  technical_proposal: number;
+  social_contribution: number;
   total_score: number;
-  grade: string;
-  categories: {
-    name: string;
-    score: number;
-    max_score: number;
-  }[];
-  updated_at: string;
+  grade: string | null;
+  notes?: string | null;
+  created_at?: string;
 }
 
-interface CashFlowEntry {
-  id: string;
-  month: string;
+// /cash-flow/chart は配列を返す
+interface CashFlowChartEntry {
+  year_month: string;
   income: number;
   expense: number;
-  cumulative_income: number;
-  cumulative_expense: number;
-}
-
-interface CashFlowChart {
-  entries: CashFlowEntry[];
-  total_income: number;
-  total_expense: number;
-  balance: number;
+  net: number;
+  cumulative: number;
 }
 
 interface DelayRecord {
   id: string;
-  cause: string;
-  days: number;
-  description: string;
+  delay_days: number;
+  delay_cause: string;
+  description: string | null;
   recorded_date: string;
+  impact_on_completion?: boolean;
+  mitigation?: string | null;
+  phase_id?: string | null;
 }
 
+// /delays/analysis の by_cause は dict
 interface DelayAnalysis {
   total_delay_days: number;
-  by_cause: {
-    cause: string;
-    days: number;
-    percentage: number;
-  }[];
+  by_cause: Record<string, number>;
+  percentage_by_cause: Record<string, number>;
 }
 
-const DELAY_CAUSES = ["天候", "資材", "人員", "設計変更", "その他"];
+// ===== UI 用カテゴリ定義 (rating 詳細表示用) =====
+
+const RATING_CATEGORIES: {
+  key: keyof Rating;
+  name: string;
+  max: number;
+}[] = [
+  { key: "construction_system_score", name: "施工体制", max: 20 },
+  { key: "schedule_management", name: "工程管理", max: 10 },
+  { key: "safety_management", name: "安全管理", max: 10 },
+  { key: "worker_management", name: "対外関係", max: 5 },
+  { key: "quality_score", name: "出来形品質", max: 30 },
+  { key: "as_built_accuracy", name: "出来形精度", max: 10 },
+  { key: "technical_proposal", name: "技術提案", max: 5 },
+  { key: "social_contribution", name: "地域貢献", max: 5 },
+];
+
+const DELAY_CAUSES = ["weather", "material", "labor", "design_change", "other"];
+const CAUSE_LABEL: Record<string, string> = {
+  weather: "天候",
+  material: "資材",
+  labor: "人員",
+  design_change: "設計変更",
+  subcontractor: "下請",
+  client: "発注者",
+  other: "その他",
+};
 const CAUSE_ICONS: Record<string, typeof CloudRain> = {
-  天候: CloudRain,
-  資材: Package,
-  人員: Users,
-  設計変更: FileEdit,
-  その他: AlertCircle,
+  weather: CloudRain,
+  material: Package,
+  labor: Users,
+  design_change: FileEdit,
+  subcontractor: Users,
+  client: Users,
+  other: AlertCircle,
 };
 const CAUSE_COLORS: Record<string, string> = {
-  天候: "bg-blue-500",
-  資材: "bg-amber-500",
-  人員: "bg-purple-500",
-  設計変更: "bg-rose-500",
-  その他: "bg-gray-500",
+  weather: "bg-blue-600",
+  material: "bg-amber-600",
+  labor: "bg-gray-700",
+  design_change: "bg-emerald-600",
+  subcontractor: "bg-gray-700",
+  client: "bg-gray-700",
+  other: "bg-gray-500",
+};
+const CAUSE_HEX: Record<string, string> = {
+  weather: "#2563eb", // blue-600
+  material: "#d97706", // amber-600
+  labor: "#374151", // gray-700
+  design_change: "#059669", // emerald-600
+  subcontractor: "#374151",
+  client: "#374151",
+  other: "#9ca3af", // gray-400
 };
 
-function getGrade(score: number): { grade: string; color: string } {
-  if (score >= 80) return { grade: "A", color: "text-green-600" };
-  if (score >= 70) return { grade: "B", color: "text-blue-600" };
-  if (score >= 60) return { grade: "C", color: "text-amber-600" };
-  return { grade: "D", color: "text-red-600" };
+function getGradeColor(score: number): string {
+  if (score >= 80) return "text-emerald-600";
+  if (score >= 70) return "text-blue-600";
+  if (score >= 60) return "text-amber-600";
+  return "text-red-600";
+}
+
+function getGradeLabel(score: number): string {
+  if (score >= 80) return "A";
+  if (score >= 70) return "B";
+  if (score >= 60) return "C";
+  return "D";
+}
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export default function PerformancePage() {
@@ -97,39 +150,55 @@ export default function PerformancePage() {
   const [showCashForm, setShowCashForm] = useState(false);
   const [showDelayForm, setShowDelayForm] = useState(false);
 
-  const [ratingForm, setRatingForm] = useState<
-    { name: string; score: string; max_score: string }[]
-  >([
-    { name: "施工管理", score: "", max_score: "20" },
-    { name: "工程管理", score: "", max_score: "15" },
-    { name: "安全管理", score: "", max_score: "15" },
-    { name: "品質管理", score: "", max_score: "20" },
-    { name: "出来形", score: "", max_score: "20" },
-    { name: "環境対策", score: "", max_score: "10" },
-  ]);
+  const [ratingForm, setRatingForm] = useState({
+    evaluation_date: todayISO(),
+    construction_system_score: "16",
+    schedule_management: "6",
+    safety_management: "6",
+    worker_management: "3",
+    quality_score: "20",
+    as_built_accuracy: "5",
+    technical_proposal: "0",
+    social_contribution: "0",
+    notes: "",
+  });
 
   const [cashForm, setCashForm] = useState({
-    month: "",
-    income: "",
-    expense: "",
+    year_month: "",
+    progress_payment_received: "",
+    other_income: "",
+    material_payment: "",
+    subcontractor_payment: "",
+    labor_cost: "",
+    equipment_cost: "",
+    overhead: "",
+    other_expense: "",
   });
 
   const [delayForm, setDelayForm] = useState({
-    cause: "天候",
-    days: "",
+    delay_cause: "weather",
+    delay_days: "",
     description: "",
-    recorded_date: "",
+    recorded_date: todayISO(),
   });
 
   const headers = { Authorization: `Bearer ${token}` };
 
-  const { data: rating } = useQuery<Rating>({
+  // Rating: 未作成だと 404 になるので空ハンドリング
+  const { data: rating } = useQuery<Rating | null>({
     queryKey: ["performance-rating", id],
-    queryFn: () =>
-      apiFetch(`/api/projects/${id}/performance/rating`, { headers }),
+    queryFn: async () => {
+      try {
+        return await apiFetch(`/api/projects/${id}/performance/rating`, {
+          headers,
+        });
+      } catch {
+        return null;
+      }
+    },
   });
 
-  const { data: cashFlowChart } = useQuery<CashFlowChart>({
+  const { data: cashFlowEntries = [] } = useQuery<CashFlowChartEntry[]>({
     queryKey: ["performance-cashflow-chart", id],
     queryFn: () =>
       apiFetch(`/api/projects/${id}/performance/cash-flow/chart`, { headers }),
@@ -153,11 +222,16 @@ export default function PerformancePage() {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify({
-          categories: data.map((c) => ({
-            name: c.name,
-            score: parseInt(c.score),
-            max_score: parseInt(c.max_score),
-          })),
+          evaluation_date: data.evaluation_date,
+          construction_system_score: parseInt(data.construction_system_score || "0"),
+          schedule_management: parseInt(data.schedule_management || "0"),
+          safety_management: parseInt(data.safety_management || "0"),
+          worker_management: parseInt(data.worker_management || "0"),
+          quality_score: parseInt(data.quality_score || "0"),
+          as_built_accuracy: parseInt(data.as_built_accuracy || "0"),
+          technical_proposal: parseInt(data.technical_proposal || "0"),
+          social_contribution: parseInt(data.social_contribution || "0"),
+          notes: data.notes || null,
         }),
       }),
     onSuccess: () => {
@@ -172,9 +246,15 @@ export default function PerformancePage() {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify({
-          month: data.month,
-          income: parseFloat(data.income),
-          expense: parseFloat(data.expense),
+          year_month: data.year_month,
+          progress_payment_received: parseInt(data.progress_payment_received || "0"),
+          other_income: parseInt(data.other_income || "0"),
+          material_payment: parseInt(data.material_payment || "0"),
+          subcontractor_payment: parseInt(data.subcontractor_payment || "0"),
+          labor_cost: parseInt(data.labor_cost || "0"),
+          equipment_cost: parseInt(data.equipment_cost || "0"),
+          overhead: parseInt(data.overhead || "0"),
+          other_expense: parseInt(data.other_expense || "0"),
         }),
       }),
     onSuccess: () => {
@@ -182,7 +262,17 @@ export default function PerformancePage() {
         queryKey: ["performance-cashflow-chart", id],
       });
       setShowCashForm(false);
-      setCashForm({ month: "", income: "", expense: "" });
+      setCashForm({
+        year_month: "",
+        progress_payment_received: "",
+        other_income: "",
+        material_payment: "",
+        subcontractor_payment: "",
+        labor_cost: "",
+        equipment_cost: "",
+        overhead: "",
+        other_expense: "",
+      });
     },
   });
 
@@ -192,8 +282,11 @@ export default function PerformancePage() {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...data,
-          days: parseInt(data.days),
+          delay_cause: data.delay_cause,
+          delay_days: parseInt(data.delay_days || "0"),
+          description: data.description || null,
+          recorded_date: data.recorded_date,
+          impact_on_completion: false,
         }),
       }),
     onSuccess: () => {
@@ -202,20 +295,38 @@ export default function PerformancePage() {
         queryKey: ["performance-delay-analysis", id],
       });
       setShowDelayForm(false);
-      setDelayForm({ cause: "天候", days: "", description: "", recorded_date: "" });
+      setDelayForm({
+        delay_cause: "weather",
+        delay_days: "",
+        description: "",
+        recorded_date: todayISO(),
+      });
     },
   });
 
   const totalScore = rating?.total_score ?? 0;
-  const gradeInfo = getGrade(totalScore);
+  const gradeColor = getGradeColor(totalScore);
+  const gradeLabel = rating?.grade ?? getGradeLabel(totalScore);
 
-  const maxIncome = Math.max(
-    ...(cashFlowChart?.entries.map((e) => e.income) ?? [1])
+  // ----- Cash flow 集計 (配列レスポンスから計算) -----
+  const totalIncome = cashFlowEntries.reduce((s, e) => s + (e.income || 0), 0);
+  const totalExpense = cashFlowEntries.reduce((s, e) => s + (e.expense || 0), 0);
+  const balance = totalIncome - totalExpense;
+
+  const maxValue = Math.max(
+    1,
+    ...cashFlowEntries.map((e) => Math.max(e.income, e.expense))
   );
-  const maxExpense = Math.max(
-    ...(cashFlowChart?.entries.map((e) => e.expense) ?? [1])
-  );
-  const maxValue = Math.max(maxIncome, maxExpense);
+
+  // ----- Delay analysis を配列形式に正規化 -----
+  const byCauseArr: { cause: string; days: number; percentage: number }[] =
+    delayAnalysis
+      ? Object.entries(delayAnalysis.by_cause || {}).map(([cause, days]) => ({
+          cause,
+          days,
+          percentage: delayAnalysis.percentage_by_cause?.[cause] ?? 0,
+        }))
+      : [];
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -237,7 +348,7 @@ export default function PerformancePage() {
             }
           >
             <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-3 rounded-xl shadow-lg shadow-amber-500/25">
+              <div className="bg-amber-600 p-3 rounded-xl">
                 <Award className="w-7 h-7 text-white" />
               </div>
               <div>
@@ -247,14 +358,12 @@ export default function PerformancePage() {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <span className={`text-4xl font-black ${gradeInfo.color}`}>
+                <span className={`text-4xl font-black ${gradeColor}`}>
                   {totalScore}
                 </span>
                 <span className="text-lg text-gray-400">点</span>
-                <span
-                  className={`ml-2 text-2xl font-black ${gradeInfo.color}`}
-                >
-                  {gradeInfo.grade}評定
+                <span className={`ml-2 text-2xl font-black ${gradeColor}`}>
+                  {gradeLabel}評定
                 </span>
               </div>
               {activeSection === "score" ? (
@@ -269,8 +378,15 @@ export default function PerformancePage() {
             <div className="border-t border-gray-100 p-6 bg-gray-50">
               {/* Category Breakdown */}
               <div className="space-y-3 mb-6">
-                {(rating?.categories ?? []).map((cat) => {
-                  const pct = (cat.score / cat.max_score) * 100;
+                {RATING_CATEGORIES.map((cat) => {
+                  const score = rating
+                    ? (rating[cat.key] as number | undefined) ?? 0
+                    : 0;
+                  const pct = cat.max > 0 ? (score / cat.max) * 100 : 0;
+                  let barColor = "bg-red-600";
+                  if (pct >= 80) barColor = "bg-emerald-600";
+                  else if (pct >= 60) barColor = "bg-blue-600";
+                  else if (pct >= 40) barColor = "bg-amber-600";
                   return (
                     <div key={cat.name}>
                       <div className="flex justify-between text-sm mb-1">
@@ -278,21 +394,13 @@ export default function PerformancePage() {
                           {cat.name}
                         </span>
                         <span className="text-gray-500">
-                          {cat.score} / {cat.max_score}
+                          {score} / {cat.max}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-3">
                         <div
-                          className={`h-3 rounded-full transition-all ${
-                            pct >= 80
-                              ? "bg-gradient-to-r from-green-400 to-emerald-500"
-                              : pct >= 60
-                              ? "bg-gradient-to-r from-blue-400 to-blue-600"
-                              : pct >= 40
-                              ? "bg-gradient-to-r from-amber-400 to-orange-500"
-                              : "bg-gradient-to-r from-red-400 to-rose-600"
-                          }`}
-                          style={{ width: `${pct}%` }}
+                          className={`h-3 rounded-full transition-all ${barColor}`}
+                          style={{ width: `${Math.min(pct, 100)}%` }}
                         />
                       </div>
                     </div>
@@ -314,40 +422,57 @@ export default function PerformancePage() {
                     e.preventDefault();
                     ratingMutation.mutate(ratingForm);
                   }}
-                  className="mt-4 bg-white rounded-lg border p-4 space-y-3"
+                  className="mt-4 bg-white rounded-lg border border-gray-200 p-4 space-y-3"
                 >
-                  {ratingForm.map((cat, idx) => (
-                    <div
-                      key={cat.name}
-                      className="flex items-center gap-3"
-                    >
-                      <span className="w-24 text-sm font-medium text-gray-700">
+                  <div className="flex items-center gap-3">
+                    <span className="w-32 text-sm font-medium text-gray-700">
+                      評定日
+                    </span>
+                    <input
+                      type="date"
+                      value={ratingForm.evaluation_date}
+                      onChange={(e) =>
+                        setRatingForm({
+                          ...ratingForm,
+                          evaluation_date: e.target.value,
+                        })
+                      }
+                      className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  {RATING_CATEGORIES.map((cat) => (
+                    <div key={cat.key} className="flex items-center gap-3">
+                      <span className="w-32 text-sm font-medium text-gray-700">
                         {cat.name}
                       </span>
                       <input
                         type="number"
                         min="0"
-                        max={cat.max_score}
-                        value={cat.score}
-                        onChange={(e) => {
-                          const updated = [...ratingForm];
-                          updated[idx].score = e.target.value;
-                          setRatingForm(updated);
-                        }}
-                        placeholder={`0-${cat.max_score}`}
-                        className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        max={cat.max}
+                        value={
+                          (ratingForm[
+                            cat.key as keyof typeof ratingForm
+                          ] as string) ?? ""
+                        }
+                        onChange={(e) =>
+                          setRatingForm({
+                            ...ratingForm,
+                            [cat.key]: e.target.value,
+                          })
+                        }
+                        placeholder={`0-${cat.max}`}
+                        className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                         required
                       />
-                      <span className="text-sm text-gray-500">
-                        / {cat.max_score}
-                      </span>
+                      <span className="text-sm text-gray-500">/ {cat.max}</span>
                     </div>
                   ))}
                   <div className="flex justify-end gap-2 pt-2">
                     <button
                       type="button"
                       onClick={() => setShowRatingForm(false)}
-                      className="px-3 py-1.5 text-sm text-gray-600 border rounded-lg hover:bg-gray-50"
+                      className="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
                     >
                       キャンセル
                     </button>
@@ -374,41 +499,41 @@ export default function PerformancePage() {
             }
           >
             <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-br from-green-400 to-emerald-600 p-3 rounded-xl shadow-lg shadow-green-500/25">
+              <div className="bg-emerald-600 p-3 rounded-xl">
                 <DollarSign className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900">キャッシュフロー</h2>
+                <h2 className="text-lg font-bold text-gray-900">
+                  キャッシュフロー
+                </h2>
                 <p className="text-sm text-gray-500">月次収支と累計推移</p>
               </div>
             </div>
             <div className="flex items-center gap-6">
-              {cashFlowChart && (
+              {cashFlowEntries.length > 0 && (
                 <div className="flex gap-6 text-sm">
                   <div className="text-right">
                     <p className="text-gray-500">収入合計</p>
-                    <p className="font-bold text-green-600 flex items-center gap-1">
+                    <p className="font-bold text-emerald-600 flex items-center gap-1">
                       <ArrowUpRight className="w-4 h-4" />
-                      {formatAmount(cashFlowChart.total_income)}
+                      {formatAmount(totalIncome)}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-gray-500">支出合計</p>
                     <p className="font-bold text-red-600 flex items-center gap-1">
                       <ArrowDownRight className="w-4 h-4" />
-                      {formatAmount(cashFlowChart.total_expense)}
+                      {formatAmount(totalExpense)}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-gray-500">差引</p>
                     <p
                       className={`font-bold ${
-                        cashFlowChart.balance >= 0
-                          ? "text-green-600"
-                          : "text-red-600"
+                        balance >= 0 ? "text-emerald-600" : "text-red-600"
                       }`}
                     >
-                      {formatAmount(cashFlowChart.balance)}
+                      {formatAmount(balance)}
                     </p>
                   </div>
                 </div>
@@ -424,24 +549,24 @@ export default function PerformancePage() {
           {activeSection === "cash" && (
             <div className="border-t border-gray-100 p-6 bg-gray-50">
               {/* Bar Chart */}
-              {cashFlowChart && cashFlowChart.entries.length > 0 && (
+              {cashFlowEntries.length > 0 && (
                 <div className="mb-6">
                   <div className="flex items-end gap-1 h-48">
-                    {cashFlowChart.entries.map((entry) => (
+                    {cashFlowEntries.map((entry) => (
                       <div
-                        key={entry.month}
+                        key={entry.year_month}
                         className="flex-1 flex flex-col items-center gap-1"
                       >
                         <div className="w-full flex flex-col items-center justify-end h-40 gap-0.5">
                           <div
-                            className="w-3/5 bg-gradient-to-t from-green-500 to-green-400 rounded-t"
+                            className="w-3/5 bg-emerald-600 rounded-t"
                             style={{
                               height: `${(entry.income / maxValue) * 100}%`,
                             }}
                             title={`収入: ${formatAmount(entry.income)}`}
                           />
                           <div
-                            className="w-3/5 bg-gradient-to-b from-red-400 to-red-500 rounded-b"
+                            className="w-3/5 bg-red-600 rounded-b"
                             style={{
                               height: `${(entry.expense / maxValue) * 100}%`,
                             }}
@@ -449,18 +574,18 @@ export default function PerformancePage() {
                           />
                         </div>
                         <span className="text-xs text-gray-500 truncate w-full text-center">
-                          {entry.month}
+                          {entry.year_month}
                         </span>
                       </div>
                     ))}
                   </div>
                   <div className="flex gap-4 justify-center mt-3 text-xs text-gray-500">
                     <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 bg-green-500 rounded" />
+                      <span className="w-3 h-3 bg-emerald-600 rounded" />
                       収入
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 bg-red-500 rounded" />
+                      <span className="w-3 h-3 bg-red-600 rounded" />
                       支出
                     </span>
                   </div>
@@ -469,7 +594,7 @@ export default function PerformancePage() {
 
               <button
                 onClick={() => setShowCashForm(!showCashForm)}
-                className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-800 font-medium"
+                className="inline-flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-800 font-medium"
               >
                 <Plus className="w-4 h-4" />
                 収支を追加
@@ -481,64 +606,169 @@ export default function PerformancePage() {
                     e.preventDefault();
                     cashMutation.mutate(cashForm);
                   }}
-                  className="mt-4 bg-white rounded-lg border p-4 grid grid-cols-1 md:grid-cols-3 gap-4"
+                  className="mt-4 bg-white rounded-lg border border-gray-200 p-4 grid grid-cols-1 md:grid-cols-3 gap-4"
                 >
-                  <div>
+                  <div className="md:col-span-3">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      月
+                      対象月
                     </label>
                     <input
                       type="month"
-                      value={cashForm.month}
+                      value={cashForm.year_month}
                       onChange={(e) =>
-                        setCashForm({ ...cashForm, month: e.target.value })
+                        setCashForm({ ...cashForm, year_month: e.target.value })
                       }
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className="w-full md:w-64 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
                       required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      出来高入金 (円)
+                    </label>
+                    <input
+                      type="number"
+                      value={cashForm.progress_payment_received}
+                      onChange={(e) =>
+                        setCashForm({
+                          ...cashForm,
+                          progress_payment_received: e.target.value,
+                        })
+                      }
+                      placeholder="0"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      収入 (円)
+                      その他収入 (円)
                     </label>
                     <input
                       type="number"
-                      value={cashForm.income}
+                      value={cashForm.other_income}
                       onChange={(e) =>
-                        setCashForm({ ...cashForm, income: e.target.value })
+                        setCashForm({
+                          ...cashForm,
+                          other_income: e.target.value,
+                        })
                       }
                       placeholder="0"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      required
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      支出 (円)
+                      材料支払 (円)
                     </label>
                     <input
                       type="number"
-                      value={cashForm.expense}
+                      value={cashForm.material_payment}
                       onChange={(e) =>
-                        setCashForm({ ...cashForm, expense: e.target.value })
+                        setCashForm({
+                          ...cashForm,
+                          material_payment: e.target.value,
+                        })
                       }
                       placeholder="0"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      required
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      下請支払 (円)
+                    </label>
+                    <input
+                      type="number"
+                      value={cashForm.subcontractor_payment}
+                      onChange={(e) =>
+                        setCashForm({
+                          ...cashForm,
+                          subcontractor_payment: e.target.value,
+                        })
+                      }
+                      placeholder="0"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      労務費 (円)
+                    </label>
+                    <input
+                      type="number"
+                      value={cashForm.labor_cost}
+                      onChange={(e) =>
+                        setCashForm({
+                          ...cashForm,
+                          labor_cost: e.target.value,
+                        })
+                      }
+                      placeholder="0"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      機械経費 (円)
+                    </label>
+                    <input
+                      type="number"
+                      value={cashForm.equipment_cost}
+                      onChange={(e) =>
+                        setCashForm({
+                          ...cashForm,
+                          equipment_cost: e.target.value,
+                        })
+                      }
+                      placeholder="0"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      共通仮設・現場経費 (円)
+                    </label>
+                    <input
+                      type="number"
+                      value={cashForm.overhead}
+                      onChange={(e) =>
+                        setCashForm({ ...cashForm, overhead: e.target.value })
+                      }
+                      placeholder="0"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      その他支出 (円)
+                    </label>
+                    <input
+                      type="number"
+                      value={cashForm.other_expense}
+                      onChange={(e) =>
+                        setCashForm({
+                          ...cashForm,
+                          other_expense: e.target.value,
+                        })
+                      }
+                      placeholder="0"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
+                    />
+                  </div>
+
                   <div className="md:col-span-3 flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setShowCashForm(false)}
-                      className="px-3 py-1.5 text-sm text-gray-600 border rounded-lg hover:bg-gray-50"
+                      className="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
                     >
                       キャンセル
                     </button>
                     <button
                       type="submit"
                       disabled={cashMutation.isPending}
-                      className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                      className="px-4 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
                     >
                       {cashMutation.isPending ? "保存中..." : "保存"}
                     </button>
@@ -558,7 +788,7 @@ export default function PerformancePage() {
             }
           >
             <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-br from-rose-400 to-red-600 p-3 rounded-xl shadow-lg shadow-red-500/25">
+              <div className="bg-red-600 p-3 rounded-xl">
                 <Clock className="w-7 h-7 text-white" />
               </div>
               <div>
@@ -586,17 +816,20 @@ export default function PerformancePage() {
           {activeSection === "delay" && (
             <div className="border-t border-gray-100 p-6 bg-gray-50">
               {/* Cause Breakdown */}
-              {delayAnalysis && delayAnalysis.by_cause.length > 0 && (
+              {byCauseArr.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  {/* Pie-like breakdown */}
+                  {/* Bars breakdown */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-semibold text-gray-700">
                       原因別内訳
                     </h4>
-                    {delayAnalysis.by_cause.map((item) => {
+                    {byCauseArr.map((item) => {
                       const Icon = CAUSE_ICONS[item.cause] ?? AlertCircle;
                       return (
-                        <div key={item.cause} className="flex items-center gap-3">
+                        <div
+                          key={item.cause}
+                          className="flex items-center gap-3"
+                        >
                           <div
                             className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
                               CAUSE_COLORS[item.cause] ?? "bg-gray-500"
@@ -607,7 +840,7 @@ export default function PerformancePage() {
                           <div className="flex-1">
                             <div className="flex justify-between text-sm mb-1">
                               <span className="font-medium text-gray-700">
-                                {item.cause}
+                                {CAUSE_LABEL[item.cause] ?? item.cause}
                               </span>
                               <span className="text-gray-500">
                                 {item.days}日 ({item.percentage}%)
@@ -627,23 +860,21 @@ export default function PerformancePage() {
                     })}
                   </div>
 
-                  {/* Visual pie */}
+                  {/* Donut chart */}
                   <div className="flex items-center justify-center">
                     <div className="relative w-48 h-48">
-                      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                        {delayAnalysis.by_cause.reduce(
-                          (acc, item, idx) => {
+                      <svg
+                        viewBox="0 0 100 100"
+                        className="w-full h-full -rotate-90"
+                      >
+                        {byCauseArr.reduce(
+                          (acc, item) => {
                             const circumference = 2 * Math.PI * 40;
                             const strokeDash =
                               (item.percentage / 100) * circumference;
                             const strokeOffset = acc.offset;
-                            const colors = [
-                              "#3b82f6",
-                              "#f59e0b",
-                              "#8b5cf6",
-                              "#ef4444",
-                              "#6b7280",
-                            ];
+                            const color =
+                              CAUSE_HEX[item.cause] ?? "#9ca3af";
                             acc.elements.push(
                               <circle
                                 key={item.cause}
@@ -651,7 +882,7 @@ export default function PerformancePage() {
                                 cy="50"
                                 r="40"
                                 fill="none"
-                                stroke={colors[idx % colors.length]}
+                                stroke={color}
                                 strokeWidth="20"
                                 strokeDasharray={`${strokeDash} ${circumference}`}
                                 strokeDashoffset={-strokeOffset}
@@ -666,7 +897,7 @@ export default function PerformancePage() {
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-center">
                           <p className="text-2xl font-black text-gray-900">
-                            {delayAnalysis.total_delay_days}
+                            {delayAnalysis?.total_delay_days ?? 0}
                           </p>
                           <p className="text-xs text-gray-500">日</p>
                         </div>
@@ -684,29 +915,31 @@ export default function PerformancePage() {
                   </h4>
                   <div className="space-y-2">
                     {delays.slice(0, 5).map((d) => {
-                      const Icon = CAUSE_ICONS[d.cause] ?? AlertCircle;
+                      const Icon = CAUSE_ICONS[d.delay_cause] ?? AlertCircle;
                       return (
                         <div
                           key={d.id}
-                          className="flex items-center gap-3 bg-white p-3 rounded-lg border"
+                          className="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200"
                         >
                           <div
                             className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
-                              CAUSE_COLORS[d.cause] ?? "bg-gray-500"
+                              CAUSE_COLORS[d.delay_cause] ?? "bg-gray-500"
                             }`}
                           >
                             <Icon className="w-4 h-4" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-800 truncate">
-                              {d.description}
+                              {d.description ||
+                                CAUSE_LABEL[d.delay_cause] ||
+                                d.delay_cause}
                             </p>
                             <p className="text-xs text-gray-500">
                               {formatDate(d.recorded_date)}
                             </p>
                           </div>
                           <span className="text-sm font-bold text-red-600">
-                            +{d.days}日
+                            +{d.delay_days}日
                           </span>
                         </div>
                       );
@@ -729,22 +962,25 @@ export default function PerformancePage() {
                     e.preventDefault();
                     delayMutation.mutate(delayForm);
                   }}
-                  className="mt-4 bg-white rounded-lg border p-4 grid grid-cols-1 md:grid-cols-2 gap-4"
+                  className="mt-4 bg-white rounded-lg border border-gray-200 p-4 grid grid-cols-1 md:grid-cols-2 gap-4"
                 >
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       原因
                     </label>
                     <select
-                      value={delayForm.cause}
+                      value={delayForm.delay_cause}
                       onChange={(e) =>
-                        setDelayForm({ ...delayForm, cause: e.target.value })
+                        setDelayForm({
+                          ...delayForm,
+                          delay_cause: e.target.value,
+                        })
                       }
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-600 focus:border-transparent"
                     >
                       {DELAY_CAUSES.map((c) => (
                         <option key={c} value={c}>
-                          {c}
+                          {CAUSE_LABEL[c] ?? c}
                         </option>
                       ))}
                     </select>
@@ -756,11 +992,14 @@ export default function PerformancePage() {
                     <input
                       type="number"
                       min="1"
-                      value={delayForm.days}
+                      value={delayForm.delay_days}
                       onChange={(e) =>
-                        setDelayForm({ ...delayForm, days: e.target.value })
+                        setDelayForm({
+                          ...delayForm,
+                          delay_days: e.target.value,
+                        })
                       }
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-600 focus:border-transparent"
                       required
                     />
                   </div>
@@ -777,7 +1016,7 @@ export default function PerformancePage() {
                           recorded_date: e.target.value,
                         })
                       }
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-600 focus:border-transparent"
                       required
                     />
                   </div>
@@ -795,15 +1034,14 @@ export default function PerformancePage() {
                         })
                       }
                       placeholder="遅延の詳細を記入"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      required
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-600 focus:border-transparent"
                     />
                   </div>
                   <div className="md:col-span-2 flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setShowDelayForm(false)}
-                      className="px-3 py-1.5 text-sm text-gray-600 border rounded-lg hover:bg-gray-50"
+                      className="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
                     >
                       キャンセル
                     </button>

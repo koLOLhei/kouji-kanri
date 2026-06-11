@@ -8,24 +8,49 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Package, Plus, FlaskConical } from "lucide-react";
 
+interface MaterialOrderItem {
+  id?: string;
+  material_name: string;
+  specification?: string | null;
+  quantity: number | null;
+  unit?: string | null;
+  unit_price?: number | null;
+  delivered_quantity?: number | null;
+  notes?: string | null;
+}
+
 interface MaterialOrder {
   id: string;
   order_number: string | null;
-  supplier_name: string;
-  order_date: string;
+  supplier_name: string | null;
+  order_date: string | null;
   expected_delivery: string | null;
   status: string;
   total_amount: number | null;
-  items?: { name: string; quantity: number; unit: string }[];
+  notes?: string | null;
+  items?: MaterialOrderItem[];
 }
+
+type Judgment = "pass" | "fail" | "pending";
 
 interface MaterialTest {
   id: string;
   material_name: string;
   test_type: string;
-  test_date: string;
-  result: string;
+  test_date: string | null;
+  test_location?: string | null;
+  test_results?: Record<string, unknown> | null;
+  judgment: Judgment | string;
+  certificate_file_key?: string | null;
+  tested_by?: string | null;
   notes: string | null;
+}
+
+interface OrderItemForm {
+  material_name: string;
+  specification: string;
+  quantity: string;
+  unit: string;
 }
 
 export default function MaterialsPage() {
@@ -35,18 +60,22 @@ export default function MaterialsPage() {
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [showTestForm, setShowTestForm] = useState(false);
 
+  const emptyItem = (): OrderItemForm => ({ material_name: "", specification: "", quantity: "", unit: "個" });
+
   const [orderForm, setOrderForm] = useState({
     supplier_name: "",
     order_date: new Date().toISOString().split("T")[0],
     expected_delivery: "",
-    items: [{ name: "", quantity: "", unit: "個" }],
+    items: [emptyItem()],
   });
 
   const [testForm, setTestForm] = useState({
     material_name: "",
     test_type: "",
     test_date: new Date().toISOString().split("T")[0],
-    result: "pending",
+    test_location: "",
+    tested_by: "",
+    judgment: "pending" as Judgment,
     notes: "",
   });
 
@@ -70,7 +99,12 @@ export default function MaterialsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["material-orders", id] });
       setShowOrderForm(false);
-      setOrderForm({ supplier_name: "", order_date: new Date().toISOString().split("T")[0], expected_delivery: "", items: [{ name: "", quantity: "", unit: "個" }] });
+      setOrderForm({
+        supplier_name: "",
+        order_date: new Date().toISOString().split("T")[0],
+        expected_delivery: "",
+        items: [emptyItem()],
+      });
     },
   });
 
@@ -82,15 +116,23 @@ export default function MaterialsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["material-tests", id] });
       setShowTestForm(false);
-      setTestForm({ material_name: "", test_type: "", test_date: new Date().toISOString().split("T")[0], result: "pending", notes: "" });
+      setTestForm({
+        material_name: "",
+        test_type: "",
+        test_date: new Date().toISOString().split("T")[0],
+        test_location: "",
+        tested_by: "",
+        judgment: "pending",
+        notes: "",
+      });
     },
   });
 
   const addItem = () => {
-    setOrderForm({ ...orderForm, items: [...orderForm.items, { name: "", quantity: "", unit: "個" }] });
+    setOrderForm({ ...orderForm, items: [...orderForm.items, emptyItem()] });
   };
 
-  const updateItem = (idx: number, field: string, value: string) => {
+  const updateItem = (idx: number, field: keyof OrderItemForm, value: string) => {
     const items = [...orderForm.items];
     items[idx] = { ...items[idx], [field]: value };
     setOrderForm({ ...orderForm, items });
@@ -100,6 +142,16 @@ export default function MaterialsPage() {
     if (orderForm.items.length <= 1) return;
     setOrderForm({ ...orderForm, items: orderForm.items.filter((_, i) => i !== idx) });
   };
+
+  const judgmentClass = (j: string) =>
+    j === "pass"
+      ? "bg-emerald-100 text-emerald-700"
+      : j === "fail"
+      ? "bg-red-100 text-red-700"
+      : "bg-gray-100 text-gray-700";
+
+  const judgmentLabel = (j: string) =>
+    j === "pass" ? "合格" : j === "fail" ? "不合格" : "未実施";
 
   return (
     <div className="space-y-6">
@@ -123,49 +175,65 @@ export default function MaterialsPage() {
         </div>
 
         {showOrderForm && (
-          <form onSubmit={e => { e.preventDefault(); createOrder.mutate({
-            ...orderForm,
-            items: orderForm.items.map(i => ({ ...i, quantity: Number(i.quantity) })),
-          }); }} className="bg-white border rounded-lg p-6 space-y-4 mb-4">
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              createOrder.mutate({
+                supplier_name: orderForm.supplier_name || null,
+                order_date: orderForm.order_date || null,
+                expected_delivery: orderForm.expected_delivery || null,
+                items: orderForm.items.map(i => ({
+                  material_name: i.material_name,
+                  specification: i.specification || null,
+                  quantity: i.quantity === "" ? null : Number(i.quantity),
+                  unit: i.unit || null,
+                })),
+              });
+            }}
+            className="bg-white border border-gray-200 rounded-lg p-6 space-y-4 mb-4"
+          >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">仕入先</label>
                 <input type="text" value={orderForm.supplier_name}
                   onChange={e => setOrderForm({ ...orderForm, supplier_name: e.target.value })}
-                  className="w-full border rounded px-3 py-2" required />
+                  className="w-full border border-gray-200 rounded px-3 py-2" required />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">発注日</label>
                 <input type="date" value={orderForm.order_date}
                   onChange={e => setOrderForm({ ...orderForm, order_date: e.target.value })}
-                  className="w-full border rounded px-3 py-2" required />
+                  className="w-full border border-gray-200 rounded px-3 py-2" required />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">納品予定日</label>
                 <input type="date" value={orderForm.expected_delivery}
                   onChange={e => setOrderForm({ ...orderForm, expected_delivery: e.target.value })}
-                  className="w-full border rounded px-3 py-2" />
+                  className="w-full border border-gray-200 rounded px-3 py-2" />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">品目</label>
               {orderForm.items.map((item, idx) => (
                 <div key={idx} className="flex gap-2 mb-2">
-                  <input type="text" placeholder="品名" value={item.name}
-                    onChange={e => updateItem(idx, "name", e.target.value)}
-                    className="flex-1 border rounded px-3 py-2" required />
+                  <input type="text" placeholder="材料名" value={item.material_name}
+                    onChange={e => updateItem(idx, "material_name", e.target.value)}
+                    className="flex-1 border border-gray-200 rounded px-3 py-2" required />
+                  <input type="text" placeholder="仕様" value={item.specification}
+                    onChange={e => updateItem(idx, "specification", e.target.value)}
+                    className="w-32 border border-gray-200 rounded px-3 py-2" />
                   <input type="number" placeholder="数量" value={item.quantity}
                     onChange={e => updateItem(idx, "quantity", e.target.value)}
-                    className="w-24 border rounded px-3 py-2" required />
+                    className="w-24 border border-gray-200 rounded px-3 py-2" min="0" step="any" />
                   <input type="text" placeholder="単位" value={item.unit}
                     onChange={e => updateItem(idx, "unit", e.target.value)}
-                    className="w-20 border rounded px-3 py-2" />
+                    className="w-20 border border-gray-200 rounded px-3 py-2" />
                   <button type="button" onClick={() => removeItem(idx)}
-                    className="text-red-500 hover:text-red-700 px-2">×</button>
+                    className="text-red-600 hover:text-red-700 px-2" aria-label="品目を削除">×</button>
                 </div>
               ))}
               <button type="button" onClick={addItem}
-                className="text-sm text-blue-600 hover:text-blue-800">+ 品目追加</button>
+                className="text-sm text-blue-600 hover:text-blue-700">+ 品目追加</button>
             </div>
             <div className="flex gap-2">
               <button type="submit" disabled={createOrder.isPending}
@@ -173,7 +241,7 @@ export default function MaterialsPage() {
                 {createOrder.isPending ? "保存中..." : "保存"}
               </button>
               <button type="button" onClick={() => setShowOrderForm(false)}
-                className="border px-6 py-2 rounded-lg hover:bg-gray-50">キャンセル</button>
+                className="border border-gray-200 px-6 py-2 rounded-lg hover:bg-gray-50">キャンセル</button>
             </div>
             {createOrder.isError && (
               <p className="text-red-600 text-sm">{(createOrder.error as Error).message}</p>
@@ -188,12 +256,12 @@ export default function MaterialsPage() {
         ) : (
           <div className="space-y-3">
             {orders.map(o => (
-              <div key={o.id} className="bg-white border rounded-lg p-4">
+              <div key={o.id} className="bg-white border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {o.order_number && <span className="text-sm font-mono text-gray-500">{o.order_number}</span>}
-                    <span className="font-medium">{o.supplier_name}</span>
-                    <span className="text-sm text-gray-500">{formatDate(o.order_date)}</span>
+                    <span className="font-medium">{o.supplier_name || "(仕入先未設定)"}</span>
+                    {o.order_date && <span className="text-sm text-gray-500">{formatDate(o.order_date)}</span>}
                     {o.total_amount != null && <span className="text-sm">{formatAmount(o.total_amount)}</span>}
                   </div>
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColor(o.status)}`}>
@@ -201,9 +269,13 @@ export default function MaterialsPage() {
                   </span>
                 </div>
                 {o.items && o.items.length > 0 && (
-                  <div className="mt-2 text-sm text-gray-600">
+                  <div className="mt-2 text-sm text-gray-700">
                     {o.items.map((item, i) => (
-                      <span key={i} className="inline-block mr-3">{item.name} x{item.quantity}{item.unit}</span>
+                      <span key={item.id ?? i} className="inline-block mr-3">
+                        {item.material_name}
+                        {item.quantity != null ? ` x${item.quantity}` : ""}
+                        {item.unit ?? ""}
+                      </span>
                     ))}
                   </div>
                 )}
@@ -226,32 +298,57 @@ export default function MaterialsPage() {
         </div>
 
         {showTestForm && (
-          <form onSubmit={e => { e.preventDefault(); createTest.mutate(testForm); }}
-            className="bg-white border rounded-lg p-6 space-y-4 mb-4">
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              createTest.mutate({
+                material_name: testForm.material_name,
+                test_type: testForm.test_type,
+                test_date: testForm.test_date || null,
+                test_location: testForm.test_location || null,
+                tested_by: testForm.tested_by || null,
+                judgment: testForm.judgment,
+                notes: testForm.notes || null,
+              });
+            }}
+            className="bg-white border border-gray-200 rounded-lg p-6 space-y-4 mb-4"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">材料名</label>
                 <input type="text" value={testForm.material_name}
                   onChange={e => setTestForm({ ...testForm, material_name: e.target.value })}
-                  className="w-full border rounded px-3 py-2" required />
+                  className="w-full border border-gray-200 rounded px-3 py-2" required />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">試験種別</label>
                 <input type="text" value={testForm.test_type}
                   onChange={e => setTestForm({ ...testForm, test_type: e.target.value })}
-                  className="w-full border rounded px-3 py-2" required />
+                  className="w-full border border-gray-200 rounded px-3 py-2" required />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">試験日</label>
                 <input type="date" value={testForm.test_date}
                   onChange={e => setTestForm({ ...testForm, test_date: e.target.value })}
-                  className="w-full border rounded px-3 py-2" required />
+                  className="w-full border border-gray-200 rounded px-3 py-2" required />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">結果</label>
-                <select value={testForm.result}
-                  onChange={e => setTestForm({ ...testForm, result: e.target.value })}
-                  className="w-full border rounded px-3 py-2">
+                <label className="block text-sm font-medium mb-1">試験場所</label>
+                <input type="text" value={testForm.test_location}
+                  onChange={e => setTestForm({ ...testForm, test_location: e.target.value })}
+                  className="w-full border border-gray-200 rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">試験実施者</label>
+                <input type="text" value={testForm.tested_by}
+                  onChange={e => setTestForm({ ...testForm, tested_by: e.target.value })}
+                  className="w-full border border-gray-200 rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">判定</label>
+                <select value={testForm.judgment}
+                  onChange={e => setTestForm({ ...testForm, judgment: e.target.value as Judgment })}
+                  className="w-full border border-gray-200 rounded px-3 py-2">
                   <option value="pending">未実施</option>
                   <option value="pass">合格</option>
                   <option value="fail">不合格</option>
@@ -262,7 +359,7 @@ export default function MaterialsPage() {
               <label className="block text-sm font-medium mb-1">備考</label>
               <textarea value={testForm.notes}
                 onChange={e => setTestForm({ ...testForm, notes: e.target.value })}
-                className="w-full border rounded px-3 py-2 h-20" />
+                className="w-full border border-gray-200 rounded px-3 py-2 h-20" />
             </div>
             <div className="flex gap-2">
               <button type="submit" disabled={createTest.isPending}
@@ -270,7 +367,7 @@ export default function MaterialsPage() {
                 {createTest.isPending ? "保存中..." : "保存"}
               </button>
               <button type="button" onClick={() => setShowTestForm(false)}
-                className="border px-6 py-2 rounded-lg hover:bg-gray-50">キャンセル</button>
+                className="border border-gray-200 px-6 py-2 rounded-lg hover:bg-gray-50">キャンセル</button>
             </div>
             {createTest.isError && (
               <p className="text-red-600 text-sm">{(createTest.error as Error).message}</p>
@@ -285,18 +382,14 @@ export default function MaterialsPage() {
         ) : (
           <div className="space-y-3">
             {tests.map(t => (
-              <div key={t.id} className="bg-white border rounded-lg p-4 flex items-center justify-between">
+              <div key={t.id} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="font-medium">{t.material_name}</span>
                   <span className="text-sm text-gray-500">{t.test_type}</span>
-                  <span className="text-sm text-gray-500">{formatDate(t.test_date)}</span>
+                  {t.test_date && <span className="text-sm text-gray-500">{formatDate(t.test_date)}</span>}
                 </div>
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                  t.result === "pass" ? "bg-green-100 text-green-700" :
-                  t.result === "fail" ? "bg-red-100 text-red-700" :
-                  "bg-gray-100 text-gray-600"
-                }`}>
-                  {t.result === "pass" ? "合格" : t.result === "fail" ? "不合格" : "未実施"}
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${judgmentClass(t.judgment)}`}>
+                  {judgmentLabel(t.judgment)}
                 </span>
               </div>
             ))}

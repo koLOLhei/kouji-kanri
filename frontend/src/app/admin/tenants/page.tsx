@@ -72,7 +72,7 @@ export default function TenantsPage() {
   });
 
   const planLabel: Record<string, string> = { free: "フリー", standard: "スタンダード", enterprise: "エンタープライズ" };
-  const planColor: Record<string, string> = { free: "bg-gray-100 text-gray-700", standard: "bg-blue-100 text-blue-700", enterprise: "bg-purple-100 text-purple-700" };
+  const planColor: Record<string, string> = { free: "bg-gray-100 text-gray-700", standard: "bg-blue-100 text-blue-800", enterprise: "bg-gray-900 text-white" };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -86,7 +86,7 @@ export default function TenantsPage() {
         </h1>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
         >
           <Plus className="w-4 h-4" /> 新規テナント登録
         </button>
@@ -134,12 +134,12 @@ export default function TenantsPage() {
             </div>
             <div className="md:col-span-2 flex gap-3 justify-end">
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">キャンセル</button>
-              <button type="submit" disabled={createMutation.isPending} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <button type="submit" disabled={createMutation.isPending} className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50">
                 {createMutation.isPending ? "登録中..." : "テナント登録"}
               </button>
             </div>
             {createMutation.isError && (
-              <div className="md:col-span-2 bg-red-50 text-red-600 text-sm p-3 rounded-lg">
+              <div className="md:col-span-2 bg-gray-50 border border-red-600 text-red-600 text-sm p-3 rounded-lg">
                 {(createMutation.error as Error).message}
               </div>
             )}
@@ -152,14 +152,14 @@ export default function TenantsPage() {
           <Link
             key={tenant.id}
             href={`/admin/tenants/${tenant.id}`}
-            className="block bg-white rounded-xl shadow-sm p-4 border border-gray-100 hover:border-blue-300 transition-colors"
+            className="block bg-white rounded-xl shadow-sm p-4 border border-gray-200 hover:border-gray-300 transition-colors"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {tenant.is_active ? (
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
                 ) : (
-                  <XCircle className="w-5 h-5 text-red-400" />
+                  <XCircle className="w-5 h-5 text-red-600" />
                 )}
                 <div>
                   <h3 className="font-semibold text-gray-900">{tenant.name}</h3>

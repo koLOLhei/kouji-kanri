@@ -1,7 +1,7 @@
 """品質管理のPydanticスキーマ (quality.pyから分離)"""
 
-from datetime import date
-from typing import Optional
+from datetime import date, datetime
+from typing import Any, Optional
 from pydantic import BaseModel
 
 class ProgressPaymentUpdate(BaseModel):

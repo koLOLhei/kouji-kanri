@@ -62,6 +62,22 @@ def _add_missing_columns():
             except Exception as e:
                 logger.warning(f"[init] ADD COLUMN {table}.{col} failed: {e}")
 
+        # 追加インデックス・ユニーク制約 (Alembic 不使用のため起動時に冪等適用)
+        # SaaSセキュリティ上の致命点: 同テナント内で email が重複すると
+        # 認証境界が壊れるため、複合ユニークインデックスを強制する。
+        unique_indexes = [
+            (
+                "uq_users_tenant_email",
+                'CREATE UNIQUE INDEX IF NOT EXISTS "uq_users_tenant_email" '
+                'ON "users" ("tenant_id", "email")',
+            ),
+        ]
+        for idx_name, ddl in unique_indexes:
+            try:
+                conn.execute(text(ddl))
+            except Exception as e:
+                logger.warning(f"[init] CREATE UNIQUE INDEX {idx_name} failed: {e}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

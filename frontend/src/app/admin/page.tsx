@@ -30,10 +30,10 @@ export default function AdminDashboardPage() {
   if (!stats) return <div className="p-6">読込中...</div>;
 
   const cards = [
-    { label: "テナント数", value: stats.total_tenants, sub: `アクティブ: ${stats.active_tenants}`, icon: Building2, color: "bg-blue-500" },
-    { label: "総ユーザー数", value: stats.total_users, icon: Users, color: "bg-green-500" },
-    { label: "総案件数", value: stats.total_projects, icon: FolderKanban, color: "bg-purple-500" },
-    { label: "月次推定収益", value: formatAmount(stats.monthly_revenue), icon: TrendingUp, color: "bg-orange-500" },
+    { label: "テナント数", value: stats.total_tenants, sub: `アクティブ: ${stats.active_tenants}`, icon: Building2 },
+    { label: "総ユーザー数", value: stats.total_users, icon: Users },
+    { label: "総案件数", value: stats.total_projects, icon: FolderKanban },
+    { label: "月次推定収益", value: formatAmount(stats.monthly_revenue), icon: TrendingUp },
   ];
 
   return (
@@ -44,7 +44,7 @@ export default function AdminDashboardPage() {
         </h1>
         <Link
           href="/admin/tenants"
-          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
+          className="flex items-center gap-1 text-gray-700 hover:text-gray-900 text-sm"
         >
           テナント管理 <ArrowRight className="w-4 h-4" />
         </Link>
@@ -52,15 +52,15 @@ export default function AdminDashboardPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {cards.map((c) => (
-          <div key={c.label} className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+          <div key={c.label} className="bg-white rounded-xl p-4 border border-gray-200">
             <div className="flex items-center gap-3">
-              <div className={`${c.color} p-2 rounded-lg`}>
-                <c.icon className="w-5 h-5 text-white" />
+              <div className="bg-gray-100 p-2 rounded-lg">
+                <c.icon className="w-5 h-5 text-gray-700" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{c.value}</p>
                 <p className="text-xs text-gray-500">{c.label}</p>
-                {c.sub && <p className="text-xs text-gray-400">{c.sub}</p>}
+                {c.sub && <p className="text-xs text-gray-500">{c.sub}</p>}
               </div>
             </div>
           </div>
@@ -70,10 +70,10 @@ export default function AdminDashboardPage() {
       <h2 className="text-lg font-semibold text-gray-900 mb-4">プラン別内訳</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {Object.entries(stats.plan_breakdown).map(([code, plan]) => (
-          <div key={code} className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+          <div key={code} className="bg-white rounded-xl p-5 border border-gray-200">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-900">{plan.name}</h3>
-              <span className="text-2xl font-bold text-blue-600">{plan.count}</span>
+              <span className="text-2xl font-bold text-gray-900">{plan.count}</span>
             </div>
             <p className="text-sm text-gray-500">
               月額: {plan.price === 0 ? "無料" : formatAmount(plan.price)}

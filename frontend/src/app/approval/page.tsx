@@ -28,11 +28,12 @@ export default function ApprovalQueuePage() {
   const queryClient = useQueryClient();
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
-  const { data: items, isLoading } = useQuery<ApprovalItem[]>({
+  const { data, isLoading } = useQuery<{ total: number; items: ApprovalItem[] }>({
     queryKey: ["approval-queue"],
     queryFn: () => apiFetch("/api/approval-queue", { token: token! }),
     enabled: !!token,
   });
+  const items: ApprovalItem[] = data?.items ?? [];
 
   const approveMutation = useMutation({
     mutationFn: (item: ApprovalItem) => {
@@ -76,12 +77,12 @@ export default function ApprovalQueuePage() {
     },
   });
 
-  const visibleItems = items?.filter((i) => !dismissedIds.has(i.id)) ?? [];
+  const visibleItems = items.filter((i) => !dismissedIds.has(i.id));
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
@@ -89,21 +90,21 @@ export default function ApprovalQueuePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-8">
+      <div className="bg-gray-900 px-6 py-8">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <div className="bg-white/20 p-3 rounded-xl">
+          <div className="bg-white/10 p-3 rounded-xl">
             <ClipboardList className="w-7 h-7 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-white">承認キュー</h1>
               {visibleItems.length > 0 && (
-                <span className="bg-white/25 text-white text-sm font-bold px-3 py-1 rounded-full">
+                <span className="bg-white/15 text-white text-sm font-bold px-3 py-1 rounded-full">
                   {visibleItems.length}件
                 </span>
               )}
             </div>
-            <p className="text-indigo-100 mt-1">
+            <p className="text-gray-300 mt-1">
               承認待ちのアイテムを確認・処理
             </p>
           </div>
@@ -115,12 +116,12 @@ export default function ApprovalQueuePage() {
         {visibleItems.length === 0 && (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
             <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-emerald-500" />
+              <Check className="w-10 h-10 text-emerald-600" />
             </div>
             <h2 className="text-xl font-bold text-gray-700 mb-2">
               承認待ちのアイテムはありません
             </h2>
-            <p className="text-gray-400">
+            <p className="text-gray-500">
               新しいアイテムが提出されると、ここに表示されます
             </p>
           </div>
@@ -155,9 +156,9 @@ export default function ApprovalQueuePage() {
                     }`}
                   >
                     {item.type === "daily_report" ? (
-                      <FileText className="w-6 h-6 text-blue-500" />
+                      <FileText className="w-6 h-6 text-blue-600" />
                     ) : (
-                      <ClipboardList className="w-6 h-6 text-amber-500" />
+                      <ClipboardList className="w-6 h-6 text-amber-600" />
                     )}
                   </div>
 
@@ -178,15 +179,15 @@ export default function ApprovalQueuePage() {
                       {item.title}
                     </h3>
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-500">
                         {item.project_name}
                       </span>
-                      <span className="text-xs text-gray-300">|</span>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-400">|</span>
+                      <span className="text-xs text-gray-500">
                         {formatDate(item.date)}
                       </span>
-                      <span className="text-xs text-gray-300">|</span>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-400">|</span>
+                      <span className="text-xs text-gray-500">
                         {item.submitted_by}
                       </span>
                     </div>
@@ -197,7 +198,7 @@ export default function ApprovalQueuePage() {
                     <button
                       onClick={() => rejectMutation.mutate(item)}
                       disabled={isProcessing}
-                      className="flex items-center gap-1.5 px-4 py-2.5 border-2 border-red-200 text-red-600 font-bold text-sm rounded-xl hover:bg-red-50 hover:border-red-300 disabled:opacity-50 transition-all"
+                      className="flex items-center gap-1.5 px-4 py-2.5 border border-red-600 text-red-600 font-bold text-sm rounded-xl hover:bg-red-50 disabled:opacity-50 transition-all"
                     >
                       {rejectMutation.isPending &&
                       rejectMutation.variables?.id === item.id ? (
@@ -210,7 +211,7 @@ export default function ApprovalQueuePage() {
                     <button
                       onClick={() => approveMutation.mutate(item)}
                       disabled={isProcessing}
-                      className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-sm rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-md hover:shadow-lg disabled:opacity-50 transition-all"
+                      className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white font-bold text-sm rounded-xl hover:bg-emerald-700 shadow-sm disabled:opacity-50 transition-all"
                     >
                       {approveMutation.isPending &&
                       approveMutation.variables?.id === item.id ? (

@@ -51,8 +51,9 @@ function ProgressRing({ percent, size = 96, stroke = 8 }: { percent: number; siz
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
+  // emerald-600 / blue-600 / amber-600 / gray-300
   const color =
-    percent >= 100 ? "#22c55e" : percent >= 60 ? "#3b82f6" : percent >= 30 ? "#f59e0b" : "#94a3b8";
+    percent >= 100 ? "#059669" : percent >= 60 ? "#2563eb" : percent >= 30 ? "#d97706" : "#d1d5db";
 
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
@@ -90,61 +91,68 @@ function ProgressRing({ percent, size = 96, stroke = 8 }: { percent: number; siz
 /*  Feature Link Config                                                */
 /* ------------------------------------------------------------------ */
 
+// 色味は gray-50 / ring-gray-200 / text-gray-700 で統一。
+// 「写真撮影」のみ active 強調として text-blue-600。
+const CARD_BG = "bg-gray-50";
+const CARD_RING = "ring-gray-200";
+const CARD_ICON = "text-gray-700";
+const CARD_ICON_ACTIVE = "text-blue-600";
+
 const FEATURE_GROUPS = [
   {
-    groupLabel: "📋 毎日の業務",
+    groupLabel: "毎日の業務",
     items: [
-      { key: "daily-reports",  label: "日報",    subtitle: "毎日の作業内容・人員を記録",    icon: ClipboardList, bg: "bg-blue-50",    ring: "ring-blue-200",    iconColor: "text-blue-600" },
-      { key: "safety",         label: "安全管理", subtitle: "KY・ヒヤリハット・安全巡回",    icon: Shield,        bg: "bg-emerald-50", ring: "ring-emerald-200", iconColor: "text-emerald-600" },
-      { key: "capture",        label: "写真撮影", subtitle: "工事写真をその場で撮影・記録",   icon: Camera,        bg: "bg-cyan-50",    ring: "ring-cyan-200",    iconColor: "text-cyan-600",   isCapture: true },
+      { key: "daily-reports",  label: "日報",    subtitle: "毎日の作業内容・人員を記録",    icon: ClipboardList, bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "safety",         label: "安全管理", subtitle: "KY・ヒヤリハット・安全巡回",    icon: Shield,        bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "capture",        label: "写真撮影", subtitle: "工事写真をその場で撮影・記録",   icon: Camera,        bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON_ACTIVE, isCapture: true },
     ],
   },
   {
-    groupLabel: "📊 管理・記録",
+    groupLabel: "管理・記録",
     items: [
-      { key: "documents",       label: "書類管理", subtitle: "提出書類の一括生成・管理",     icon: FileImage,     bg: "bg-rose-50",    ring: "ring-rose-200",    iconColor: "text-rose-600" },
-      { key: "inspections",     label: "検査",    subtitle: "段階確認・完成検査の記録",      icon: Search,        bg: "bg-purple-50",  ring: "ring-purple-200",  iconColor: "text-purple-600" },
-      { key: "materials",       label: "資材",    subtitle: "発注・受入・試験成績書の管理",   icon: Package,       bg: "bg-orange-50",  ring: "ring-orange-200",  iconColor: "text-orange-600" },
-      { key: "costs",           label: "原価",    subtitle: "工事費用・予算の管理・分析",     icon: DollarSign,    bg: "bg-red-50",     ring: "ring-red-200",     iconColor: "text-red-600" },
-      { key: "measurements",    label: "出来形",   subtitle: "完成部分の寸法・品質を測定",    icon: Search,        bg: "bg-lime-50",    ring: "ring-lime-200",    iconColor: "text-lime-600" },
-      { key: "concrete",         label: "コンクリート", subtitle: "養生管理・強度試験・脱型管理", icon: Package,       bg: "bg-gray-50",    ring: "ring-gray-200",    iconColor: "text-gray-600" },
-      { key: "material-approvals", label: "材料承認",  subtitle: "材料承認願の提出・承認管理",   icon: FileImage,     bg: "bg-sky-50",     ring: "ring-sky-200",     iconColor: "text-sky-600" },
-      { key: "legal-inspections", label: "法定検査",   subtitle: "確認申請・中間・完了検査",     icon: Shield,        bg: "bg-violet-50",  ring: "ring-violet-200",  iconColor: "text-violet-600" },
+      { key: "documents",          label: "書類管理",   subtitle: "提出書類の一括生成・管理",     icon: FileImage,     bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "inspections",        label: "検査",      subtitle: "段階確認・完成検査の記録",      icon: Search,        bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "materials",          label: "資材",      subtitle: "発注・受入・試験成績書の管理",   icon: Package,       bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "costs",              label: "原価",      subtitle: "工事費用・予算の管理・分析",     icon: DollarSign,    bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "measurements",       label: "出来形",    subtitle: "完成部分の寸法・品質を測定",    icon: Search,        bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "concrete",           label: "コンクリート", subtitle: "養生管理・強度試験・脱型管理", icon: Package,       bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "material-approvals", label: "材料承認",   subtitle: "材料承認願の提出・承認管理",   icon: FileImage,     bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "legal-inspections",  label: "法定検査",   subtitle: "確認申請・中間・完了検査",     icon: Shield,        bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
     ],
   },
   {
-    groupLabel: "📅 計画・調整",
+    groupLabel: "計画・調整",
     items: [
-      { key: "schedule",        label: "工程表",   subtitle: "ガントチャートで工程を可視化",  icon: BarChart2,     bg: "bg-violet-50",  ring: "ring-violet-200",  iconColor: "text-violet-600" },
-      { key: "calendar",        label: "カレンダー", subtitle: "マイルストーン・天候記録",     icon: Calendar,      bg: "bg-pink-50",    ring: "ring-pink-200",    iconColor: "text-pink-600" },
-      { key: "meetings",        label: "打合せ",   subtitle: "発注者との協議・指示を記録",    icon: ClipboardList, bg: "bg-sky-50",     ring: "ring-sky-200",     iconColor: "text-sky-600" },
-      { key: "design-changes",  label: "設計変更", subtitle: "設計変更・追加工事の管理",      icon: FileEdit,      bg: "bg-yellow-50",  ring: "ring-yellow-200",  iconColor: "text-yellow-600" },
+      { key: "schedule",        label: "工程表",   subtitle: "ガントチャートで工程を可視化",  icon: BarChart2,     bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "calendar",        label: "カレンダー", subtitle: "マイルストーン・天候記録",     icon: Calendar,      bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "meetings",        label: "打合せ",   subtitle: "発注者との協議・指示を記録",    icon: ClipboardList, bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "design-changes",  label: "設計変更", subtitle: "設計変更・追加工事の管理",      icon: FileEdit,      bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
     ],
   },
   {
-    groupLabel: "💰 経営・収支",
+    groupLabel: "経営・収支",
     items: [
-      { key: "profit",          label: "粗利管理", subtitle: "受注額・実行予算・粗利を可視化", icon: DollarSign,    bg: "bg-emerald-50", ring: "ring-emerald-200", iconColor: "text-emerald-600" },
-      { key: "work-packages",   label: "工種管理", subtitle: "業種区分・内外製の振り分け",     icon: Package,       bg: "bg-blue-50",    ring: "ring-blue-200",    iconColor: "text-blue-600" },
-      { key: "defects",         label: "瑕疵管理", subtitle: "引渡後の不具合・アフター対応",   icon: AlertTriangle, bg: "bg-red-50",     ring: "ring-red-200",     iconColor: "text-red-600" },
-      { key: "performance",     label: "成績・CF", subtitle: "工事成績評定・キャッシュフロー", icon: BarChart2,     bg: "bg-yellow-50",  ring: "ring-yellow-200",  iconColor: "text-yellow-600" },
+      { key: "profit",          label: "粗利管理", subtitle: "受注額・実行予算・粗利を可視化", icon: DollarSign,    bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "work-packages",   label: "工種管理", subtitle: "業種区分・内外製の振り分け",     icon: Package,       bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "defects",         label: "瑕疵管理", subtitle: "引渡後の不具合・アフター対応",   icon: AlertTriangle, bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "performance",     label: "成績・CF", subtitle: "工事成績評定・キャッシュフロー", icon: BarChart2,     bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
     ],
   },
   {
-    groupLabel: "🏗️ その他",
+    groupLabel: "その他",
     items: [
-      { key: "drawings",           label: "図面",    subtitle: "図面の版管理・閲覧",          icon: FileImage,    bg: "bg-indigo-50",  ring: "ring-indigo-200",  iconColor: "text-indigo-600" },
-      { key: "contracts",          label: "下請管理", subtitle: "下請契約・施工体制台帳",      icon: Handshake,    bg: "bg-teal-50",    ring: "ring-teal-200",    iconColor: "text-teal-600" },
-      { key: "corrective-actions", label: "是正措置", subtitle: "品質不適合・NCRの記録",       icon: AlertTriangle, bg: "bg-amber-50",  ring: "ring-amber-200",   iconColor: "text-amber-600" },
-      { key: "waste",              label: "廃棄物",   subtitle: "廃棄物マニフェストの管理",    icon: AlertTriangle, bg: "bg-stone-50",  ring: "ring-stone-200",   iconColor: "text-stone-600" },
-      { key: "invoices",          label: "請求・支払", subtitle: "請求書・支払通知書の管理",   icon: DollarSign,   bg: "bg-emerald-50", ring: "ring-emerald-200", iconColor: "text-emerald-600" },
-      { key: "filings",           label: "届出",     subtitle: "官公庁届出の管理",            icon: FileImage,    bg: "bg-cyan-50",    ring: "ring-cyan-200",    iconColor: "text-cyan-600" },
-      { key: "green-file",        label: "書類生成",  subtitle: "作業員名簿・施工計画書・見積書等の自動生成",   icon: FileImage,    bg: "bg-lime-50",    ring: "ring-lime-200",    iconColor: "text-lime-600" },
-      { key: "environment",       label: "環境測定",  subtitle: "騒音・振動・WBGT測定",        icon: AlertTriangle, bg: "bg-orange-50", ring: "ring-orange-200",  iconColor: "text-orange-600" },
-      { key: "handover",          label: "引渡品",    subtitle: "鍵・取説・保証書の管理",       icon: Package,      bg: "bg-blue-50",    ring: "ring-blue-200",    iconColor: "text-blue-600" },
-      { key: "traceability",      label: "トレーサビリティ", subtitle: "材料の使用箇所追跡",    icon: Search,       bg: "bg-violet-50",  ring: "ring-violet-200",  iconColor: "text-violet-600" },
-      { key: "members",           label: "メンバー",  subtitle: "プロジェクトメンバー管理",     icon: Shield,       bg: "bg-gray-50",    ring: "ring-gray-200",    iconColor: "text-gray-600" },
-      { key: "compliance",        label: "許認可管理", subtitle: "道路使用・建築確認・届出の管理", icon: ShieldCheck,  bg: "bg-green-50",   ring: "ring-green-200",   iconColor: "text-green-600" },
+      { key: "drawings",           label: "図面",            subtitle: "図面の版管理・閲覧",                          icon: FileImage,    bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "contracts",          label: "下請管理",         subtitle: "下請契約・施工体制台帳",                       icon: Handshake,    bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "corrective-actions", label: "是正措置",         subtitle: "品質不適合・NCRの記録",                       icon: AlertTriangle, bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "waste",              label: "廃棄物",           subtitle: "廃棄物マニフェストの管理",                     icon: AlertTriangle, bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "invoices",           label: "請求・支払",        subtitle: "請求書・支払通知書の管理",                     icon: DollarSign,   bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "filings",            label: "届出",            subtitle: "官公庁届出の管理",                            icon: FileImage,    bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "green-file",         label: "書類生成",         subtitle: "作業員名簿・施工計画書・見積書等の自動生成",       icon: FileImage,    bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "environment",        label: "環境測定",         subtitle: "騒音・振動・WBGT測定",                        icon: AlertTriangle, bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "handover",           label: "引渡品",           subtitle: "鍵・取説・保証書の管理",                       icon: Package,      bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "traceability",       label: "トレーサビリティ", subtitle: "材料の使用箇所追跡",                          icon: Search,       bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "members",            label: "メンバー",         subtitle: "プロジェクトメンバー管理",                      icon: Shield,       bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "compliance",         label: "許認可管理",        subtitle: "道路使用・建築確認・届出の管理",                icon: ShieldCheck,  bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
     ],
   },
 ] as const;
@@ -208,11 +216,11 @@ export default function ProjectDetailPage() {
   const statusIcon = (status: string, size = "w-4 h-4") => {
     switch (status) {
       case "completed":
-        return <CheckCircle2 className={`${size} text-green-500`} />;
+        return <CheckCircle2 className={`${size} text-emerald-600`} />;
       case "in_progress":
-        return <Clock className={`${size} text-blue-500`} />;
+        return <Clock className={`${size} text-blue-600`} />;
       case "inspection":
-        return <AlertCircle className={`${size} text-yellow-500`} />;
+        return <AlertCircle className={`${size} text-amber-600`} />;
       default:
         return <Circle className={`${size} text-gray-300`} />;
     }
@@ -228,9 +236,9 @@ export default function ProjectDetailPage() {
 
   if (projectLoading || !project) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
           <p className="text-sm text-gray-500">読込中...</p>
         </div>
       </div>
@@ -240,13 +248,13 @@ export default function ProjectDetailPage() {
   /* ---------- render ---------- */
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
         {/* Back link */}
         <Link
           href="/projects"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors group"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           案件一覧に戻る
@@ -255,13 +263,13 @@ export default function ProjectDetailPage() {
         {/* ============================================================ */}
         {/*  1. PROJECT HEADER CARD                                       */}
         {/* ============================================================ */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* colored accent bar */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* accent bar (solid color, no gradient) */}
           <div className={`h-1.5 ${
-            project.status === "completed" ? "bg-gradient-to-r from-green-400 to-emerald-500" :
-            project.status === "active"    ? "bg-gradient-to-r from-blue-400 to-indigo-500" :
-            project.status === "inspection"? "bg-gradient-to-r from-yellow-400 to-orange-400" :
-                                             "bg-gradient-to-r from-gray-300 to-gray-400"
+            project.status === "completed" ? "bg-emerald-600" :
+            project.status === "active"    ? "bg-blue-600" :
+            project.status === "inspection"? "bg-amber-600" :
+                                             "bg-gray-300"
           }`} />
 
           <div className="p-6 sm:p-8">
@@ -336,18 +344,18 @@ export default function ProjectDetailPage() {
                     <Link
                       key={f.key}
                       href={href}
-                      className={`group flex items-center gap-3 p-4 rounded-2xl ring-1 ${f.ring} ${f.bg} hover:shadow-md hover:scale-[1.01] active:scale-[0.98] transition-all duration-150`}
+                      className={`group flex items-center gap-3 p-4 rounded-2xl ring-1 ${f.ring} ${f.bg} hover:bg-white hover:ring-gray-300 hover:shadow-sm transition-all duration-150`}
                     >
-                      <div className={`p-2.5 rounded-xl bg-white/70 shadow-sm ${f.iconColor} group-hover:shadow-md transition-shadow flex-shrink-0`}>
+                      <div className={`p-2.5 rounded-xl bg-white border border-gray-200 ${f.iconColor} flex-shrink-0`}>
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 group-hover:text-gray-900 transition-colors">
+                        <p className="text-sm font-semibold text-gray-900 transition-colors">
                           {f.label}
                         </p>
                         <p className="text-xs text-gray-500 truncate">{f.subtitle}</p>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0 ml-auto" />
+                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-700 transition-colors flex-shrink-0 ml-auto" />
                     </Link>
                   );
                 })}
@@ -370,13 +378,13 @@ export default function ProjectDetailPage() {
 
           {phasesLoading ? (
             <div className="flex justify-center py-12">
-              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
             </div>
           ) : phases.length === 0 ? (
             /* ---------- Empty: big CTA ---------- */
-            <div className="bg-white rounded-2xl shadow-sm border border-dashed border-blue-300 p-10 flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-blue-500" />
+            <div className="bg-white rounded-2xl shadow-sm border border-dashed border-gray-300 p-10 flex flex-col items-center text-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-gray-700" />
               </div>
               <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-1">工程がまだ登録されていません</h3>
@@ -387,7 +395,7 @@ export default function ProjectDetailPage() {
               <button
                 onClick={() => initPhasesMutation.mutate()}
                 disabled={initPhasesMutation.isPending}
-                className="mt-2 inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-base shadow-lg shadow-blue-200 hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 transition-all"
+                className="mt-2 inline-flex items-center gap-2 px-8 py-3.5 bg-gray-900 hover:bg-gray-700 active:bg-gray-900 text-white rounded-xl font-semibold text-base shadow-sm disabled:opacity-60 transition-colors"
               >
                 <Sparkles className="w-5 h-5" />
                 {initPhasesMutation.isPending ? "生成中..." : "仕様書から工程を自動生成"}
@@ -405,20 +413,20 @@ export default function ProjectDetailPage() {
                 return (
                   <div
                     key={chCode}
-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                    className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
                   >
                     {/* Chapter header */}
                     <button
                       type="button"
                       onClick={() => toggleChapter(chCode)}
-                      className="w-full flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-gray-50 to-white hover:from-blue-50/40 hover:to-white transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-5 py-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
                     >
                       <ChevronDown
-                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
+                        className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
                       />
 
                       {/* Chapter number badge */}
-                      <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold">
+                      <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center text-sm font-bold">
                         {chCode}
                       </span>
 
@@ -429,20 +437,20 @@ export default function ProjectDetailPage() {
                         </span>
                       </div>
 
-                      {/* Progress bar */}
+                      {/* Progress bar (solid color, no gradient) */}
                       <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
-                        <div className="w-32 h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="w-32 h-2 rounded-full bg-gray-200 overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
-                              progress.percent >= 100 ? "bg-green-500" :
-                              progress.percent >= 50  ? "bg-blue-500" :
-                              progress.percent > 0    ? "bg-amber-400" :
-                                                        "bg-gray-200"
+                              progress.percent >= 100 ? "bg-emerald-600" :
+                              progress.percent >= 50  ? "bg-blue-600" :
+                              progress.percent > 0    ? "bg-amber-600" :
+                                                        "bg-gray-300"
                             }`}
                             style={{ width: `${progress.percent}%` }}
                           />
                         </div>
-                        <span className="text-xs text-gray-400 w-16 text-right tabular-nums">
+                        <span className="text-xs text-gray-500 w-16 text-right tabular-nums">
                           {progress.done}/{progress.total}
                         </span>
                       </div>
@@ -453,18 +461,18 @@ export default function ProjectDetailPage() {
 
                     {/* Sub-phases */}
                     {!isCollapsed && subPhases.length > 0 && (
-                      <div className="divide-y divide-gray-50">
+                      <div className="divide-y divide-gray-100">
                         {subPhases.map((phase) => (
                           <Link
                             key={phase.id}
                             href={`/projects/${id}/phases/${phase.id}`}
-                            className="group flex items-center gap-3 px-5 py-3 hover:bg-blue-50/60 transition-colors"
+                            className="group flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors"
                           >
                             <span className="w-5 flex-shrink-0 flex justify-center">
                               {statusIcon(phase.status)}
                             </span>
 
-                            <span className="flex-1 min-w-0 text-sm text-gray-700 group-hover:text-blue-700 transition-colors truncate">
+                            <span className="flex-1 min-w-0 text-sm text-gray-700 group-hover:text-gray-900 transition-colors truncate">
                               {phase.name}
                             </span>
 
@@ -476,7 +484,7 @@ export default function ProjectDetailPage() {
                               <span
                                 className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
                                   phase.requirements_met === phase.requirements_total
-                                    ? "bg-green-100 text-green-700"
+                                    ? "bg-emerald-100 text-emerald-700"
                                     : "bg-gray-100 text-gray-500"
                                 }`}
                               >
@@ -484,7 +492,7 @@ export default function ProjectDetailPage() {
                               </span>
                             )}
 
-                            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
+                            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-700 flex-shrink-0 transition-colors" />
                           </Link>
                         ))}
                       </div>
@@ -504,7 +512,7 @@ export default function ProjectDetailPage() {
             <button
               onClick={() => initPhasesMutation.mutate()}
               disabled={initPhasesMutation.isPending}
-              className="w-full max-w-lg py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 hover:shadow-xl disabled:opacity-60 transition-all flex items-center justify-center gap-2"
+              className="w-full max-w-lg py-4 bg-gray-900 hover:bg-gray-700 active:bg-gray-900 text-white rounded-2xl font-bold text-lg shadow-sm disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
             >
               <Sparkles className="w-5 h-5" />
               {initPhasesMutation.isPending ? "工程を生成しています..." : "仕様書から工程を自動生成"}

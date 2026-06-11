@@ -27,6 +27,42 @@ const ENDPOINT_MAP: Partial<Record<TabKey, string>> = {
   training: "trainings",
 };
 
+const DATE_FIELD_BY_TAB: Partial<Record<TabKey, string>> = {
+  ky: "activity_date",
+  patrol: "patrol_date",
+  incident: "incident_date",
+  training: "training_date",
+};
+
+const PARTICIPANTS_FIELD_BY_TAB: Partial<Record<TabKey, string>> = {
+  ky: "participants",
+  training: "attendees",
+};
+
+const INCIDENT_TYPE_OPTIONS = [
+  { value: "near_miss", label: "ヒヤリハット" },
+  { value: "minor_injury", label: "軽傷" },
+  { value: "property_damage", label: "物損" },
+  { value: "equipment_failure", label: "設備故障" },
+  { value: "other", label: "その他" },
+];
+
+const TRAINING_TYPE_OPTIONS = [
+  { value: "new_entry", label: "新規入場者教育" },
+  { value: "tbm", label: "TBM" },
+  { value: "regular", label: "定期教育" },
+  { value: "special", label: "特別教育" },
+  { value: "other", label: "その他" },
+];
+
+const SEVERITY_OPTIONS = [
+  { value: "minor", label: "軽微" },
+  { value: "low", label: "軽度" },
+  { value: "medium", label: "中程度" },
+  { value: "high", label: "重大" },
+  { value: "critical", label: "緊急" },
+];
+
 interface SafetyRecord {
   id: string;
   title?: string;
@@ -346,7 +382,7 @@ function AnalysisTab({ id, token }: { id: string; token: string }) {
             <div className="text-xs text-gray-500 mt-1">ヒヤリハット（6か月）</div>
           </div>
           <div className="bg-white border rounded-xl p-4 text-center">
-            <div className="text-2xl font-bold text-purple-600">
+            <div className="text-2xl font-bold text-amber-600">
               {trends.reduce((s, t) => s + t.training_count, 0)}
             </div>
             <div className="text-xs text-gray-500 mt-1">安全教育（6か月）</div>
@@ -427,6 +463,26 @@ export default function SafetyPage() {
     description: "",
     location: "",
     participants: "",
+    incident_type: "near_miss",
+    training_type: "tbm",
+    severity: "minor",
+    leader_name: "",
+    inspector_name: "",
+    instructor_name: "",
+  });
+
+  const resetForm = () => setForm({
+    title: "",
+    date: new Date().toISOString().split("T")[0],
+    description: "",
+    location: "",
+    participants: "",
+    incident_type: "near_miss",
+    training_type: "tbm",
+    severity: "minor",
+    leader_name: "",
+    inspector_name: "",
+    instructor_name: "",
   });
 
   const { data: records = [], isLoading } = useQuery<SafetyRecord[]>({
@@ -448,13 +504,48 @@ export default function SafetyPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["safety", id, endpoint] });
       setShowForm(false);
-      setForm({ title: "", date: new Date().toISOString().split("T")[0], description: "", location: "", participants: "" });
+      resetForm();
     },
   });
 
+  const buildPayload = (): Record<string, unknown> => {
+    const dateField = DATE_FIELD_BY_TAB[activeTab];
+    if (!dateField) return {};
+    const payload: Record<string, unknown> = {
+      [dateField]: form.date,
+    };
+    const participantsList = form.participants
+      .split(/[、,\n]/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (activeTab === "ky") {
+      payload.location = form.location || null;
+      payload.work_content = form.description || null;
+      payload.leader_name = form.leader_name || null;
+      payload.participants = participantsList;
+    } else if (activeTab === "patrol") {
+      payload.inspector_name = form.inspector_name || null;
+      payload.overall_evaluation = form.description || null;
+      payload.corrective_actions = form.location || null;
+    } else if (activeTab === "incident") {
+      payload.incident_type = form.incident_type;
+      payload.severity = form.severity;
+      payload.location = form.location || null;
+      payload.description = form.description || null;
+    } else if (activeTab === "training") {
+      payload.training_type = form.training_type;
+      payload.title = form.title;
+      payload.content = form.description || null;
+      payload.instructor_name = form.instructor_name || null;
+      payload.attendees = participantsList;
+    }
+    return payload;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate(form);
+    createMutation.mutate(buildPayload());
   };
 
   return (
@@ -507,37 +598,130 @@ export default function SafetyPage() {
             <form onSubmit={handleSubmit} className="bg-white border rounded-lg p-6 space-y-4">
               <h2 className="font-semibold text-lg">{tab.label} 登録</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {activeTab === "training" && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">タイトル <span className="text-red-600">*</span></label>
+                    <input type="text" value={form.title}
+                      onChange={e => setForm({ ...form, title: e.target.value })}
+                      className="w-full border rounded px-3 py-2" required />
+                  </div>
+                )}
                 <div>
-                  <label className="block text-sm font-medium mb-1">タイトル</label>
-                  <input type="text" value={form.title}
-                    onChange={e => setForm({ ...form, title: e.target.value })}
-                    className="w-full border rounded px-3 py-2" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">日付</label>
+                  <label className="block text-sm font-medium mb-1">日付 <span className="text-red-600">*</span></label>
                   <input type="date" value={form.date}
                     onChange={e => setForm({ ...form, date: e.target.value })}
                     className="w-full border rounded px-3 py-2" required />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">場所</label>
-                  <input type="text" value={form.location}
-                    onChange={e => setForm({ ...form, location: e.target.value })}
-                    className="w-full border rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">参加者</label>
-                  <input type="text" value={form.participants}
-                    onChange={e => setForm({ ...form, participants: e.target.value })}
-                    className="w-full border rounded px-3 py-2" />
-                </div>
+
+                {activeTab === "incident" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">種別 <span className="text-red-600">*</span></label>
+                      <select value={form.incident_type}
+                        onChange={e => setForm({ ...form, incident_type: e.target.value })}
+                        className="w-full border rounded px-3 py-2" required>
+                        {INCIDENT_TYPE_OPTIONS.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">重大度</label>
+                      <select value={form.severity}
+                        onChange={e => setForm({ ...form, severity: e.target.value })}
+                        className="w-full border rounded px-3 py-2">
+                        {SEVERITY_OPTIONS.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {activeTab === "training" && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">教育種別 <span className="text-red-600">*</span></label>
+                    <select value={form.training_type}
+                      onChange={e => setForm({ ...form, training_type: e.target.value })}
+                      className="w-full border rounded px-3 py-2" required>
+                      {TRAINING_TYPE_OPTIONS.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {(activeTab === "ky" || activeTab === "incident") && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      {activeTab === "ky" ? "場所" : "発生場所"}
+                    </label>
+                    <input type="text" value={form.location}
+                      onChange={e => setForm({ ...form, location: e.target.value })}
+                      className="w-full border rounded px-3 py-2" />
+                  </div>
+                )}
+
+                {activeTab === "patrol" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">巡回者</label>
+                      <input type="text" value={form.inspector_name}
+                        onChange={e => setForm({ ...form, inspector_name: e.target.value })}
+                        className="w-full border rounded px-3 py-2" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">是正措置</label>
+                      <input type="text" value={form.location}
+                        onChange={e => setForm({ ...form, location: e.target.value })}
+                        className="w-full border rounded px-3 py-2"
+                        placeholder="是正が必要な内容" />
+                    </div>
+                  </>
+                )}
+
+                {activeTab === "ky" && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">リーダー</label>
+                    <input type="text" value={form.leader_name}
+                      onChange={e => setForm({ ...form, leader_name: e.target.value })}
+                      className="w-full border rounded px-3 py-2" />
+                  </div>
+                )}
+
+                {activeTab === "training" && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">講師</label>
+                    <input type="text" value={form.instructor_name}
+                      onChange={e => setForm({ ...form, instructor_name: e.target.value })}
+                      className="w-full border rounded px-3 py-2" />
+                  </div>
+                )}
+
+                {PARTICIPANTS_FIELD_BY_TAB[activeTab] && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-1">
+                      {activeTab === "training" ? "受講者" : "参加者"}
+                      <span className="text-xs text-gray-500 ml-2">（カンマまたは改行で区切る）</span>
+                    </label>
+                    <input type="text" value={form.participants}
+                      onChange={e => setForm({ ...form, participants: e.target.value })}
+                      className="w-full border rounded px-3 py-2"
+                      placeholder="例: 山田, 佐藤, 鈴木" />
+                  </div>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">内容</label>
+                <label className="block text-sm font-medium mb-1">
+                  {activeTab === "ky" ? "作業内容・危険要素" :
+                    activeTab === "patrol" ? "総合評価・所見" :
+                    activeTab === "incident" ? "状況・原因・対策" :
+                    "教育内容"}
+                </label>
                 <VoiceTextarea value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
                   placeholder="作業内容・危険要素・対策など... (マイクボタンで音声入力)"
-                  className="w-full border rounded px-3 py-2 h-24" required />
+                  className="w-full border rounded px-3 py-2 h-24" />
               </div>
               <div className="flex gap-2">
                 <button type="submit" disabled={createMutation.isPending}
@@ -559,30 +743,51 @@ export default function SafetyPage() {
             <p className="text-gray-500">記録がありません</p>
           ) : (
             <div className="space-y-3">
-              {records.map(r => (
-                <div key={r.id} className="bg-white border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold">{r.title || "無題"}</span>
-                      <span className="text-sm text-gray-500">{formatDate(getDate(r))}</span>
-                      {r.severity && (
-                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${SEVERITY_COLOR[r.severity] || "bg-gray-100 text-gray-600"}`}>
-                          {SEVERITY_LABEL[r.severity] || r.severity}
-                        </span>
-                      )}
+              {records.map(r => {
+                const recordTitle =
+                  (r.title as string) ||
+                  (r.work_content as string) ||
+                  (r.overall_evaluation as string) ||
+                  (r.description as string) ||
+                  (r.incident_type as string) ||
+                  "無題";
+                const body =
+                  (r.work_content as string) ||
+                  (r.overall_evaluation as string) ||
+                  (r.description as string) ||
+                  (r.content as string) ||
+                  "";
+                const participantsRaw = (r.participants ?? r.attendees) as unknown;
+                const participantsText = Array.isArray(participantsRaw)
+                  ? participantsRaw.join(", ")
+                  : (typeof participantsRaw === "string" ? participantsRaw : "");
+                return (
+                  <div key={r.id} className="bg-white border rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="font-semibold">{recordTitle.slice(0, 80)}</span>
+                        <span className="text-sm text-gray-500">{formatDate(getDate(r))}</span>
+                        {r.severity && (
+                          <span className={`text-xs px-2 py-0.5 rounded font-medium ${SEVERITY_COLOR[r.severity] || "bg-gray-100 text-gray-600"}`}>
+                            {SEVERITY_LABEL[r.severity] || r.severity}
+                          </span>
+                        )}
+                      </div>
+                      {r.location ? (
+                        <span className="text-sm text-gray-500">{r.location as string}</span>
+                      ) : null}
                     </div>
-                    {r.location && (
-                      <span className="text-sm text-gray-500">{r.location}</span>
+                    {body && (
+                      <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{body}</p>
+                    )}
+                    {participantsText && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        {activeTab === "training" ? "受講者" : "参加者"}: {participantsText}
+                      </p>
                     )}
                   </div>
-                  {r.description && (
-                    <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{r.description as string}</p>
-                  )}
-                  {r.participants && (
-                    <p className="mt-1 text-xs text-gray-500">参加者: {r.participants as string}</p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </>
