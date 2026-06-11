@@ -9,7 +9,7 @@ from database import get_db
 from models.business_docs import Estimate
 from models.estimate_approval import EstimateApproval
 from models.user import User
-from services.auth_service import get_current_user
+from services.auth_service import get_current_user, require_role
 
 router = APIRouter(prefix="", tags=["estimate-approvals"])
 
@@ -104,8 +104,18 @@ def submit_for_approval(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """見積を承認申請する。approval_status='pending' に更新し、履歴 (action='submitted') を作成。"""
+    """見積を承認申請する。approval_status='pending' に更新し、履歴 (action='submitted') を作成。
+
+    自分の見積は worker でも申請可。他人の見積の申請は admin/manager のみ。
+    """
     estimate = _get_estimate_or_404(estimate_id, user.tenant_id, db)
+
+    # 自分が作成した見積以外を申請するのは admin/manager のみ
+    if estimate.created_by != user.id and user.role not in ("admin", "manager", "super_admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="他人の見積を承認申請するには管理者権限が必要です",
+        )
 
     if estimate.approval_status == "pending":
         raise HTTPException(status_code=422, detail="この見積は既に承認申請中です")
@@ -143,7 +153,7 @@ def approve_estimate(
     aid: str,
     body: ApprovalActionBody | None = None,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role("admin", "manager", "super_admin")),
 ):
     """承認待ち見積を承認する。approval_status='approved'、approved_at/by 記録、履歴を追加。
 
@@ -191,7 +201,7 @@ def reject_estimate(
     aid: str,
     body: ApprovalActionBody | None = None,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_role("admin", "manager", "super_admin")),
 ):
     """承認待ち見積を却下する。approval_status='rejected'、履歴を追加。
 

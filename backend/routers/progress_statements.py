@@ -257,19 +257,45 @@ def upsert_progress_entry(
     if ps.status == "finalized":
         raise HTTPException(status_code=422, detail="確定済みの調書は編集できません")
 
-    # progress_amount が未指定なら数量 * 契約単価で算出
-    qty = req.progress_qty if req.progress_qty is not None else Decimal(0)
-    if req.progress_amount is not None:
-        amount = int(req.progress_amount)
-    else:
-        amount = int(Decimal(qty) * Decimal(int(row.contract_unit_price or 0)))
+    # 契約値を取得 (再計算に使用)
+    contract_qty = Decimal(row.contract_qty) if row.contract_qty is not None else Decimal(0)
+    contract_amount = int(row.contract_amount or 0)
+    contract_unit_price = int(row.contract_unit_price or 0)
 
-    # progress_rate が未指定なら契約金額に対する割合で算出 (0-1)
-    if req.progress_rate is not None:
-        rate = float(req.progress_rate)
+    # 入力値を判定 (None または 0 は「未入力」扱い)
+    in_qty = req.progress_qty if req.progress_qty is not None else Decimal(0)
+    in_amount = req.progress_amount
+    in_rate = req.progress_rate
+
+    has_qty = in_qty is not None and Decimal(in_qty) != Decimal(0)
+    has_amount = in_amount is not None and int(in_amount) != 0
+    has_rate = in_rate is not None and float(in_rate) != 0.0
+
+    # 優先順位: rate > amount > qty (Excel 要件: rate 入力時は契約値から逆算)
+    if has_rate:
+        # rate 入力 → contract_qty * rate, contract_amount * rate を自動算出
+        rate = float(in_rate)
+        qty = contract_qty * Decimal(str(rate))
+        amount = int(Decimal(contract_amount) * Decimal(str(rate)))
+    elif has_amount:
+        # amount 入力 → rate と qty を逆算
+        amount = int(in_amount)
+        if contract_amount > 0:
+            rate = float(amount) / float(contract_amount)
+            qty = contract_qty * Decimal(str(rate))
+        else:
+            rate = 0.0
+            qty = Decimal(0)
+    elif has_qty:
+        # qty 入力 → amount = qty * 単価、rate = amount / contract_amount
+        qty = Decimal(in_qty)
+        amount = int(qty * Decimal(contract_unit_price))
+        rate = float(amount) / float(contract_amount) if contract_amount > 0 else 0.0
     else:
-        contract_amount = int(row.contract_amount or 0)
-        rate = float(amount) / float(contract_amount) if contract_amount else 0.0
+        # 全部 0 → クリア (ゼロエントリ)
+        qty = Decimal(0)
+        amount = 0
+        rate = 0.0
 
     entry = (
         db.query(ProgressEntry)
