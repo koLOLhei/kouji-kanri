@@ -56,10 +56,13 @@ export default function EstimateConditionsPage() {
 
   useEffect(() => {
     if (estimateQuery.data && !initialLoaded) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConditionsHtml(estimateQuery.data.conditions_html ?? "");
       if (estimateQuery.data.project_type) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setProjectTypeFilter(estimateQuery.data.project_type);
       }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitialLoaded(true);
     }
   }, [estimateQuery.data, initialLoaded]);

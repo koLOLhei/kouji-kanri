@@ -514,14 +514,15 @@ function DetailView({
     });
   };
 
-  // Get current month entry for a row
-  const currentEntryFor = useMemo(() => {
-    if (!detail) return () => null as ProgressEntryDto | null;
-    return (row: ProgressRowDto): ProgressEntryDto | null =>
+  // Get current month entry for a row (useMemo は React Compiler 互換のため使わない)
+  const currentEntryFor = (row: ProgressRowDto): ProgressEntryDto | null => {
+    if (!detail) return null;
+    return (
       row.entries.find(
         (e) => e.year === detail.year && e.month === detail.month
-      ) || null;
-  }, [detail]);
+      ) || null
+    );
+  };
 
   if (isLoading) {
     return (

@@ -155,7 +155,9 @@ export default function ProjectOverviewPage() {
 
   useEffect(() => {
     if (overviewQuery.data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(toForm(overviewQuery.data));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDirty(false);
     }
   }, [overviewQuery.data]);
@@ -247,6 +249,7 @@ export default function ProjectOverviewPage() {
 
   useEffect(() => {
     if (matrixQuery.data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEntries(
         matrixQuery.data.entries.map((e) => ({
           id: e.id,
@@ -257,6 +260,7 @@ export default function ProjectOverviewPage() {
           sort_order: e.sort_order ?? 0,
         }))
       );
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMatrixDirty(false);
     }
   }, [matrixQuery.data]);

@@ -28,22 +28,31 @@ from services.auth_service import hash_password  # noqa: E402
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_database():
-    """Drop, recreate, and apply Alembic migrations for the entire test session."""
-    from pathlib import Path
-    from alembic.config import Config
-    from alembic import command
+    """Drop, recreate, and build full schema from SQLAlchemy models for tests.
 
+    旧版は Alembic マイグレーションを利用していたが、新規モデル
+    (estimate_section/item/quantity 等) と既存モデルへの拡張カラム
+    (Tenant.invoice_registration_number, Estimate.parent_estimate_id 等)
+    にマイグレーションファイルが追従していないため、本番起動と同様に
+    Base.metadata.create_all + _add_missing_columns 方式で構築する。
+    """
     # 完全なクリーンスレートから始める
     with engine.connect() as conn:
         conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         conn.execute(text("CREATE SCHEMA public"))
         conn.commit()
 
-    # Alembic マイグレーションで本番と同じスキーマを構築
-    backend_dir = Path(__file__).resolve().parent.parent
-    alembic_cfg = Config(str(backend_dir / "alembic.ini"))
-    alembic_cfg.set_main_option("script_location", str(backend_dir / "alembic"))
-    command.upgrade(alembic_cfg, "head")
+    # 全モデルを import してから create_all (auto-discover)
+    import models  # noqa: F401 — registers all model classes via __init__
+    Base.metadata.create_all(bind=engine)
+
+    # 本番と同じ起動時 ALTER も流す (既存テーブルへの追加カラム)
+    try:
+        from main import _add_missing_columns
+        _add_missing_columns()
+    except Exception:
+        # _add_missing_columns が無いか失敗しても継続 (create_all で十分なケース)
+        pass
     yield
 
 

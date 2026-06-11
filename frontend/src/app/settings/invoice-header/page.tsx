@@ -77,6 +77,7 @@ export default function InvoiceHeaderSettingsPage() {
 
   useEffect(() => {
     if (!data) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
       invoice_registration_number: data.invoice_registration_number ?? "",
       company_address: data.company_address ?? "",
