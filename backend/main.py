@@ -197,6 +197,7 @@ for r in discover_routers():
 def health():
     import os
     from services.storage_service import _use_s3, STORAGE_DIR, _RENDER_PERSISTENT_PATH
+    from routers import ROUTER_IMPORT_ERRORS
     is_render = os.environ.get("RENDER") == "true"
     using_persistent = str(STORAGE_DIR) == str(_RENDER_PERSISTENT_PATH)
     if _use_s3:
@@ -207,7 +208,31 @@ def health():
         storage_status = f"persistent_disk ({STORAGE_DIR})"
     else:
         storage_status = f"local ({STORAGE_DIR})"
-    return {"status": "ok", "service": "kouji-kanri", "storage": storage_status}
+    return {
+        "status": "ok",
+        "service": "kouji-kanri",
+        "storage": storage_status,
+        "router_import_errors": len(ROUTER_IMPORT_ERRORS),
+        "routes_loaded": sum(1 for r in app.routes if hasattr(r, "path")),
+    }
+
+
+@app.get("/api/startup-error")
+def startup_error_log():
+    """起動時に router import で失敗した内訳を返す。
+
+    本番で discover_routers が一部失敗した場合 (依存パッケージ不足など)
+    で何が落ちたかを管理者がブラウザから確認するための診断用エンドポイント。
+    認証不要 (URL を知っている開発者しか叩かない想定)、機微情報は返さない。
+    """
+    from routers import ROUTER_IMPORT_ERRORS
+    return {
+        "failed_modules": [
+            {"module": name, "error_summary": err.split("\n", 1)[0]}
+            for name, err in ROUTER_IMPORT_ERRORS
+        ],
+        "count": len(ROUTER_IMPORT_ERRORS),
+    }
 
 
 @app.get("/api/files/{path:path}")
