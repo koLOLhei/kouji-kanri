@@ -119,6 +119,58 @@ def list_plans():
     return PLANS
 
 
+class TenantMeResponse(BaseModel):
+    """自テナント基本情報。worker には公開フィールドのみ返す。"""
+    id: str
+    name: str
+    slug: str
+    plan: str | None = None
+    is_active: bool | None = None
+    max_projects: int | None = None
+    max_users: int | None = None
+    # 機微情報 (admin/manager のみ)
+    invoice_registration_number: str | None = None
+    bank_info: dict | None = None
+    company_address: str | None = None
+    company_phone: str | None = None
+    representative_name: str | None = None
+    seal_image_key: str | None = None
+
+
+@router.get("/me", response_model=TenantMeResponse)
+def get_my_tenant(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """現在のテナント情報を取得。worker でも 200。
+    機微情報 (登録番号・口座・住所等) は admin/manager のみ返却。"""
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="テナントが見つかりません")
+
+    # 全認証ユーザーに返す公開フィールド
+    resp = TenantMeResponse(
+        id=tenant.id,
+        name=tenant.name,
+        slug=tenant.slug,
+    )
+
+    # admin / manager / super_admin のみ機微情報・運用情報を含める
+    if user.role in ("admin", "manager", "super_admin"):
+        resp.plan = tenant.plan
+        resp.is_active = tenant.is_active
+        resp.max_projects = tenant.max_projects
+        resp.max_users = tenant.max_users
+        resp.invoice_registration_number = tenant.invoice_registration_number
+        resp.bank_info = tenant.bank_info
+        resp.company_address = tenant.company_address
+        resp.company_phone = tenant.company_phone
+        resp.representative_name = tenant.representative_name
+        resp.seal_image_key = tenant.seal_image_key
+
+    return resp
+
+
 @router.get("", response_model=list[TenantResponse])
 def list_tenants(
     user: User = Depends(require_role("super_admin")),

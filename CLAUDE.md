@@ -39,37 +39,51 @@ cd frontend && npm run dev -- -p 3001
 |------|-----|---------------|
 | 案件管理 | /api/projects | /projects |
 | 工程管理 | /api/projects/{id}/phases | /projects/[id] |
-| 仕様書から工程自動生成 | POST .../init-from-spec | 案件詳細ページ |
-| 書類チェックリスト | .../phases/{pid}/checklist | 工程詳細ページ |
-| 写真アップロード (EXIF抽出) | POST .../photos | /projects/[id]/phases/[pid] |
-| モバイル写真撮影 (PWA) | POST .../photos | /capture |
+| 仕様書から工程自動生成 | POST /api/projects/{id}/phases/init-from-spec | 案件詳細ページ |
+| 書類チェックリスト | /api/projects/{id}/phases/{pid}/checklist | 工程詳細ページ |
+| 写真アップロード (EXIF抽出) | POST /api/projects/{id}/photos (phase_id は Form) | /projects/[id]/phases/[pid] |
+| モバイル写真撮影 (PWA) | POST /api/projects/{id}/photos | /capture |
 | 報告書管理 | /api/projects/{id}/reports | 工程詳細ページ |
-| 提出書類自動生成 | POST .../submissions/generate | 工程詳細ページ |
+| 提出書類自動生成 | POST /api/projects/{id}/submissions/generate | 工程詳細ページ |
 | 仕様書ブラウザ | /api/specs/chapters | /specs |
 
 ### 施工管理機能
 | 機能 | API | フロントエンド |
 |------|-----|---------------|
-| 日報管理 | .../daily-reports | /projects/[id]/daily-reports |
-| 安全管理 (KY/巡回/ヒヤリ/教育) | .../safety/* | /projects/[id]/safety |
-| 検査管理 | .../inspections | /projects/[id]/inspections |
-| 資材管理 (発注/試験) | .../materials/* | /projects/[id]/materials |
-| 工事原価管理 | .../costs/* | /projects/[id]/costs |
-| 図面管理 (版管理) | .../drawings | /projects/[id]/drawings |
-| 下請契約管理 | .../contracts | /projects/[id]/contracts |
-| 是正措置管理 (NCR) | .../corrective-actions | /projects/[id]/corrective-actions |
-| カレンダー・マイルストーン | .../calendar, .../milestones | /projects/[id]/calendar |
-| 天候記録 | .../weather | カレンダー連携 |
-| 打合せ記録 | .../meetings | /projects/[id]/meetings |
-| 出来形管理 | .../measurements | /projects/[id]/measurements |
-| 廃棄物管理 (マニフェスト) | .../waste-manifests | /projects/[id]/waste |
+| 日報管理 | /api/projects/{id}/daily-reports | /projects/[id]/daily-reports |
+| 安全管理 (KY/巡回/ヒヤリ/教育) | /api/projects/{id}/safety/{ky-activities,patrols,incidents,trainings,worker-orientations,quick-incident,trends,incident-analysis} | /projects/[id]/safety |
+| 検査管理 | /api/projects/{id}/inspections | /projects/[id]/inspections |
+| 資材管理 (発注/試験) | /api/projects/{id}/materials/* | /projects/[id]/materials |
+| 工事原価管理 | /api/projects/{id}/costs/* | /projects/[id]/costs |
+| 図面管理 (版管理) | /api/projects/{id}/drawings | /projects/[id]/drawings |
+| 下請契約管理 | /api/projects/{id}/contracts | /projects/[id]/contracts |
+| 是正措置管理 (NCR) | /api/projects/{id}/corrective-actions | /projects/[id]/corrective-actions |
+| カレンダー | /api/projects/{id}/calendar | /projects/[id]/calendar |
+| マイルストーン | /api/projects/{id}/calendar/milestones | /projects/[id]/calendar |
+| 天候記録 | /api/projects/{id}/weather | カレンダー連携 |
+| 打合せ記録 | /api/projects/{id}/meetings | /projects/[id]/meetings |
+| 出来形管理 | /api/projects/{id}/measurements | /projects/[id]/measurements |
+| 廃棄物管理 (マニフェスト) | /api/projects/{id}/waste-manifests | /projects/[id]/waste |
+
+### 見積・請求・原価精算機能
+| 機能 | API | フロントエンド |
+|------|-----|---------------|
+| 見積書 (版管理/承認/条件) | /api/estimates | /estimates, /estimates/[id] |
+| 出来高調書 (進捗ベース請求根拠) | /api/projects/{id}/progress-statements, /api/progress-statements/{ps_id}, /api/progress-rows/{row_id}/entry | /projects/[id]/progress-statements |
+| 月次請求書 (出来高ベース) | /api/projects/{id}/invoices, POST /api/projects/{id}/invoices/from-progress-statement | /projects/[id]/invoices |
+| 入金・支払通知 | /api/projects/{id}/invoices/deposit, /api/projects/{id}/payment-notices | /projects/[id]/invoices |
+| 工事概要書 / 仕上表 | /api/projects/{id}/overview, /api/projects/{id}/finish-matrix | /projects/[id]/overview |
+| 適格請求書設定 (登録番号/発行者情報) | /api/tenants/me/invoice-header | /settings/invoice-header |
+| 工事種別マスタ | /api/work-type-masters | /settings/work-types |
+| 見積条件テンプレ | /api/estimate-condition-templates | /settings/estimate-conditions |
+| 請求サマリー (案件横断 KPI) | /api/projects/{id}/billing-summary, /api/projects/{id}/billing-summary/timeseries | /projects/[id]/billing-summary |
 
 ### 管理効率化機能
 | 機能 | API | フロントエンド |
 |------|-----|---------------|
-| 書類ダッシュボード | .../documents/dashboard | /projects/[id]/documents |
-| 一括書類生成 | POST .../documents/batch-generate | 書類ダッシュボード |
-| 不足書類一覧 | .../documents/missing | 書類ダッシュボード |
+| 書類ダッシュボード | /api/projects/{id}/documents/dashboard | /projects/[id]/documents |
+| 一括書類生成 | POST /api/projects/{id}/documents/batch-generate | 書類ダッシュボード |
+| 不足書類一覧 | /api/projects/{id}/documents/missing | 書類ダッシュボード |
 | 承認キュー | /api/approval-queue | /approval |
 | 期限アラート | /api/alerts | /health |
 | プロジェクトヘルス | /api/project-health | /health |
@@ -80,7 +94,7 @@ cd frontend && npm run dev -- -p 3001
 |------|-----|---------------|
 | 作業員管理 | /api/workers | /workers |
 | 資格管理 (期限通知) | /api/workers/{id}/qualifications | /workers/[id] |
-| 出勤管理 | .../attendance | 案件内 |
+| 出勤管理 | /api/projects/{id}/attendance | 案件内 |
 | 協力業者管理 | /api/subcontractors | /subcontractors |
 | 車両・重機管理 | /api/equipment | /equipment |
 
@@ -90,9 +104,9 @@ cd frontend && npm run dev -- -p 3001
 | 通知 (未読バッジ) | /api/notifications | /notifications |
 | コメント (汎用) | /api/comments | 各詳細画面 |
 | 監査ログ | /api/audit-logs | /admin/audit-logs |
-| CSVエクスポート | .../exports/* | 各画面のボタン |
+| CSVエクスポート | /api/exports/* | 各画面のボタン |
 | グローバル検索 | /api/search | /search |
-| 一括ダウンロード | .../bulk-download | 書類ダッシュボード |
+| 一括ダウンロード | /api/projects/{id}/bulk-download | 書類ダッシュボード |
 
 ### SaaS管理
 | 機能 | API | フロントエンド |

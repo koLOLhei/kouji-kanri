@@ -147,12 +147,34 @@ def upsert_overview(
 @router.get("/finish-matrix")
 def get_finish_matrix(
     project_id: str,
-    type: MatrixType = Query(..., description="exterior | interior"),
+    type: MatrixType | None = Query(None, description="exterior | interior (省略時は両方返す)"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """仕上マトリクスを取得 (matrix_type 指定)。"""
+    """仕上マトリクスを取得。type 省略時は exterior と interior の両方を返す。"""
     verify_project_access(project_id, user, db)
+
+    if type is None:
+        entries = (
+            db.query(FinishMatrixEntry)
+            .filter(
+                FinishMatrixEntry.project_id == project_id,
+                FinishMatrixEntry.tenant_id == user.tenant_id,
+            )
+            .order_by(FinishMatrixEntry.sort_order.asc(), FinishMatrixEntry.created_at.asc())
+            .all()
+        )
+        exterior = [_entry_to_dict(e) for e in entries if e.matrix_type == "exterior"]
+        interior = [_entry_to_dict(e) for e in entries if e.matrix_type == "interior"]
+        return {
+            "exterior": exterior,
+            "interior": interior,
+            "items": [
+                {"matrix_type": "exterior", "entries": exterior, "count": len(exterior)},
+                {"matrix_type": "interior", "entries": interior, "count": len(interior)},
+            ],
+        }
+
     entries = (
         db.query(FinishMatrixEntry)
         .filter(
