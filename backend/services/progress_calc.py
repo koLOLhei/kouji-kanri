@@ -84,8 +84,10 @@ def generate_rows_from_estimate(
     estimate: Estimate,
     user: Any,
 ) -> int:
-    """Estimate の全 Section/Item を走査し、ProgressRow を 1 件ずつ作成する。
+    """Estimate の Section/Item または JSON items から ProgressRow を生成する。
 
+    優先順位: (1) estimate_sections + estimate_items テーブルに行があればそれを使う、
+    (2) なければ estimate.items (JSON) から行を作る。
     既存行はそのままで、新規行のみ append する。返り値は作成した行数。
     """
     if statement is None:
@@ -108,6 +110,7 @@ def generate_rows_from_estimate(
         db.query(ProgressRow).filter(ProgressRow.statement_id == statement.id).count()
     )
 
+    has_section_items = False
     for section in sections:
         items: list[EstimateItem] = (
             db.query(EstimateItem)
@@ -116,6 +119,7 @@ def generate_rows_from_estimate(
             .all()
         )
         for item in items:
+            has_section_items = True
             row = ProgressRow(
                 tenant_id=statement.tenant_id,
                 statement_id=statement.id,
@@ -127,6 +131,41 @@ def generate_rows_from_estimate(
                 contract_unit=item.unit,
                 contract_unit_price=int(item.sale_unit_price or 0),
                 contract_amount=int(item.sale_amount or 0),
+                cumulative_qty=Decimal(0),
+                cumulative_amount=0,
+                sort_order=next_sort_order,
+            )
+            db.add(row)
+            next_sort_order += 1
+            created_count += 1
+
+    # Section/Item テーブルに行が無く、旧 API で作られた estimate.items JSON が
+    # あれば、それを行として展開する (見積機能の旧/新両 API 互換)。
+    if not has_section_items and estimate.items:
+        json_items = estimate.items if isinstance(estimate.items, list) else []
+        for it in json_items:
+            if not isinstance(it, dict):
+                continue
+            qty = it.get("quantity") or it.get("qty") or 0
+            try:
+                qty_dec = Decimal(str(qty))
+            except Exception:
+                qty_dec = Decimal(0)
+            unit_price = int(it.get("unit_price") or it.get("sale_unit_price") or 0)
+            amount = int(it.get("amount") or 0)
+            if not amount and qty_dec and unit_price:
+                amount = int(qty_dec * unit_price)
+            row = ProgressRow(
+                tenant_id=statement.tenant_id,
+                statement_id=statement.id,
+                source_item_id=None,
+                source_section_id=None,
+                name=str(it.get("name") or "明細"),
+                specification=it.get("specification") or it.get("spec"),
+                contract_qty=qty_dec,
+                contract_unit=it.get("unit"),
+                contract_unit_price=unit_price,
+                contract_amount=amount,
                 cumulative_qty=Decimal(0),
                 cumulative_amount=0,
                 sort_order=next_sort_order,
