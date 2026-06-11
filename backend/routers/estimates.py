@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api/estimates", tags=["estimates"])
 # ---------- Schemas ----------
 
 class EstimateCreate(BaseModel):
+    project_id: str | None = None
     project_name: str
     customer_id: str | None = None
     customer_name: str | None = None
@@ -32,6 +33,7 @@ class EstimateCreate(BaseModel):
 
 
 class EstimateUpdate(BaseModel):
+    project_id: str | None = None
     project_name: str | None = None
     customer_id: str | None = None
     customer_name: str | None = None
@@ -59,6 +61,33 @@ def _calc_tax(subtotal: int, tax_rate: float) -> tuple[int, int]:
     tax_amount = int(subtotal * tax_rate / 100)
     total = subtotal + tax_amount
     return tax_amount, total
+
+
+def _normalize_items_and_totals(items: list | None) -> tuple[list | None, int, int]:
+    """各 item の amount = quantity * unit_price を補完し、subtotal と cost_subtotal を集計。"""
+    if not items:
+        return items, 0, 0
+    subtotal = 0
+    cost_subtotal = 0
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        qty = float(item.get("quantity") or item.get("qty") or 0)
+        unit_price = float(item.get("unit_price") or item.get("sale_unit_price") or 0)
+        amount = item.get("amount")
+        if amount in (None, 0):
+            amount = int(qty * unit_price)
+            item["amount"] = amount
+        else:
+            amount = int(amount)
+        subtotal += amount
+        cost_unit_price = float(item.get("cost_unit_price") or 0)
+        cost_amount = item.get("cost_amount")
+        if cost_amount in (None, 0) and cost_unit_price > 0:
+            cost_amount = int(qty * cost_unit_price)
+            item["cost_amount"] = cost_amount
+        cost_subtotal += int(cost_amount or 0)
+    return items, subtotal, cost_subtotal
 
 
 # ---------- 自動計算 + PDF（パス固定のため先に定義） ----------
@@ -140,15 +169,30 @@ def create_estimate(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    tax_amount, total = _calc_tax(body.subtotal, body.tax_rate)
+    data = body.model_dump()
+    items, computed_subtotal, cost_subtotal = _normalize_items_and_totals(data.get("items"))
+    data["items"] = items
+    # subtotal は items から再集計。リクエスト指定値があり items が無ければそれを採用。
+    if items:
+        subtotal = computed_subtotal
+    else:
+        subtotal = int(data.get("subtotal") or 0)
+    data["subtotal"] = subtotal
+    tax_rate = float(data.get("tax_rate") or 0.0)
+    tax_amount, total = _calc_tax(subtotal, tax_rate)
     estimate_number = _generate_estimate_number(user.tenant_id, db)
+    gross_profit = subtotal - cost_subtotal
+    gross_profit_rate = round(gross_profit / subtotal, 6) if subtotal > 0 else 0.0
     record = Estimate(
         tenant_id=user.tenant_id,
         estimate_number=estimate_number,
         tax_amount=tax_amount,
         total=total,
+        cost_subtotal=cost_subtotal,
+        gross_profit=gross_profit,
+        gross_profit_rate=gross_profit_rate,
         created_by=user.id,
-        **body.model_dump(),
+        **data,
     )
     db.add(record)
     db.commit()
@@ -185,13 +229,24 @@ def update_estimate(
     if not record:
         raise HTTPException(status_code=404, detail="見積書が見つかりません")
     data = body.model_dump(exclude_unset=True)
+    # items が来た場合は normalize して subtotal / cost_subtotal を再計算
+    items_changed = "items" in data
+    if items_changed:
+        normalized_items, computed_subtotal, cost_subtotal = _normalize_items_and_totals(data.get("items"))
+        data["items"] = normalized_items
+        if normalized_items:
+            data["subtotal"] = computed_subtotal
+            record.cost_subtotal = cost_subtotal
     for k, v in data.items():
         setattr(record, k, v)
-    # Recalculate tax if subtotal or tax_rate changed
-    subtotal = data.get("subtotal", record.subtotal)
-    tax_rate = data.get("tax_rate", record.tax_rate)
-    if "subtotal" in data or "tax_rate" in data:
+    # subtotal / tax_rate / items が変わったら税額と粗利を再計算
+    subtotal = int(data.get("subtotal", record.subtotal) or 0)
+    tax_rate = float(data.get("tax_rate", record.tax_rate) or 0.0)
+    if "subtotal" in data or "tax_rate" in data or items_changed:
         record.tax_amount, record.total = _calc_tax(subtotal, tax_rate)
+        cost_subtotal = int(record.cost_subtotal or 0)
+        record.gross_profit = subtotal - cost_subtotal
+        record.gross_profit_rate = round(record.gross_profit / subtotal, 6) if subtotal > 0 else 0.0
     db.commit()
     db.refresh(record)
     return record
