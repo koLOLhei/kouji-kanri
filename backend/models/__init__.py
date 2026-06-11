@@ -68,6 +68,19 @@ from models.green_file import GreenFile
 from models.invite_token import InviteToken
 from models.background_job import BackgroundJob
 from models.external_api import WebhookConfig, ApiKey
+from models.estimate_condition_template import EstimateConditionTemplate
+from models.estimate_approval import EstimateApproval
+from models.progress_row import ProgressRow
+from models.estimate_quantity import EstimateQuantity
+from models.estimate_item import EstimateItem
+from models.progress_entry import ProgressEntry
+from models.estimate_proposal import EstimateProposal
+from models.estimate_section import EstimateSection
+from models.progress_statement import ProgressStatement
+from models.work_type_master import WorkTypeMaster
+from models.project_overview import ProjectOverview
+from models.project_type_template import ProjectTypeTemplate
+from models.finish_matrix_entry import FinishMatrixEntry
 
 __all__ = [
     "Tenant", "User", "Project", "Phase", "PhaseRequirement",
@@ -107,4 +120,6 @@ __all__ = [
     "GreenFile",
     "BackgroundJob",
     "WebhookConfig", "ApiKey",
+    "EstimateConditionTemplate",
+    "EstimateApproval",
 ]

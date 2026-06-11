@@ -54,6 +54,32 @@ def _add_missing_columns():
         ("incident_reports", "tenant_id", "VARCHAR(36)"),
         ("safety_trainings", "tenant_id", "VARCHAR(36)"),
         ("worker_orientations", "tenant_id", "VARCHAR(36)"),
+        # tenants: 請求書発行・会社情報
+        ("tenants", "invoice_registration_number", "VARCHAR(50)"),
+        ("tenants", "bank_info", "JSON"),
+        ("tenants", "company_address", "VARCHAR(500)"),
+        ("tenants", "company_phone", "VARCHAR(50)"),
+        ("tenants", "representative_name", "VARCHAR(255)"),
+        ("tenants", "seal_image_key", "VARCHAR(500)"),
+        # estimates: 版管理・テンプレ・原価/利益・承認フロー
+        ("estimates", "parent_estimate_id", "VARCHAR(36)"),
+        ("estimates", "revision_no", "INTEGER DEFAULT 0"),
+        ("estimates", "snapshot_json", "JSON"),
+        ("estimates", "project_type_template_id", "VARCHAR(36)"),
+        ("estimates", "project_id", "VARCHAR(36)"),
+        ("estimates", "cost_subtotal", "BIGINT DEFAULT 0"),
+        ("estimates", "gross_profit", "BIGINT DEFAULT 0"),
+        ("estimates", "gross_profit_rate", "FLOAT DEFAULT 0"),
+        ("estimates", "conditions_html", "TEXT"),
+        ("estimates", "approval_status", "VARCHAR(30) DEFAULT 'not_submitted'"),
+        ("estimates", "approved_at", "TIMESTAMP"),
+        ("estimates", "approved_by", "VARCHAR(36)"),
+        # invoices: 出来高請求・追加項目・監査用
+        ("invoices", "kind", "VARCHAR(30) DEFAULT 'progress'"),
+        ("invoices", "source_progress_statement_id", "VARCHAR(36)"),
+        ("invoices", "additional_items", "JSON"),
+        ("invoices", "updated_at", "TIMESTAMP"),
+        ("invoices", "created_by", "VARCHAR(36)"),
     ]
     with engine.begin() as conn:
         for table, col, col_type in migrations:

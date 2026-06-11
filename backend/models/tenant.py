@@ -21,5 +21,11 @@ class Tenant(Base):
     max_projects: Mapped[int] = mapped_column(Integer, default=10)
     max_users: Mapped[int] = mapped_column(Integer, default=20)
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
+    invoice_registration_number: Mapped[str | None] = mapped_column(String(50), nullable=True)  # 適格請求書登録番号 T+13桁
+    bank_info: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # {bank_name, branch, account_type, account_number, account_holder}
+    company_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    company_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    representative_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    seal_image_key: Mapped[str | None] = mapped_column(String(500), nullable=True)  # 社印画像のストレージキー
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

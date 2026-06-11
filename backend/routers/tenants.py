@@ -1,6 +1,7 @@
 """Tenant management router (super_admin / admin)."""
 
 import hashlib
+import re
 import secrets
 import time
 from datetime import datetime
@@ -380,6 +381,86 @@ def get_stats(
         "plan_breakdown": plan_breakdown,
         "monthly_revenue": monthly_revenue,
     }
+
+
+# ── 適格請求書ヘッダー (Invoice header) ───────────────────────────────────────
+
+_INVOICE_REG_NUMBER_PATTERN = re.compile(r"^T\d{13}$")
+
+
+class InvoiceHeaderResponse(BaseModel):
+    invoice_registration_number: str | None = None
+    bank_info: dict | None = None
+    company_address: str | None = None
+    company_phone: str | None = None
+    representative_name: str | None = None
+    seal_image_key: str | None = None
+
+
+class InvoiceHeaderUpdate(BaseModel):
+    invoice_registration_number: str | None = None
+    bank_info: dict | None = None
+    company_address: str | None = None
+    company_phone: str | None = None
+    representative_name: str | None = None
+    seal_image_key: str | None = None
+
+
+@router.get("/me/invoice-header", response_model=InvoiceHeaderResponse)
+def get_my_invoice_header(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """現在のテナントの適格請求書ヘッダー情報を取得"""
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="テナントが見つかりません")
+    return InvoiceHeaderResponse(
+        invoice_registration_number=tenant.invoice_registration_number,
+        bank_info=tenant.bank_info,
+        company_address=tenant.company_address,
+        company_phone=tenant.company_phone,
+        representative_name=tenant.representative_name,
+        seal_image_key=tenant.seal_image_key,
+    )
+
+
+@router.put("/me/invoice-header", response_model=InvoiceHeaderResponse)
+def update_my_invoice_header(
+    req: InvoiceHeaderUpdate,
+    user: User = Depends(require_role("admin", "manager")),
+    db: Session = Depends(get_db),
+):
+    """現在のテナントの適格請求書ヘッダー情報を更新 (admin/managerのみ)"""
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="テナントが見つかりません")
+
+    data = req.model_dump(exclude_unset=True)
+
+    # 適格請求書登録番号のバリデーション (T+13桁)
+    if "invoice_registration_number" in data and data["invoice_registration_number"] is not None:
+        value = data["invoice_registration_number"]
+        if not _INVOICE_REG_NUMBER_PATTERN.match(value):
+            raise HTTPException(
+                status_code=400,
+                detail="適格請求書登録番号は 'T' + 13桁の数字 形式で入力してください (例: T1234567890123)",
+            )
+
+    for key, value in data.items():
+        setattr(tenant, key, value)
+
+    db.commit()
+    db.refresh(tenant)
+
+    return InvoiceHeaderResponse(
+        invoice_registration_number=tenant.invoice_registration_number,
+        bank_info=tenant.bank_info,
+        company_address=tenant.company_address,
+        company_phone=tenant.company_phone,
+        representative_name=tenant.representative_name,
+        seal_image_key=tenant.seal_image_key,
+    )
 
 
 # ── D30: User invitation (DB永続化) ───────────────────────────────────────────

@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.business_docs import Invoice, PaymentNotice
+from models.progress_statement import ProgressStatement
+from models.tenant import Tenant
 from models.user import User
 from services.auth_service import get_current_user
 from services.project_access import verify_project_access
@@ -45,6 +47,30 @@ class InvoiceUpdate(BaseModel):
     status: str | None = None
     paid_date: date | None = None
     notes: str | None = None
+
+
+class AdditionalItem(BaseModel):
+    name: str
+    amount: int
+
+
+class InvoiceFromProgressStatement(BaseModel):
+    progress_statement_id: str
+    additional_items: list[AdditionalItem] | None = None
+    invoice_date: date | None = None
+    due_date: date | None = None
+    customer_name: str | None = None
+    tax_rate: float = app_settings.default_tax_rate
+    notes: str | None = None
+
+
+class InvoiceDeposit(BaseModel):
+    amount: int
+    due_date: date | None = None
+    notes: str | None = None
+    invoice_date: date | None = None
+    customer_name: str | None = None
+    tax_rate: float = app_settings.default_tax_rate
 
 
 class PaymentNoticeCreate(BaseModel):
@@ -136,6 +162,120 @@ def create_invoice(
         tax_amount=tax_amount,
         total=total,
         **body.model_dump(),
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+@router.post("/invoices/from-progress-statement", status_code=201)
+def create_invoice_from_progress_statement(
+    project_id: str,
+    body: InvoiceFromProgressStatement,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """指定された ProgressStatement の合計を 1 行で計上した請求書を作成。
+
+    - 出来高調書合計を items に 1 行で計上
+    - additional_items があれば Invoice.additional_items に保存
+    - kind='progress', source_progress_statement_id を記録
+    - Tenant の invoice_registration_number をスナップショット
+    """
+    verify_project_access(project_id, user, db)
+
+    statement = db.query(ProgressStatement).filter(
+        ProgressStatement.id == body.progress_statement_id,
+        ProgressStatement.project_id == project_id,
+        ProgressStatement.tenant_id == user.tenant_id,
+    ).first()
+    if not statement:
+        raise HTTPException(status_code=404, detail="出来高調書が見つかりません")
+
+    progress_amount = int(statement.total_progress_amount or 0)
+    item_description = statement.title or (
+        f"{statement.period_label} 出来高" if statement.period_label
+        else f"{statement.year}年{statement.month}月 出来高"
+    )
+    items = [{"description": item_description, "amount": progress_amount}]
+
+    additional_items_data = None
+    additional_total = 0
+    if body.additional_items:
+        additional_items_data = [item.model_dump() for item in body.additional_items]
+        additional_total = sum(int(item.amount) for item in body.additional_items)
+
+    subtotal = progress_amount + additional_total
+    tax_amount, total = _calc_tax(subtotal, body.tax_rate)
+
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    invoice_registration_number = tenant.invoice_registration_number if tenant else None
+
+    invoice_number = _generate_number("INV", user.tenant_id, Invoice, Invoice.invoice_number, db)
+    record = Invoice(
+        tenant_id=user.tenant_id,
+        project_id=project_id,
+        invoice_number=invoice_number,
+        invoice_date=body.invoice_date or date.today(),
+        due_date=body.due_date,
+        customer_name=body.customer_name,
+        period_from=date(statement.year, statement.month, 1),
+        period_to=None,
+        items=items,
+        subtotal=subtotal,
+        tax_rate=body.tax_rate,
+        tax_amount=tax_amount,
+        total=total,
+        invoice_registration_number=invoice_registration_number,
+        status="draft",
+        notes=body.notes,
+        kind="progress",
+        source_progress_statement_id=statement.id,
+        additional_items=additional_items_data,
+        created_by=user.id,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+@router.post("/invoices/deposit", status_code=201)
+def create_deposit_invoice(
+    project_id: str,
+    body: InvoiceDeposit,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """着手金請求書を作成 (kind='deposit')."""
+    verify_project_access(project_id, user, db)
+
+    subtotal = int(body.amount)
+    tax_amount, total = _calc_tax(subtotal, body.tax_rate)
+    items = [{"description": "着手金", "amount": subtotal}]
+
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    invoice_registration_number = tenant.invoice_registration_number if tenant else None
+
+    invoice_number = _generate_number("INV", user.tenant_id, Invoice, Invoice.invoice_number, db)
+    record = Invoice(
+        tenant_id=user.tenant_id,
+        project_id=project_id,
+        invoice_number=invoice_number,
+        invoice_date=body.invoice_date or date.today(),
+        due_date=body.due_date,
+        customer_name=body.customer_name,
+        items=items,
+        subtotal=subtotal,
+        tax_rate=body.tax_rate,
+        tax_amount=tax_amount,
+        total=total,
+        invoice_registration_number=invoice_registration_number,
+        status="draft",
+        notes=body.notes,
+        kind="deposit",
+        created_by=user.id,
     )
     db.add(record)
     db.commit()

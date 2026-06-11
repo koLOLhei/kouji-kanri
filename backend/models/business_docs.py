@@ -30,6 +30,19 @@ class Estimate(Base):
     created_by: Mapped[str | None] = mapped_column(String(36))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # --- 拡張: 改訂・テンプレ・原価・承認 ---
+    parent_estimate_id: Mapped[str | None] = mapped_column(String(36))  # 改訂元のEstimate
+    revision_no: Mapped[int | None] = mapped_column(Integer, default=0)
+    snapshot_json: Mapped[dict | None] = mapped_column(JSON)  # 改訂時に旧版を凍結保存
+    project_type_template_id: Mapped[str | None] = mapped_column(String(36))  # テンプレ参照
+    project_id: Mapped[str | None] = mapped_column(String(36))  # Projectへのリンク
+    cost_subtotal: Mapped[int | None] = mapped_column(BigInteger, default=0)
+    gross_profit: Mapped[int | None] = mapped_column(BigInteger, default=0)
+    gross_profit_rate: Mapped[float | None] = mapped_column(Float, default=0)
+    conditions_html: Mapped[str | None] = mapped_column(Text)  # 見積条件HTML
+    approval_status: Mapped[str | None] = mapped_column(String(30), default="not_submitted")
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime)
+    approved_by: Mapped[str | None] = mapped_column(String(36))
 
 
 class Invoice(Base):
@@ -55,6 +68,12 @@ class Invoice(Base):
     file_key: Mapped[str | None] = mapped_column(String(500))
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # --- 拡張: 種別・出来高紐付け・追加項目・更新メタ ---
+    kind: Mapped[str | None] = mapped_column(String(30), default="progress")  # progress/deposit/final/additional/manual
+    source_progress_statement_id: Mapped[str | None] = mapped_column(String(36))
+    additional_items: Mapped[dict | None] = mapped_column(JSON)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by: Mapped[str | None] = mapped_column(String(36))
 
 
 class PaymentNotice(Base):

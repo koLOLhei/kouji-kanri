@@ -11,6 +11,7 @@ import {
   Building2, BarChart3, HardHat, Truck, Bell, Search,
   ChevronLeft, ChevronRight, Shield, ClipboardCheck, Activity,
   CalendarCheck, Wrench, SearchIcon, TrendingUp, Users,
+  FileText, Receipt,
 } from "lucide-react";
 import { OutdoorModeToggle } from "@/components/outdoor-mode-toggle";
 
@@ -47,6 +48,9 @@ const orgItems: NavItem[] = [
 
 const settingsItems: NavItem[] = [
   { href: "/settings", label: "設定", icon: Settings },
+  { href: "/settings/work-types", label: "工事種別マスタ", icon: Wrench },
+  { href: "/settings/estimate-conditions", label: "見積条件テンプレ", icon: FileText },
+  { href: "/settings/invoice-header", label: "適格請求書設定", icon: Receipt },
 ];
 
 const adminItems: NavItem[] = [
