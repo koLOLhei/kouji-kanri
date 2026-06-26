@@ -22,6 +22,8 @@ interface AgingInvoice {
 
 interface AgingResponse {
   total_ar: number;
+  unallocated: number;
+  net_ar: number;
   buckets: Record<string, number>;
   count: number;
   invoices: AgingInvoice[];
@@ -78,8 +80,13 @@ export default function AccountsReceivablePage() {
         {/* エイジング サマリー */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
           <div className="bg-gray-900 text-white rounded-lg p-4">
-            <p className="text-xs text-gray-400">売掛金合計</p>
-            <p className="text-xl font-bold mt-1">{formatAmount(data?.total_ar ?? 0)}</p>
+            <p className="text-xs text-gray-400">純売掛{(data?.unallocated ?? 0) > 0 ? '（前受控除後）' : ''}</p>
+            <p className="text-xl font-bold mt-1">{formatAmount(data?.net_ar ?? data?.total_ar ?? 0)}</p>
+            {(data?.unallocated ?? 0) > 0 && (
+              <p className="text-[11px] text-gray-400 mt-1">
+                売掛 {formatAmount(data?.total_ar ?? 0)} − 前受 {formatAmount(data?.unallocated ?? 0)}
+              </p>
+            )}
           </div>
           {BUCKETS.map((b) => (
             <div key={b.key} className={`rounded-lg p-4 border ${b.cls}`}>

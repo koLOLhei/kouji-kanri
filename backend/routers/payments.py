@@ -13,7 +13,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.business_docs import Invoice
+from models.business_docs import Invoice, PaymentNotice
 from models.payment_receipt import PaymentReceipt
 from models.project import Project
 from models.user import User
@@ -231,4 +231,113 @@ def ar_aging(
             "bucket": b,
         })
     rows.sort(key=lambda r: r["days_overdue"], reverse=True)
-    return {"total_ar": total_ar, "buckets": buckets, "count": len(rows), "invoices": rows}
+    # 未充当入金（請求書に紐付かない前受/預り）— 純売掛から差し引く
+    unallocated = int(
+        db.query(func.coalesce(func.sum(PaymentReceipt.amount), 0))
+        .filter(PaymentReceipt.tenant_id == user.tenant_id, PaymentReceipt.invoice_id.is_(None))
+        .scalar()
+        or 0
+    )
+    return {
+        "total_ar": total_ar,
+        "unallocated": unallocated,
+        "net_ar": max(0, total_ar - unallocated),
+        "buckets": buckets,
+        "count": len(rows),
+        "invoices": rows,
+    }
+
+
+# ---------- 買掛(AP)・支払消込 ----------
+
+ap_router = APIRouter(prefix="/api/ap", tags=["accounts-payable"])
+notice_router = APIRouter(prefix="/api/projects/{project_id}/payment-notices", tags=["payment-notices"])
+
+
+class SettleNotice(BaseModel):
+    paid_date: date | None = None
+
+
+def _get_notice_or_404(db: Session, notice_id: str, tenant_id: str, project_id: str) -> PaymentNotice:
+    n = (
+        db.query(PaymentNotice)
+        .filter(
+            PaymentNotice.id == notice_id,
+            PaymentNotice.tenant_id == tenant_id,
+            PaymentNotice.project_id == project_id,
+        )
+        .first()
+    )
+    if not n:
+        raise HTTPException(status_code=404, detail="支払通知が見つかりません")
+    return n
+
+
+@notice_router.post("/{notice_id}/settle")
+def settle_payment_notice(
+    project_id: str,
+    notice_id: str,
+    body: SettleNotice,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """支払通知を支払済(消込)にする。"""
+    verify_project_access(project_id, user, db)
+    n = _get_notice_or_404(db, notice_id, user.tenant_id, project_id)
+    n.status = "paid"
+    n.paid_date = body.paid_date or date.today()
+    db.commit()
+    return {"id": n.id, "status": n.status, "paid_date": n.paid_date.isoformat() if n.paid_date else None}
+
+
+@notice_router.post("/{notice_id}/unsettle")
+def unsettle_payment_notice(
+    project_id: str,
+    notice_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """支払消込を取り消す。"""
+    verify_project_access(project_id, user, db)
+    n = _get_notice_or_404(db, notice_id, user.tenant_id, project_id)
+    n.status = "draft"
+    n.paid_date = None
+    db.commit()
+    return {"id": n.id, "status": n.status}
+
+
+@ap_router.get("/aging")
+def ap_aging(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """買掛金エイジング: 未払の支払通知を支払期日の滞留で区分（テナント横断）。"""
+    today = date.today()
+    notices = (
+        db.query(PaymentNotice)
+        .filter(PaymentNotice.tenant_id == user.tenant_id, PaymentNotice.status != "paid")
+        .all()
+    )
+    buckets = {"current": 0, "d1_30": 0, "d31_60": 0, "d61_90": 0, "over90": 0}
+    rows = []
+    total_ap = 0
+    for n in notices:
+        amt = int(n.total or 0)
+        if amt <= 0:
+            continue
+        days_overdue = (today - n.payment_date).days if n.payment_date else 0
+        b = _bucket(days_overdue)
+        buckets[b] += amt
+        total_ap += amt
+        rows.append({
+            "notice_id": n.id,
+            "notice_number": n.notice_number,
+            "project_id": n.project_id,
+            "subcontractor_id": n.subcontractor_id,
+            "total": amt,
+            "payment_date": n.payment_date.isoformat() if n.payment_date else None,
+            "days_overdue": max(0, days_overdue),
+            "bucket": b,
+        })
+    rows.sort(key=lambda r: r["days_overdue"], reverse=True)
+    return {"total_ap": total_ap, "buckets": buckets, "count": len(rows), "notices": rows}

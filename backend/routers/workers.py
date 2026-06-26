@@ -27,7 +27,7 @@ class WorkerCreate(BaseModel):
     emergency_contact: str | None = None
     emergency_phone: str | None = None
     company_id: str | None = None
-    daily_wage: int | None = None
+    daily_wage: int | None = Field(default=None, ge=0)
     notes: str | None = None
 
 
@@ -40,7 +40,7 @@ class WorkerUpdate(BaseModel):
     emergency_phone: str | None = None
     company_id: str | None = None
     is_active: bool | None = None
-    daily_wage: int | None = None
+    daily_wage: int | None = Field(default=None, ge=0)
     notes: str | None = None
 
 
@@ -362,7 +362,7 @@ def create_attendance(
     db: Session = Depends(get_db),
 ):
     verify_project_access(project_id, user, db)
-    att = Attendance(project_id=project_id, **req.model_dump())
+    att = Attendance(project_id=project_id, tenant_id=user.tenant_id, **req.model_dump())
     db.add(att)
     db.commit()
     db.refresh(att)

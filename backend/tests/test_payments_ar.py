@@ -66,6 +66,39 @@ def test_delete_payment_reverts_status(client, admin_a_token, auth, project_fact
     assert client.get(f"/api/projects/{p.id}/invoices/{inv['id']}", headers=auth(admin_a_token)).json()["status"] != "paid"
 
 
+def test_unallocated_payment_reduces_net_ar(client, admin_a_token, auth, project_factory, tenant_a):
+    p = project_factory(tenant_a.id)
+    inv = _make_invoice(client, auth, admin_a_token, p.id, amount=1_000_000)  # 売掛 = total
+    # 未充当入金（請求書に紐付けない前受）
+    client.post(f"/api/projects/{p.id}/payments", json={"amount": 100_000}, headers=auth(admin_a_token))
+    ar = client.get("/api/ar/aging", headers=auth(admin_a_token)).json()
+    assert ar["total_ar"] == inv["total"]
+    assert ar["unallocated"] == 100_000
+    assert ar["net_ar"] == inv["total"] - 100_000
+
+
+def test_ap_aging_and_settle(client, admin_a_token, admin_b_token, auth, project_factory, tenant_a, db):
+    from models.business_docs import PaymentNotice
+    p = project_factory(tenant_a.id)
+    n = PaymentNotice(
+        tenant_id=tenant_a.id, project_id=p.id, subcontractor_id="sub-1",
+        total=300_000, payment_date=date.today() - timedelta(days=20), status="draft",
+    )
+    db.add(n)
+    db.commit()
+    db.refresh(n)
+    ap = client.get("/api/ap/aging", headers=auth(admin_a_token)).json()
+    assert ap["total_ap"] == 300_000
+    assert ap["count"] == 1
+    assert ap["notices"][0]["bucket"] == "d1_30"
+    # 別テナントには出ない
+    assert client.get("/api/ap/aging", headers=auth(admin_b_token)).json()["count"] == 0
+    # 支払消込 → APから消える
+    r = client.post(f"/api/projects/{p.id}/payment-notices/{n.id}/settle", json={}, headers=auth(admin_a_token))
+    assert r.status_code == 200
+    assert client.get("/api/ap/aging", headers=auth(admin_a_token)).json()["count"] == 0
+
+
 def test_tenant_isolation(client, admin_a_token, admin_b_token, auth, project_factory, tenant_a, tenant_b):
     pa = project_factory(tenant_a.id, contract_amount=1_000_000)
     inv = _make_invoice(client, auth, admin_a_token, pa.id, amount=500_000)

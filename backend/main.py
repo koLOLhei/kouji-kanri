@@ -82,6 +82,10 @@ def _add_missing_columns():
         ("invoices", "created_by", "VARCHAR(36)"),
         # workers: 日当（労務原価計算）
         ("workers", "daily_wage", "INTEGER"),
+        # attendances: テナント分離（出面）
+        ("attendances", "tenant_id", "VARCHAR(36)"),
+        # payment_notices: 支払消込日
+        ("payment_notices", "paid_date", "DATE"),
     ]
     with engine.begin() as conn:
         for table, col, col_type in migrations:
@@ -89,6 +93,15 @@ def _add_missing_columns():
                 conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS "{col}" {col_type}'))
             except Exception as e:
                 logger.warning(f"[init] ADD COLUMN {table}.{col} failed: {e}")
+
+        # 既存出面(attendances)の tenant_id を案件のテナントでバックフィル（冪等）
+        try:
+            conn.execute(text(
+                'UPDATE "attendances" a SET "tenant_id" = p."tenant_id" '
+                'FROM "projects" p WHERE a."project_id" = p."id" AND a."tenant_id" IS NULL'
+            ))
+        except Exception as e:
+            logger.warning(f"[init] backfill attendances.tenant_id failed: {e}")
 
         # 追加インデックス・ユニーク制約 (Alembic 不使用のため起動時に冪等適用)
         # SaaSセキュリティ上の致命点: 同テナント内で email が重複すると

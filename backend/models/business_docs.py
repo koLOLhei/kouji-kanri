@@ -92,6 +92,7 @@ class PaymentNotice(Base):
     total: Mapped[int] = mapped_column(BigInteger, default=0)
     payment_date: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(30), default="draft")
+    paid_date: Mapped[date | None] = mapped_column(Date)  # 支払消込日（支払済の場合）
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
