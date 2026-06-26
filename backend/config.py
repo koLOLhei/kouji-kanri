@@ -34,18 +34,25 @@ _INSECURE_DEFAULTS = {
 }
 
 if not _os.environ.get("KOUJI_SKIP_SECURITY_CHECK"):
+    _in_prod = bool(
+        _os.environ.get("RENDER") or _os.environ.get("VERCEL") or _os.environ.get("PRODUCTION")
+    )
     for _field, _default in _INSECURE_DEFAULTS.items():
-        if getattr(settings, _field) == _default:
-            _env = _os.environ.get("RENDER", _os.environ.get("VERCEL"))
-            if _env or _os.environ.get("PRODUCTION"):
-                import sys
-                print(
-                    f"\n{'='*60}\n"
-                    f"[SECURITY WARNING] {_field} is using the default value!\n"
-                    f"Set the {_field.upper()} environment variable before deploying.\n"
-                    f"{'='*60}\n",
-                    file=sys.stderr, flush=True,
+        if getattr(settings, _field) == _default and _in_prod:
+            if _field == "secret_key":
+                # 既定のSECRET_KEYだとJWTが誰でも偽造可能（認証バイパス）になるため、
+                # 本番では起動を中止する（fail-fast）。
+                raise RuntimeError(
+                    "SECRET_KEY is using the insecure default value in production. "
+                    "Set the SECRET_KEY environment variable before deploying "
+                    "(JWTs would otherwise be forgeable)."
                 )
+            import sys
+            print(
+                f"[SECURITY WARNING] {_field} is using the default value in production. "
+                f"Set the {_field.upper()} environment variable.",
+                file=sys.stderr, flush=True,
+            )
 
 # アプリケーション設定
 class AppSettings:

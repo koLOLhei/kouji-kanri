@@ -122,6 +122,12 @@ async def lifespan(app: FastAPI):
         try:
             seed_initial_data(db)
             seed_tolerance_standards(db)
+            # 本番では既知パスワードのデモアカウント(admin@demo.co.jp 等)を無効化（冪等）
+            if os.environ.get("RENDER") or os.environ.get("PRODUCTION"):
+                from services.seed import deactivate_prod_demo_accounts
+                _n = deactivate_prod_demo_accounts(db)
+                if _n:
+                    logger.warning(f"[security] deactivated {_n} demo account(s) in production")
         finally:
             db.close()
         logger.info("[init] DB setup complete")

@@ -1,11 +1,34 @@
 """Seed data: 仕様書23章のデータ + デフォルトテナント・ユーザー"""
 
+import os
 from sqlalchemy.orm import Session
 from models.tenant import Tenant
 from models.user import User
 from models.spec import SpecChapter
 from models.submission import DocumentTemplate
 from services.auth_service import hash_password
+
+
+def _is_production() -> bool:
+    return bool(os.environ.get("RENDER") or os.environ.get("PRODUCTION"))
+
+
+# 既知パスワードのデモアカウント（本番では無効化する）
+DEMO_EMAILS = ("admin@demo.co.jp", "worker@demo.co.jp")
+
+
+def deactivate_prod_demo_accounts(db: Session) -> int:
+    """本番では既知パスワードのデモアカウントを無効化（公開資格情報の悪用防止）。冪等。"""
+    rows = (
+        db.query(User)
+        .filter(User.email.in_(DEMO_EMAILS), User.is_active == True)  # noqa: E712
+        .all()
+    )
+    for u in rows:
+        u.is_active = False
+    if rows:
+        db.commit()
+    return len(rows)
 
 # 公共建築工事標準仕様書（建築工事編）令和7年版 全23章
 SPEC_CHAPTERS = [
@@ -193,6 +216,7 @@ def seed_initial_data(db: Session):
         password_hash=hash_password("admin123"),
         name="管理者",
         role="admin",
+        is_active=not _is_production(),  # 本番では既知パスワードのデモ垢を無効に
     )
     db.add(admin)
 
@@ -203,6 +227,7 @@ def seed_initial_data(db: Session):
         password_hash=hash_password("worker123"),
         name="現場作業員",
         role="worker",
+        is_active=not _is_production(),  # 本番では既知パスワードのデモ垢を無効に
     )
     db.add(worker)
 
