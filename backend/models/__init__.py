@@ -54,6 +54,7 @@ from models.business_docs import (
 from models.platform import PasswordResetToken, LoginHistory, FileAttachment, UserInvitation
 from models.construction_loan import ConstructionLoan, LoanPayment
 from models.painting_project import PaintingSurvey, PaintingEstimate, PaintingContract, ContractTemplate, PaintingSchedule
+from models.degradation_survey import DegradationSurvey
 from models.signature import DigitalSignature
 from models.push_subscription import PushSubscription
 from models.compliance import ComplianceItem
