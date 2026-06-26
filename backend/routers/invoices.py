@@ -313,13 +313,14 @@ def create_additional_invoice(
     """追加請求書を作成 (kind='additional')."""
     verify_project_access(project_id, user, db)
     items = [i.model_dump() for i in (body.items or [])]
-    subtotal = int(body.total) if body.total is not None else sum(int(i.get("amount") or 0) for i in items)
-    # 明細に税率(8%軽減等)がある場合は税率別に消費税を計算（多税率対応）
     if items:
+        # 明細があるときは小計を明細合計に一致させ、税額を税率別(8%軽減等)に算出（整合性確保）
+        subtotal = sum(int(i.get("amount") or 0) for i in items)
         breakdown = compute_tax_breakdown(items, body.tax_rate)
         tax_amount = sum(b["tax_amount"] for b in breakdown)
         total = subtotal + tax_amount
     else:
+        subtotal = int(body.total or 0)
         tax_amount, total = _calc_tax(subtotal, body.tax_rate)
     tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
     invoice_number = _generate_number("INV", user.tenant_id, Invoice, Invoice.invoice_number, db)

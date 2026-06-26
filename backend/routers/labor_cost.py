@@ -47,7 +47,8 @@ def _summary(db: Session, tenant_id: str, project_id: str, period_from: date | N
     for a in atts:
         w = workers.get(a.worker_id)
         wage = int(w.daily_wage or 0) if w else 0
-        md = (a.work_hours / 8.0) if a.work_hours else 1.0
+        # work_hours未記録(None)は1人工、明示的な0は0人工として扱う
+        md = (a.work_hours / 8.0) if a.work_hours is not None else 1.0
         cost = int(wage * md)
         e = per_worker.setdefault(
             a.worker_id,
@@ -90,6 +91,12 @@ def post_to_cost(
     rows, total, md = _summary(db, user.tenant_id, project_id, body.period_from, body.period_to)
     if total <= 0:
         raise HTTPException(status_code=400, detail="計上対象の労務費がありません（出面または日当が未登録）")
+    # 重複計上を防ぐ: この案件の既存「出面」労務費は置き換える（再計上=最新で上書き）
+    db.query(CostActual).filter(
+        CostActual.project_id == project_id,
+        CostActual.category == "労務費",
+        CostActual.subcategory == "出面",
+    ).delete(synchronize_session=False)
     desc = f"出面 {md}人工"
     if body.period_from or body.period_to:
         desc += f"（{body.period_from or ''}〜{body.period_to or ''}）"

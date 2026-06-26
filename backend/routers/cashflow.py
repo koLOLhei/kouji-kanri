@@ -73,8 +73,9 @@ def forecast(
             key = first if inv.due_date < today else _ym(inv.due_date)
         else:
             key = first
-        if key in period_set:
-            inflow[key] += bal
+        if key not in period_set:
+            key = period[-1]  # 期間外の将来は最終月に寄せ、合計を欠落させない
+        inflow[key] += bal
 
     # ── 支払予定（未払の支払通知） ──
     notices = (
@@ -91,8 +92,9 @@ def forecast(
             key = first if n.payment_date < today else _ym(n.payment_date)
         else:
             key = first
-        if key in period_set:
-            outflow[key] += amt
+        if key not in period_set:
+            key = period[-1]
+        outflow[key] += amt
 
     rows = []
     running = 0

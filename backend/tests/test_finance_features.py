@@ -90,6 +90,42 @@ def test_labor_cost_summary_and_post(client, admin_a_token, auth, project_factor
     assert post.json()["amount"] == 30000
 
 
+def test_additional_invoice_subtotal_matches_items(client, admin_a_token, auth, project_factory, tenant_a):
+    """明細があるとき小計は明細合計に一致（body.total の不整合値は無視）→ 税額も整合。"""
+    p = project_factory(tenant_a.id)
+    inv = client.post(
+        f"/api/projects/{p.id}/invoices/additional",
+        json={"title": "x", "tax_rate": 10, "total": 999999,
+              "items": [{"name": "a", "amount": 50000}, {"name": "b", "amount": 30000}]},
+        headers=auth(admin_a_token),
+    ).json()
+    assert inv["subtotal"] == 80000   # 明細合計（999999は無視）
+    assert inv["tax_amount"] == 8000  # 80000 * 10%
+    assert inv["total"] == 88000
+
+
+def test_labor_post_to_cost_idempotent(client, admin_a_token, auth, project_factory, tenant_a, db):
+    """post-to-cost を複数回呼んでも出面労務費は重複計上されない。"""
+    from models.worker import Worker, Attendance
+    from models.cost import CostActual
+    p = project_factory(tenant_a.id)
+    w = Worker(tenant_id=tenant_a.id, name="A", daily_wage=10000)
+    db.add(w)
+    db.commit()
+    db.refresh(w)
+    db.add(Attendance(project_id=p.id, worker_id=w.id, work_date=date.today()))
+    db.commit()
+    client.post(f"/api/projects/{p.id}/labor-cost/post-to-cost", json={}, headers=auth(admin_a_token))
+    client.post(f"/api/projects/{p.id}/labor-cost/post-to-cost", json={}, headers=auth(admin_a_token))
+    db.rollback()  # clientのcommitを新トランザクションで参照
+    n = (
+        db.query(CostActual)
+        .filter(CostActual.project_id == p.id, CostActual.category == "労務費", CostActual.subcategory == "出面")
+        .count()
+    )
+    assert n == 1
+
+
 def test_labor_cost_empty(client, admin_a_token, auth, project_factory, tenant_a):
     p = project_factory(tenant_a.id)
     r = client.get(f"/api/projects/{p.id}/labor-cost", headers=auth(admin_a_token))

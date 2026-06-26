@@ -55,7 +55,8 @@ def _reconcile_invoice(db: Session, tenant_id: str, invoice_id: str) -> None:
     if not inv:
         return
     paid = _paid_total(db, tenant_id, invoice_id)
-    if inv.total is not None and paid >= inv.total and inv.total > 0:
+    total = int(inv.total or 0)
+    if total > 0 and paid >= total:
         inv.status = "paid"
         if not inv.paid_date:
             last = (
@@ -64,11 +65,11 @@ def _reconcile_invoice(db: Session, tenant_id: str, invoice_id: str) -> None:
                 .scalar()
             )
             inv.paid_date = last or date.today()
-    else:
-        # 入金が請求額に満たない場合は paid を解除（部分入金/取消に追従）
-        if inv.status == "paid":
-            inv.status = "sent"
-            inv.paid_date = None
+    elif inv.status == "paid":
+        # 満額に満たない（部分入金/領収取消/全入金削除）→ 未消込に戻す。
+        # reconcileは入金の登録・削除時のみ呼ばれるため、入金操作の無い手動paidには影響しない。
+        inv.status = "sent"
+        inv.paid_date = None
 
 
 def _serialize(p: PaymentReceipt) -> dict:
