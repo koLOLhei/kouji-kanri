@@ -166,7 +166,7 @@ export default function EstimateDetailPage({
 
   const exportExcel = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/estimates/${id}/export-excel`, {
+      const res = await fetch(`${API_BASE}/api/estimates/${id}/export.xlsx`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {

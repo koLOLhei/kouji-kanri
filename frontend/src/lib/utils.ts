@@ -47,6 +47,32 @@ export function formatDate(d: string | null | undefined): string {
   return new Date(d).toLocaleDateString("ja-JP");
 }
 
+/**
+ * 認証付きでファイル(Excel/PDF等)をダウンロードする。
+ * window.open(?token=) はBearer認証を送れず401になるため、fetch+Blob方式で取得する。
+ */
+export async function downloadAuthedFile(
+  path: string,
+  token: string | null,
+  filename: string,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    throw new Error(`ダウンロードに失敗しました (${res.status})`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function formatAmount(n: number | null | undefined): string {
   if (n == null) return "-";
   return `¥${n.toLocaleString()}`;

@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, FileText, X, FileSpreadsheet, Pencil, Eye, ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { apiFetch, formatAmount, formatDate } from '@/lib/utils';
-import { API_BASE } from '@/lib/api-base';
+import { apiFetch, formatAmount, formatDate, downloadAuthedFile } from '@/lib/utils';
 
 interface EstimateItem {
   name: string;
@@ -116,9 +115,13 @@ export default function EstimatesPage() {
     setItems(next);
   };
 
-  const exportXlsx = (id: string) => {
-    const url = `${API_BASE}/api/estimates/${id}/export.xlsx${token ? `?token=${encodeURIComponent(token)}` : ''}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+  const exportXlsx = async (estId: string) => {
+    // window.open(?token=) は Bearer 認証を送れず 401 になるため fetch+Blob でDL
+    try {
+      await downloadAuthedFile(`/api/estimates/${estId}/export.xlsx`, token, `estimate_${estId}.xlsx`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Excel出力に失敗しました');
+    }
   };
 
   return (
