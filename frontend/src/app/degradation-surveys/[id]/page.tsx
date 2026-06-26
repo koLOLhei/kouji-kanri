@@ -48,6 +48,7 @@ export default function DegradationSurveyEditorPage() {
   const loadedRef = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataRef = useRef<DataMap>({});
+  const dirtyRef = useRef(false);
 
   useEffect(() => {
     if (survey && !loadedRef.current) {
@@ -77,22 +78,26 @@ export default function DegradationSurveyEditorPage() {
   const scheduleSave = useCallback(
     (nextData: DataMap) => {
       dataRef.current = nextData;
+      dirtyRef.current = true;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       setSaveState('saving');
       saveTimer.current = setTimeout(() => {
-        persist({ ...deriveMeta(nextData), data: nextData });
+        saveTimer.current = null;
+        persist({ ...deriveMeta(nextData), data: nextData }).then(() => {
+          dirtyRef.current = false;
+        });
       }, 1100);
     },
     [persist],
   );
 
-  // アンマウント時に未保存があれば即保存
+  // アンマウント時：本当に未保存の変更があるときだけフラッシュ（冗長/空PUTを防ぐ）
   useEffect(() => {
     return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        const d = dataRef.current
-        apiFetch(`/api/degradation-surveys/${id}`, { token, method: 'PUT', body: JSON.stringify({ ...deriveMeta(d), data: d }) }).catch(() => {})
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (dirtyRef.current && loadedRef.current) {
+        const d = dataRef.current;
+        apiFetch(`/api/degradation-surveys/${id}`, { token, method: 'PUT', body: JSON.stringify({ ...deriveMeta(d), data: d }) }).catch(() => {});
       }
     };
   }, [id, token]);
@@ -381,20 +386,25 @@ function PhotoPanel({ photos, onChange }: { photos: SurveyPhoto[]; onChange: (ne
   const handleFiles = async (files: FileList | null) => {
     if (!files || !files.length) return;
     setUploading(true);
-    try {
-      const added: SurveyPhoto[] = [];
-      for (const file of Array.from(files)) {
-        if (!file.type.startsWith('image/')) continue;
+    const added: SurveyPhoto[] = [];
+    let failed = 0;
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) {
+        failed++;
+        continue;
+      }
+      // 1枚失敗してもバッチ全体は止めない（iOSのHEIC等）
+      try {
         const dataUrl = await compressImage(file);
         added.push({ id: uid(), sectionKey: tag, caption: '', dataUrl });
+      } catch {
+        failed++;
       }
-      onChange([...photos, ...added]);
-    } catch {
-      alert('写真の処理に失敗しました。');
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
     }
+    if (added.length) onChange([...photos, ...added]);
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = '';
+    if (failed) alert(`${failed}枚は読み込めませんでした（対応形式: JPEG / PNG）。`);
   };
 
   return (

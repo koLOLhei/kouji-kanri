@@ -261,7 +261,8 @@ export function deriveMeta(data: Record<string, Record<string, unknown>>): {
   const b = (data.building || {}) as Record<string, unknown>;
   const overall = worstGrade(SECTIONS.filter((s) => s.graded).map((s) => data?.[s.key]?.grade as string | undefined));
   return {
-    property_name: (typeof b.propertyName === "string" && b.propertyName.trim()) || "(無題の調査)",
+    // 実値を保存（空でもプレースホルダ文字列を保存しない。表示側で "(無題の調査)" にフォールバック）
+    property_name: typeof b.propertyName === "string" ? b.propertyName : "",
     address: typeof b.address === "string" ? b.address : undefined,
     overall_grade: overall?.key,
     inspector_name: typeof b.inspector === "string" ? b.inspector : undefined,

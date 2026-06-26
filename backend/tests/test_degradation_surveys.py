@@ -68,6 +68,20 @@ def test_update_partial_keeps_data(client, admin_a_token, auth):
     assert r.json()["data"]["wall"]["crackWidth"] == 1.2
 
 
+def test_update_data_null_does_not_wipe(client, admin_a_token, auth):
+    """data:null / photos:null は無視され、既存の値が保持される（全消去バグ防止）。"""
+    sid = client.post("/api/degradation-surveys", json=_sample(), headers=auth(admin_a_token)).json()["id"]
+    r = client.put(
+        f"/api/degradation-surveys/{sid}",
+        json={"status": "completed", "data": None, "photos": None},
+        headers=auth(admin_a_token),
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "completed"
+    assert r.json()["data"]["wall"]["crackWidth"] == 1.2  # 保持される
+    assert len(r.json()["photos"]) == 1  # 保持される
+
+
 def test_delete(client, admin_a_token, auth):
     sid = client.post("/api/degradation-surveys", json=_sample(), headers=auth(admin_a_token)).json()["id"]
     d = client.delete(f"/api/degradation-surveys/{sid}", headers=auth(admin_a_token))

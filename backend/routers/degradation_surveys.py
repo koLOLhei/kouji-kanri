@@ -127,7 +127,11 @@ def update_survey(
     patch = body.model_dump(exclude_unset=True)
     for field in _UPDATABLE:
         if field in patch:
-            setattr(s, field, patch[field])
+            val = patch[field]
+            # data / photos は明示的な null による全消去を防ぐ（部分更新を壊さない）
+            if field in ("data", "photos") and val is None:
+                continue
+            setattr(s, field, val)
     db.commit()
     db.refresh(s)
     return _serialize(s)
