@@ -10,7 +10,7 @@ import { OutdoorModeToggle } from "@/components/outdoor-mode-toggle";
 import {
   LayoutDashboard, FolderKanban, Camera, Bell, Menu,
   X, HardHat, Truck, BookOpen, Settings, CalendarCheck,
-  ClipboardCheck, Activity, QrCode,
+  ClipboardCheck, Activity, QrCode, ClipboardList,
 } from "lucide-react";
 
 const navItems = [
@@ -23,6 +23,7 @@ const navItems = [
 
 const menuSheetItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
+  { href: "/degradation-surveys", label: "劣化診断", icon: ClipboardList },
   { href: "/health", label: "ヘルス", icon: Activity },
   { href: "/approval", label: "承認キュー", icon: ClipboardCheck },
   { href: "/scan", label: "QRスキャン", icon: QrCode },
