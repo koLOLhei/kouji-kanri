@@ -121,6 +121,11 @@ TENANT_ENFORCING_HELPERS = {
     "_get_project_or_404",  # routers/electronic_delivery.py のローカルヘルパー
     "_get_config_by_token",  # routers/client_portal.py のローカルヘルパー
     "_get_flow",  # routers/approval_workflow.py のローカルヘルパー
+    # 見積系ローカルヘルパー（いずれも内部で tenant_id == user.tenant_id を強制。検証済み）
+    "_get_proposal_for_user",  # routers/estimate_proposals.py
+    "_get_estimate_or_404",  # routers/estimate_revisions.py / estimate_sections.py / estimate_items.py
+    "_get_section_or_404",  # routers/estimate_sections.py / estimate_items.py
+    "_get_item_or_404",  # routers/estimate_items.py
 }
 
 # 認証依存名

@@ -52,11 +52,14 @@ export default function DegradationSurveyEditorPage() {
 
   useEffect(() => {
     if (survey && !loadedRef.current) {
+      // サーバ取得データを編集用ローカルstateへ一度だけ取り込む（react-queryの初期化）
+      /* eslint-disable react-hooks/set-state-in-effect */
       const d = (survey.data as DataMap) || {};
       setData(d);
       dataRef.current = d;
       setPhotos(survey.photos || []);
       loadedRef.current = true;
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [survey]);
 
