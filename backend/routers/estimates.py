@@ -50,11 +50,19 @@ class EstimateUpdate(BaseModel):
 def _generate_estimate_number(tenant_id: str, db: Session) -> str:
     year = datetime.now(timezone.utc).year
     prefix = f"EST-{year}-"
-    count = db.query(func.count(Estimate.id)).filter(
+    # COUNT は削除や同時作成で番号が重複・再利用されるため、既存の最大採番+1 を用いる
+    max_number = db.query(func.max(Estimate.estimate_number)).filter(
         Estimate.tenant_id == tenant_id,
         Estimate.estimate_number.like(f"{prefix}%"),
-    ).scalar() or 0
-    return f"{prefix}{count + 1:03d}"
+    ).scalar()
+    if max_number:
+        try:
+            last = int(max_number.split("-")[-1])
+        except (ValueError, IndexError):
+            last = 0
+    else:
+        last = 0
+    return f"{prefix}{last + 1:03d}"
 
 
 def _calc_tax(subtotal: int, tax_rate: float) -> tuple[int, int]:

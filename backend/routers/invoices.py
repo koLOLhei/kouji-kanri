@@ -73,6 +73,24 @@ class InvoiceDeposit(BaseModel):
     tax_rate: float = app_settings.default_tax_rate
 
 
+class InvoiceAdditional(BaseModel):
+    title: str | None = None
+    items: list[AdditionalItem] | None = None
+    total: int | None = None
+    due_date: date | None = None
+    invoice_date: date | None = None
+    customer_name: str | None = None
+    tax_rate: float = app_settings.default_tax_rate
+
+
+class InvoiceFinal(BaseModel):
+    note: str | None = None
+    due_date: date | None = None
+    invoice_date: date | None = None
+    customer_name: str | None = None
+    tax_rate: float = app_settings.default_tax_rate
+
+
 class PaymentNoticeCreate(BaseModel):
     subcontractor_id: str
     period_from: date | None = None
@@ -283,6 +301,100 @@ def create_deposit_invoice(
     return record
 
 
+@router.post("/invoices/additional", status_code=201)
+def create_additional_invoice(
+    project_id: str,
+    body: InvoiceAdditional,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """追加請求書を作成 (kind='additional')."""
+    verify_project_access(project_id, user, db)
+    items = [i.model_dump() for i in (body.items or [])]
+    subtotal = int(body.total) if body.total is not None else sum(int(i.get("amount") or 0) for i in items)
+    tax_amount, total = _calc_tax(subtotal, body.tax_rate)
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    invoice_number = _generate_number("INV", user.tenant_id, Invoice, Invoice.invoice_number, db)
+    record = Invoice(
+        tenant_id=user.tenant_id,
+        project_id=project_id,
+        invoice_number=invoice_number,
+        invoice_date=body.invoice_date or date.today(),
+        due_date=body.due_date,
+        customer_name=body.customer_name,
+        items=items,
+        subtotal=subtotal,
+        tax_rate=body.tax_rate,
+        tax_amount=tax_amount,
+        total=total,
+        invoice_registration_number=(tenant.invoice_registration_number if tenant else None),
+        status="draft",
+        notes=body.title,
+        kind="additional",
+        created_by=user.id,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+# 最終請求の残額計算で「請求済み」とみなす種別
+_FINAL_BILLABLE_KINDS = ("progress", "deposit", "additional", "final")
+
+
+@router.post("/invoices/final", status_code=201)
+def create_final_invoice(
+    project_id: str,
+    body: InvoiceFinal,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """最終請求書を作成 (kind='final')。請負金額から既請求(税抜小計)を差し引いた残額を計上。
+
+    ※ Project.contract_amount(請負金額)は税抜を前提に算出する。税込基準で運用している
+       場合は調整が必要。変更契約(追加分)は別途『追加請求』で計上する想定。
+    """
+    project = verify_project_access(project_id, user, db)
+    contract = int(project.contract_amount or 0)
+    billed_subtotal = (
+        db.query(func.coalesce(func.sum(Invoice.subtotal), 0))
+        .filter(
+            Invoice.tenant_id == user.tenant_id,
+            Invoice.project_id == project_id,
+            Invoice.kind.in_(_FINAL_BILLABLE_KINDS),
+        )
+        .scalar()
+        or 0
+    )
+    remaining = max(0, contract - int(billed_subtotal))
+    tax_amount, total = _calc_tax(remaining, body.tax_rate)
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    invoice_number = _generate_number("INV", user.tenant_id, Invoice, Invoice.invoice_number, db)
+    record = Invoice(
+        tenant_id=user.tenant_id,
+        project_id=project_id,
+        invoice_number=invoice_number,
+        invoice_date=body.invoice_date or date.today(),
+        due_date=body.due_date,
+        customer_name=body.customer_name,
+        items=[{"description": "最終請求（請負残額）", "amount": remaining}],
+        subtotal=remaining,
+        tax_rate=body.tax_rate,
+        tax_amount=tax_amount,
+        total=total,
+        invoice_registration_number=(tenant.invoice_registration_number if tenant else None),
+        status="draft",
+        notes=body.note,
+        kind="final",
+        created_by=user.id,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
 @router.get("/invoices/{invoice_id}")
 def get_invoice(
     project_id: str,
@@ -319,10 +431,18 @@ def update_invoice(
         raise HTTPException(status_code=404, detail="請求書が見つかりません")
     data = body.model_dump(exclude_unset=True)
     for k, v in data.items():
+        # subtotal / tax_rate を明示 null で上書きすると NOT NULL 制約違反になるためスキップ
+        if k in ("subtotal", "tax_rate") and v is None:
+            continue
         setattr(record, k, v)
     if "subtotal" in data or "tax_rate" in data:
-        subtotal = data.get("subtotal", record.subtotal)
-        tax_rate = data.get("tax_rate", record.tax_rate)
+        # 明示的な null が来ても既存値にフォールバックして 500 を防ぐ
+        subtotal = data.get("subtotal")
+        if subtotal is None:
+            subtotal = record.subtotal or 0
+        tax_rate = data.get("tax_rate")
+        if tax_rate is None:
+            tax_rate = record.tax_rate or 0
         record.tax_amount, record.total = _calc_tax(subtotal, tax_rate)
     db.commit()
     db.refresh(record)
