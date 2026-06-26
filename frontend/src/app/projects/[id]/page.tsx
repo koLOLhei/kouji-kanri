@@ -114,6 +114,7 @@ const FEATURE_GROUPS = [
       { key: "inspections",        label: "検査",      subtitle: "段階確認・完成検査の記録",      icon: Search,        bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
       { key: "materials",          label: "資材",      subtitle: "発注・受入・試験成績書の管理",   icon: Package,       bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
       { key: "costs",              label: "原価",      subtitle: "工事費用・予算の管理・分析",     icon: DollarSign,    bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
+      { key: "labor-cost",         label: "労務原価",   subtitle: "出面集計・労務費の原価計上",     icon: DollarSign,    bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
       { key: "measurements",       label: "出来形",    subtitle: "完成部分の寸法・品質を測定",    icon: Search,        bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
       { key: "concrete",           label: "コンクリート", subtitle: "養生管理・強度試験・脱型管理", icon: Package,       bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },
       { key: "material-approvals", label: "材料承認",   subtitle: "材料承認願の提出・承認管理",   icon: FileImage,     bg: CARD_BG, ring: CARD_RING, iconColor: CARD_ICON },

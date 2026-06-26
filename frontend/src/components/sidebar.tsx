@@ -44,6 +44,7 @@ const orgItems: NavItem[] = [
   { href: "/estimates", label: "見積書", icon: ClipboardCheck },
   { href: "/contracts", label: "契約書", icon: Shield },
   { href: "/ar", label: "売掛金・入金", icon: Wallet },
+  { href: "/cashflow", label: "資金繰り予測", icon: TrendingUp },
   { href: "/tasks", label: "タスク", icon: CalendarCheck },
   { href: "/specs", label: "仕様書", icon: BookOpen },
 ];

@@ -80,6 +80,8 @@ def _add_missing_columns():
         ("invoices", "additional_items", "JSON"),
         ("invoices", "updated_at", "TIMESTAMP"),
         ("invoices", "created_by", "VARCHAR(36)"),
+        # workers: 日当（労務原価計算）
+        ("workers", "daily_wage", "INTEGER"),
     ]
     with engine.begin() as conn:
         for table, col, col_type in migrations:

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from services.tax_breakdown import compute_tax_breakdown
 from database import get_db
 from models.business_docs import Invoice, PaymentNotice
 from models.progress_statement import ProgressStatement
@@ -52,6 +53,7 @@ class InvoiceUpdate(BaseModel):
 class AdditionalItem(BaseModel):
     name: str
     amount: int
+    tax_rate: float | None = None  # 明細ごとの税率（8%軽減等）。未指定は請求書の既定税率
 
 
 class InvoiceFromProgressStatement(BaseModel):
@@ -312,7 +314,13 @@ def create_additional_invoice(
     verify_project_access(project_id, user, db)
     items = [i.model_dump() for i in (body.items or [])]
     subtotal = int(body.total) if body.total is not None else sum(int(i.get("amount") or 0) for i in items)
-    tax_amount, total = _calc_tax(subtotal, body.tax_rate)
+    # 明細に税率(8%軽減等)がある場合は税率別に消費税を計算（多税率対応）
+    if items:
+        breakdown = compute_tax_breakdown(items, body.tax_rate)
+        tax_amount = sum(b["tax_amount"] for b in breakdown)
+        total = subtotal + tax_amount
+    else:
+        tax_amount, total = _calc_tax(subtotal, body.tax_rate)
     tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
     invoice_number = _generate_number("INV", user.tenant_id, Invoice, Invoice.invoice_number, db)
     record = Invoice(

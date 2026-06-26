@@ -27,6 +27,7 @@ class WorkerCreate(BaseModel):
     emergency_contact: str | None = None
     emergency_phone: str | None = None
     company_id: str | None = None
+    daily_wage: int | None = None
     notes: str | None = None
 
 
@@ -39,6 +40,7 @@ class WorkerUpdate(BaseModel):
     emergency_phone: str | None = None
     company_id: str | None = None
     is_active: bool | None = None
+    daily_wage: int | None = None
     notes: str | None = None
 
 

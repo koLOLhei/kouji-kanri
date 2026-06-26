@@ -23,6 +23,7 @@ class Worker(Base):
     company_id: Mapped[str | None] = mapped_column(String(36))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     photo_key: Mapped[str | None] = mapped_column(String(500))
+    daily_wage: Mapped[int | None] = mapped_column(Integer)  # 日当（労務原価の計算に使用）
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
