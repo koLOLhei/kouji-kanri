@@ -55,6 +55,7 @@ from models.platform import PasswordResetToken, LoginHistory, FileAttachment, Us
 from models.construction_loan import ConstructionLoan, LoanPayment
 from models.painting_project import PaintingSurvey, PaintingEstimate, PaintingContract, ContractTemplate, PaintingSchedule
 from models.degradation_survey import DegradationSurvey
+from models.payment_receipt import PaymentReceipt
 from models.signature import DigitalSignature
 from models.push_subscription import PushSubscription
 from models.compliance import ComplianceItem

@@ -11,7 +11,7 @@ import {
   Building2, BarChart3, HardHat, Truck, Bell, Search,
   ChevronLeft, ChevronRight, Shield, ClipboardCheck, Activity,
   CalendarCheck, Wrench, SearchIcon, TrendingUp, Users,
-  FileText, Receipt, ClipboardList,
+  FileText, Receipt, ClipboardList, Wallet,
 } from "lucide-react";
 import { OutdoorModeToggle } from "@/components/outdoor-mode-toggle";
 
@@ -43,6 +43,7 @@ const orgItems: NavItem[] = [
   { href: "/degradation-surveys", label: "劣化診断(現調)", icon: ClipboardList },
   { href: "/estimates", label: "見積書", icon: ClipboardCheck },
   { href: "/contracts", label: "契約書", icon: Shield },
+  { href: "/ar", label: "売掛金・入金", icon: Wallet },
   { href: "/tasks", label: "タスク", icon: CalendarCheck },
   { href: "/specs", label: "仕様書", icon: BookOpen },
 ];
