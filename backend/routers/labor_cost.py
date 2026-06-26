@@ -26,7 +26,10 @@ class PostToCost(BaseModel):
 
 
 def _summary(db: Session, tenant_id: str, project_id: str, period_from: date | None, period_to: date | None):
-    q = db.query(Attendance).filter(Attendance.project_id == project_id)
+    q = db.query(Attendance).filter(
+        Attendance.project_id == project_id,
+        Attendance.tenant_id == tenant_id,
+    )
     if period_from:
         q = q.filter(Attendance.work_date >= period_from)
     if period_to:
